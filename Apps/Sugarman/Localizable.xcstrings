@@ -1,0 +1,483 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "dashboard.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Live"
+          }
+        }
+      },
+      "comment": "Dashboard title"
+    },
+    "dashboard.no_dosing": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sugarman is an athlete fueling insight tool. It does not diagnose conditions, recommend treatment, or suggest insulin or medication doses. Never use these readings to dose insulin."
+          }
+        }
+      },
+      "comment": "Mandatory no-dosing disclaimer"
+    },
+    "dashboard.athlete_purpose": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Glucose monitoring and fueling insight for endurance athletes."
+          }
+        }
+      }
+    },
+    "dashboard.connection": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connection"
+          }
+        }
+      }
+    },
+    "dashboard.glucose": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Glucose"
+          }
+        }
+      }
+    },
+    "dashboard.empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No sensor session. Sugarman has not collected any glucose yet."
+          }
+        }
+      }
+    },
+    "dashboard.disconnected": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sensor disconnected. No current glucose is available."
+          }
+        }
+      }
+    },
+    "dashboard.stale": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reading is stale. Do not treat it as current."
+          }
+        }
+      }
+    },
+    "dashboard.warmup": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sensor is warming up. No current glucose is available."
+          }
+        }
+      }
+    },
+    "dashboard.error": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sensor reported an error. No current glucose is available."
+          }
+        }
+      }
+    },
+    "dashboard.expired": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sensor session has ended. No current glucose is available."
+          }
+        }
+      }
+    },
+    "dashboard.scanning": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scanning for a sensor"
+          }
+        }
+      }
+    },
+    "dashboard.connecting": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connecting"
+          }
+        }
+      }
+    },
+    "dashboard.connected": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connected"
+          }
+        }
+      }
+    },
+    "dashboard.bt_unavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bluetooth is unavailable"
+          }
+        }
+      }
+    },
+    "dashboard.bt_unauthorized": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bluetooth permission is not granted"
+          }
+        }
+      }
+    },
+    "dashboard.reading_age_format": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reading age: %d min %d sec"
+          }
+        }
+      },
+      "comment": "minutes, seconds"
+    },
+    "dashboard.reading_age_unknown": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reading age: no sample"
+          }
+        }
+      }
+    },
+    "onboarding.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Onboarding"
+          }
+        }
+      }
+    },
+    "onboarding.sensor": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Owned sensor"
+          }
+        }
+      }
+    },
+    "onboarding.placeholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Package and NFC onboarding are placeholders until owned-hardware evidence is recorded."
+          }
+        }
+      }
+    },
+    "onboarding.no_commands": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sugarman will not authenticate, bind, activate, reset, or otherwise command a live sensor in this build."
+          }
+        }
+      }
+    },
+    "onboarding.owner": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Owner ID"
+          }
+        }
+      }
+    },
+    "onboarding.owner_field": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Legitimate owner ID"
+          }
+        }
+      }
+    },
+    "onboarding.owner_save": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Store owner ID locally"
+          }
+        }
+      }
+    },
+    "onboarding.owner_idle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter the owner ID from a legitimate source. Email login is not supported."
+          }
+        }
+      }
+    },
+    "onboarding.owner_ok": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stored owner reference: %@"
+          }
+        }
+      },
+      "comment": "redacted owner id"
+    },
+    "privacy.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Privacy"
+          }
+        }
+      }
+    },
+    "privacy.retention": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retention"
+          }
+        }
+      }
+    },
+    "privacy.retention_body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Session and glucose history stay on this device until you delete them. There is no cloud backend."
+          }
+        }
+      }
+    },
+    "privacy.no_cloud": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CloudKit and custom cloud sync are off."
+          }
+        }
+      }
+    },
+    "privacy.diagnostics": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diagnostics"
+          }
+        }
+      }
+    },
+    "privacy.probe_toggle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Read-only Bluetooth probe"
+          }
+        }
+      }
+    },
+    "privacy.probe_disabled": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The read-only diagnostic probe is disabled by default and has no characteristic-mutating API. Enable it only on owned hardware after P0."
+          }
+        }
+      }
+    },
+    "privacy.deletion": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deletion"
+          }
+        }
+      }
+    },
+    "privacy.delete_all": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete all local Sugarman data"
+          }
+        }
+      }
+    },
+    "privacy.delete_confirm_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete all local data?"
+          }
+        }
+      }
+    },
+    "privacy.delete_confirm_body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This removes locally stored sessions and glucose samples from Sugarman. It does not change the physical sensor."
+          }
+        }
+      }
+    },
+    "privacy.licence": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Licence"
+          }
+        }
+      }
+    },
+    "privacy.gpl": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sugarman is free software licensed under GPL-3.0-or-later. Corresponding source is the Git tag for each distributed build."
+          }
+        }
+      }
+    },
+    "Live": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Live"
+          }
+        }
+      }
+    },
+    "Onboarding": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Onboarding"
+          }
+        }
+      }
+    },
+    "Privacy": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Privacy"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.1"
+}

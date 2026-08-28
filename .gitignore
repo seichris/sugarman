@@ -1,0 +1,43 @@
+# Build artifacts
+.build/
+.swiftpm/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Xcode / local
+*.playground
+*.xccheckout
+*.moved-aside
+*.xcscmblueprint
+timeline.xctimeline
+
+# Secrets and local signing
+.env
+.env.*
+*.p12
+*.cer
+*.certSigningRequest
+*.mobileprovision
+Secrets.xcconfig
+local.xcconfig
+
+# Proprietary / private evidence — never commit
+private-evidence/
+*.apk
+*.apks
+*.aab
+*.so
+*.aar
+*.dex
+*.jar
+libcxm_protocol*
+
+# OS
+.DS_Store
+*~
+.idea/

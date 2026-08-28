@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Sugarman contributors
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  governance:
+    name: Governance and binary exclusion
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - name: Check licence, provenance, and binary exclusion
+        run: python3 Scripts/check_governance.py
+
+  swift-test:
+    name: swift test
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - name: Show toolchain
+        run: swift --version && xcodebuild -version
+      - name: Test portable modules
+        run: swift test --enable-swift-testing

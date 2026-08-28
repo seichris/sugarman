@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/seichris/sugarman/docs/provenance/schema.json",
+  "title": "Sugarman provenance registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "project_licence", "corresponding_source", "records"],
+  "properties": {
+    "version": { "type": "integer", "minimum": 1 },
+    "project_licence": { "const": "GPL-3.0-or-later" },
+    "corresponding_source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["policy"],
+      "properties": {
+        "policy": { "type": "string" },
+        "repository": { "type": "string" },
+        "tag_pattern": { "type": "string" }
+      }
+    },
+    "records": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/record" }
+    }
+  },
+  "$defs": {
+    "record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "upstream_project",
+        "upstream_url",
+        "pinned_commit",
+        "source_path",
+        "source_blob_sha256",
+        "copyright_holders",
+        "history_reviewed",
+        "file_header_licence",
+        "repository_licence",
+        "purpose_and_behavior_taken",
+        "reuse_mode",
+        "sugarman_destination_path",
+        "modification_date",
+        "author",
+        "fixtures_origin",
+        "fixtures_capture_sha256",
+        "reviewer",
+        "legal_review_status"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "upstream_project": { "type": "string" },
+        "upstream_url": { "type": "string" },
+        "pinned_commit": { "type": "string" },
+        "source_path": { "type": "string" },
+        "source_blob_sha256": { "type": "string" },
+        "copyright_holders": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "history_reviewed": { "type": "boolean" },
+        "file_header_licence": { "type": "string" },
+        "repository_licence": { "type": "string" },
+        "purpose_and_behavior_taken": { "type": "string" },
+        "reuse_mode": {
+          "type": "string",
+          "enum": ["verbatim", "adapted", "behavioral", "independently observed"]
+        },
+        "sugarman_destination_path": { "type": "string" },
+        "modification_date": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "author": { "type": "string" },
+        "fixtures_origin": { "type": "string" },
+        "fixtures_capture_sha256": { "type": "string" },
+        "reviewer": { "type": "string" },
+        "legal_review_status": {
+          "type": "string",
+          "enum": [
+            "not-started",
+            "lean-local",
+            "distribution-blocked",
+            "distribution-approved"
+          ]
+        },
+        "notes": { "type": "string" }
+      }
+    }
+  }
+}

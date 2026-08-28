@@ -1,0 +1,62 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Sugarman contributors
+
+import Foundation
+import Testing
+@testable import SugarmanDomain
+
+struct SugarmanDomainTests {
+    @Test func protocolVariantHasNoV3AES() {
+        let names = ProtocolVariant.allCases.map(\.rawValue)
+        #expect(names == ["unknown", "v120RC4"])
+        #expect(!names.contains("v3AES"))
+        #expect(ProtocolVariant.allCases.allSatisfy { $0.isImplemented == false })
+    }
+
+    @Test func glucoseSampleKeyIsSessionAndIndex() {
+        let session = UUID()
+        let sample = GlucoseSample(
+            sessionID: session,
+            sensorIndex: 7,
+            sensorTimestamp: Date(timeIntervalSince1970: 1),
+            receiptTimestamp: Date(timeIntervalSince1970: 2),
+            milligramsPerDeciliter: 100,
+            decoderRevision: "none"
+        )
+        #expect(sample.id == SampleKey(sessionID: session, sensorIndex: 7))
+        #expect(sample.milligramsPerDeciliter == 100)
+    }
+
+    @Test func identityStoresRedactedSerialOnly() {
+        let identity = SensorIdentity(redactedSerial: "A…Z/11")
+        #expect(identity.redactedSerial == "A…Z/11")
+        #expect(identity.protocolVariant == .unknown)
+    }
+
+    @Test func sessionNeverHoldsCredentials() {
+        let session = SensorSession(sensorID: UUID(), ownerAccountReference: "owner-ref-1")
+        #expect(session.ownerAccountReference == "owner-ref-1")
+    }
+
+    @Test func connectionEventOmitsGlucose() {
+        let event = ConnectionEvent(
+            timestamp: Date(),
+            state: .disconnected,
+            reason: .outOfRange,
+            appLifecycle: .background
+        )
+        #expect(event.state == .disconnected)
+    }
+
+    @Test func noDosingCopyIsPresent() {
+        #expect(ProductCopy.noDosing.contains("Never use these readings to dose insulin."))
+        #expect(ProductCopy.noDosing.contains("does not diagnose"))
+    }
+
+    @Test func workoutAndFuelingHaveNoPrescription() {
+        let workout = WorkoutContext(start: Date(), activityType: "run")
+        let fueling = FuelingEvent(timestamp: Date(), carbohydrateGrams: 30, label: "gel")
+        #expect(workout.activityType == "run")
+        #expect(fueling.label == "gel")
+    }
+}

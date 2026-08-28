@@ -1,0 +1,82 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Sugarman contributors
+name: Sugarman
+options:
+  bundleIdPrefix: app.sugarman
+  deploymentTarget:
+    iOS: "26.0"
+  xcodeVersion: "26.0"
+  createIntermediateGroups: true
+  defaultConfig: Debug
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    IPHONEOS_DEPLOYMENT_TARGET: "26.0"
+    TARGETED_DEVICE_FAMILY: "1"
+    ENABLE_USER_SELECTED_FILES: empty
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: ""
+    CURRENT_PROJECT_VERSION: 1
+    MARKETING_VERSION: 0.0.1
+packages:
+  Sugarman:
+    path: .
+targets:
+  Sugarman:
+    type: application
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: Apps/Sugarman
+        excludes:
+          - Info.plist
+    resources:
+      - path: Apps/Sugarman/Localizable.xcstrings
+    info:
+      path: Apps/Sugarman/Info.plist
+      properties:
+        UILaunchScreen: {}
+        UIBackgroundModes:
+          - bluetooth-central
+        NSBluetoothAlwaysUsageDescription: Sugarman uses Bluetooth to connect to an owned glucose sensor you have already set up. It does not send sensor commands until hardware evidence gates pass.
+        NSBluetoothPeripheralUsageDescription: Sugarman uses Bluetooth to connect to an owned glucose sensor you have already set up.
+        NFCReaderUsageDescription: Sugarman can read an owned sensor package or tag to identify the sensor. Scanning does not activate or bind the sensor.
+        NSCameraUsageDescription: Sugarman can scan a package Data Matrix to identify an owned sensor. Scanning does not send sensor commands.
+        NSHealthShareUsageDescription: Sugarman can read workouts you choose to share so you can overlay them with glucose. HealthKit glucose writes are disabled until validation gates pass.
+        NSHealthUpdateUsageDescription: Sugarman may later write validated glucose to Apple Health. HealthKit glucose writes are disabled in this build.
+    entitlements:
+      path: Apps/Sugarman/Sugarman.entitlements
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.sugarman.ios
+        PRODUCT_NAME: Sugarman
+        INFOPLIST_FILE: Apps/Sugarman/Info.plist
+        GENERATE_INFOPLIST_FILE: false
+        CODE_SIGN_ENTITLEMENTS: Apps/Sugarman/Sugarman.entitlements
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: false
+        SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: false
+        ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: YES
+        SWIFT_EMIT_LOC_STRINGS: YES
+        LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+    dependencies:
+      - package: Sugarman
+        product: SugarmanDomain
+      - package: Sugarman
+        product: GS3Protocol
+      - package: Sugarman
+        product: GS3Transport
+      - package: Sugarman
+        product: SensorOnboarding
+      - package: Sugarman
+        product: AccountBinding
+      - package: Sugarman
+        product: SugarmanStore
+      - package: Sugarman
+        product: SafetyEngine
+      - package: Sugarman
+        product: Integrations
+      - package: Sugarman
+        product: SugarmanDiagnostics
+    scheme:
+      testTargets: []
