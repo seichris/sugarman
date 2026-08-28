@@ -1,6 +1,6 @@
-# Sugarman
+# Sugarman — Glucose monitoring for endurance athletes
 
-An open-source iOS project for glucose-related workflows.
+An open-source iOS app for glucose monitoring in endurance sports.
 
 ## Upstream references
 
