@@ -24,4 +24,13 @@ public enum ProductCopy: Sendable {
 
     public static let connectedNoData =
         "Connected, waiting for a reading. This is not current glucose."
+
+    public static let syntheticDemo =
+        "Synthetic demo data. This is not a real sensor."
+
+    public static let athleteInsightOnly =
+        "Athlete insight only. Sugarman does not recommend fueling, carbohydrate, medication, or treatment."
+
+    public static let demoReplacesLocalData =
+        "Loading a demo replaces locally stored Sugarman data with synthetic fixtures."
 }

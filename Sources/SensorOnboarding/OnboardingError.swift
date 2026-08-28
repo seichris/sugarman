@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Sugarman contributors
 
+import Foundation
+
 public enum OnboardingError: Error, Sendable, Equatable {
     case emptyPayload
     case payloadTooLarge
@@ -8,7 +10,8 @@ public enum OnboardingError: Error, Sendable, Equatable {
     case invalidEncoding
 }
 
-extension OnboardingError: CustomStringConvertible {
+extension OnboardingError: LocalizedError, CustomStringConvertible {
+    public var errorDescription: String? { description }
     public var description: String {
         switch self {
         case .emptyPayload:

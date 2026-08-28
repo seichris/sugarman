@@ -51,6 +51,8 @@ struct SugarmanDomainTests {
     @Test func noDosingCopyIsPresent() {
         #expect(ProductCopy.noDosing.contains("Never use these readings to dose insulin."))
         #expect(ProductCopy.noDosing.contains("does not diagnose"))
+        #expect(ProductCopy.syntheticDemo.contains("not a real sensor"))
+        #expect(ProductCopy.athleteInsightOnly.contains("does not recommend"))
     }
 
     @Test func workoutAndFuelingHaveNoPrescription() {
@@ -58,5 +60,39 @@ struct SugarmanDomainTests {
         let fueling = FuelingEvent(timestamp: Date(), carbohydrateGrams: 30, label: "gel")
         #expect(workout.activityType == "run")
         #expect(fueling.label == "gel")
+    }
+
+    @Test func syntheticDemoCatalogIsLabeledAndDrivesSafetyStates() {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        for scenario in SyntheticDemoScenario.allCases {
+            let fixture = SyntheticDemoCatalog.make(scenario, now: now)
+            #expect(fixture.identity.productName == "Synthetic demo sensor")
+            #expect(fixture.identity.redactedSerial == "…DEMO")
+            #expect(fixture.identity.classificationEvidenceRevision == "synthetic-demo")
+            #expect(fixture.identity.protocolVariant == .unknown)
+            #expect(fixture.samples.allSatisfy { $0.decoderRevision == "synthetic-demo" })
+            #expect(fixture.samples.allSatisfy { $0.source == .live || $0.source == .backfill })
+            switch scenario {
+            case .connectedNoData:
+                #expect(fixture.samples.isEmpty)
+                #expect(fixture.connection == .subscribed)
+                #expect(fixture.lifecycle == .live)
+            case .current:
+                #expect(fixture.samples.count == 8)
+                #expect(fixture.samples.filter { $0.source == .backfill }.count == 3)
+                #expect(fixture.connection == .subscribed)
+                #expect(fixture.lifecycle == .live)
+            case .stale:
+                #expect(fixture.lifecycle == .live)
+            case .disconnected:
+                #expect(fixture.connection == .disconnected)
+            case .warmUp:
+                #expect(fixture.lifecycle == .warmUp)
+            case .sensorError:
+                #expect(fixture.lifecycle == .error)
+            case .expired:
+                #expect(fixture.lifecycle == .expired)
+            }
+        }
     }
 }

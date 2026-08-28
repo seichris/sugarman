@@ -7,18 +7,16 @@ import SwiftUI
 
 struct DashboardView: View {
     @Environment(AppModel.self) private var model
+    @ScaledMetric(relativeTo: .largeTitle) private var glucoseSize: CGFloat = 48
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    Text(verbatim: ProductCopy.noDosing)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .padding(12)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
-
+                    NoDosingBanner()
+                    if model.isSyntheticDemo {
+                        SyntheticDemoBanner()
+                    }
                     statusCard
                     readingCard
                     Text("dashboard.athlete_purpose")
@@ -28,6 +26,23 @@ struct DashboardView: View {
                 .padding()
             }
             .navigationTitle("dashboard.title")
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Menu {
+                        Section("demo.replaces_data") {
+                            ForEach(SyntheticDemoScenario.allCases) { scenario in
+                                Button(demoTitle(scenario)) {
+                                    Task { await model.loadDemo(scenario) }
+                                }
+                            }
+                        }
+                    } label: {
+                        Label("demo.menu", systemImage: "sparkles")
+                    }
+                    .accessibilityLabel(Text("demo.menu"))
+                    .accessibilityHint(Text("demo.hint"))
+                }
+            }
         }
     }
 
@@ -54,6 +69,7 @@ struct DashboardView: View {
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .accessibilityElement(children: .combine)
     }
 
     private var readingCard: some View {
@@ -63,7 +79,9 @@ struct DashboardView: View {
             switch assessment.presentation {
             case .current(let mgdl, _):
                 Text("\(mgdl) mg/dL")
-                    .font(.system(size: 48, weight: .semibold, design: .rounded))
+                    .font(.system(size: glucoseSize, weight: .semibold, design: .rounded))
+                    .minimumScaleFactor(0.5)
+                    .lineLimit(1)
             case .empty:
                 Text("dashboard.empty")
                     .font(.title3)
@@ -127,5 +145,17 @@ struct DashboardView: View {
             )
         }
         return String(localized: "dashboard.reading_age_unknown")
+    }
+
+    private func demoTitle(_ scenario: SyntheticDemoScenario) -> LocalizedStringKey {
+        switch scenario {
+        case .current: "demo.current"
+        case .stale: "demo.stale"
+        case .disconnected: "demo.disconnected"
+        case .warmUp: "demo.warmup"
+        case .sensorError: "demo.error"
+        case .expired: "demo.expired"
+        case .connectedNoData: "demo.connected_no_data"
+        }
     }
 }

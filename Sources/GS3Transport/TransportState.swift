@@ -30,6 +30,7 @@ public enum TransportInput: Sendable, Equatable {
     case timeout
     case cancel
     case bluetoothUnavailable
+    case permissionDenied
     /// Policy-gated steps. M0 refuses them so the machine stays fail-closed.
     case requestAuthentication
     case requestBinding

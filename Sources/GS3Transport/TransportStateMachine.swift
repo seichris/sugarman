@@ -6,6 +6,11 @@ import Foundation
 /// Pure transport state machine. One in-flight command. Mutating peripheral
 /// operations (authentication, binding, activation, reset, expiry, secret-key)
 /// are refused. Designed to run on a dedicated serial queue.
+///
+/// Restoration is simulated in tests by constructing a machine already in
+/// `.scanning`, `.connecting`, `.discovering`, or `.subscribed` and injecting
+/// the same inputs CoreBluetooth would deliver after `willRestoreState`.
+/// This is not a live CoreBluetooth restoration implementation.
 public struct TransportStateMachine: Sendable, Equatable {
     public var state: TransportState
     public var inFlight: Bool
@@ -24,7 +29,7 @@ public struct TransportStateMachine: Sendable, Equatable {
             return failClosed(.authenticationUnimplemented)
         case .requestBinding:
             return failClosed(.bindingUnimplemented)
-        case .bluetoothUnavailable:
+        case .bluetoothUnavailable, .permissionDenied:
             inFlight = false
             state = .ended
             return [.stopScan, .fail(.bluetoothUnavailable)]

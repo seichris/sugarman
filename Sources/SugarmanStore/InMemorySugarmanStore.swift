@@ -8,6 +8,9 @@ import SugarmanDomain
 public actor InMemorySugarmanStore: SugarmanStoring {
     private var samples: [SampleKey: GlucoseSample] = [:]
     private var sessions: [UUID: SensorSession] = [:]
+    private var fueling: [UUID: FuelingEvent] = [:]
+    private var workoutRecords: [UUID: WorkoutContext] = [:]
+    private var identityRecords: [UUID: SensorIdentity] = [:]
 
     public init() {}
 
@@ -34,6 +37,26 @@ public actor InMemorySugarmanStore: SugarmanStoring {
             })
     }
 
+    public func samples(sessionID: UUID) async throws -> [GlucoseSample] {
+        samples.values
+            .filter { $0.sessionID == sessionID }
+            .sorted { lhs, rhs in
+                if lhs.sensorIndex != rhs.sensorIndex {
+                    return lhs.sensorIndex < rhs.sensorIndex
+                }
+                return lhs.sensorTimestamp < rhs.sensorTimestamp
+            }
+    }
+
+    public func allSamples() async throws -> [GlucoseSample] {
+        samples.values.sorted { lhs, rhs in
+            if lhs.sessionID != rhs.sessionID {
+                return lhs.sessionID.uuidString < rhs.sessionID.uuidString
+            }
+            return lhs.sensorIndex < rhs.sensorIndex
+        }
+    }
+
     public func insertSession(_ session: SensorSession) async throws {
         if sessions[session.id] != nil {
             throw StoreError.duplicateSession(session.id)
@@ -45,6 +68,10 @@ public actor InMemorySugarmanStore: SugarmanStoring {
         sessions[id]
     }
 
+    public func allSessions() async throws -> [SensorSession] {
+        Array(sessions.values).sorted { $0.id.uuidString < $1.id.uuidString }
+    }
+
     public func delete(sessionID: UUID) async throws {
         sessions[sessionID] = nil
         samples = samples.filter { $0.key.sessionID != sessionID }
@@ -53,9 +80,49 @@ public actor InMemorySugarmanStore: SugarmanStoring {
     public func deleteAll() async throws {
         sessions.removeAll()
         samples.removeAll()
+        fueling.removeAll()
+        workoutRecords.removeAll()
+        identityRecords.removeAll()
     }
 
     public func sessionIDs() async throws -> [UUID] {
         Array(sessions.keys)
+    }
+
+    public func insertFueling(_ event: FuelingEvent) async throws {
+        if fueling[event.id] != nil {
+            throw StoreError.duplicateFueling(event.id)
+        }
+        fueling[event.id] = event
+    }
+
+    public func fuelingEvents() async throws -> [FuelingEvent] {
+        fueling.values.sorted { $0.timestamp < $1.timestamp }
+    }
+
+    public func deleteFueling(id: UUID) async throws {
+        fueling[id] = nil
+    }
+
+    public func insertWorkout(_ workout: WorkoutContext) async throws {
+        if workoutRecords[workout.id] != nil {
+            throw StoreError.duplicateWorkout(workout.id)
+        }
+        workoutRecords[workout.id] = workout
+    }
+
+    public func workouts() async throws -> [WorkoutContext] {
+        workoutRecords.values.sorted { $0.start < $1.start }
+    }
+
+    public func insertIdentity(_ identity: SensorIdentity) async throws {
+        if identityRecords[identity.id] != nil {
+            throw StoreError.duplicateIdentity(identity.id)
+        }
+        identityRecords[identity.id] = identity
+    }
+
+    public func identities() async throws -> [SensorIdentity] {
+        Array(identityRecords.values).sorted { $0.id.uuidString < $1.id.uuidString }
     }
 }

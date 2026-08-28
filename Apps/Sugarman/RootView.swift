@@ -4,20 +4,37 @@
 import SwiftUI
 
 struct RootView: View {
+    @Environment(AppModel.self) private var model
+
     var body: some View {
         TabView {
             DashboardView()
                 .tabItem {
                     Label("Live", systemImage: "heart.text.clipboard")
                 }
-            OnboardingPlaceholderView()
+            HistoryView()
                 .tabItem {
-                    Label("Onboarding", systemImage: "qrcode.viewfinder")
+                    Label("History", systemImage: "chart.xyaxis.line")
+                }
+            WorkoutView()
+                .tabItem {
+                    Label("Workout", systemImage: "figure.run")
+                }
+            FuelingView()
+                .tabItem {
+                    Label("Fueling", systemImage: "fork.knife")
+                }
+            SensorOnboardingView()
+                .tabItem {
+                    Label("Sensor", systemImage: "sensor.tag.radiowaves.forward")
                 }
             PrivacyView()
                 .tabItem {
                     Label("Privacy", systemImage: "lock.shield")
                 }
+        }
+        .task {
+            await model.refresh()
         }
     }
 }

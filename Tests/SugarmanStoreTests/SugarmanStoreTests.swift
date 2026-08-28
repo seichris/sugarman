@@ -31,6 +31,20 @@ struct SugarmanStoreTests {
         #expect(latest?.sensorIndex == 2)
     }
 
+    @Test func crashRecoveryDuplicateInsertThrowsAndKeepsOriginal() async throws {
+        let store = InMemorySugarmanStore()
+        let session = UUID()
+        let sample = makeSample(session: session, index: 1)
+        try await store.insertSample(sample)
+        await #expect(throws: StoreError.duplicateSample(SampleKey(sessionID: session, sensorIndex: 1))) {
+            try await store.insertSample(makeSample(session: session, index: 1))
+        }
+        let kept = try await store.sample(sessionID: session, sensorIndex: 1)
+        #expect(kept == sample)
+        let listed = try await store.samples(sessionID: session)
+        #expect(listed.count == 1)
+    }
+
     @Test func deleteSessionAndDeleteAll() async throws {
         let store = InMemorySugarmanStore()
         let sessionA = UUID()
@@ -44,6 +58,7 @@ struct SugarmanStoreTests {
         #expect(try await store.sample(sessionID: sessionB, sensorIndex: 1) != nil)
         try await store.deleteAll()
         #expect(try await store.sessionIDs().isEmpty)
+        #expect(try await store.allSamples().isEmpty)
     }
 
     @Test func duplicateSessionThrows() async throws {
@@ -54,5 +69,40 @@ struct SugarmanStoreTests {
             try await store.insertSession(SensorSession(id: sessionID, sensorID: UUID()))
         }
         #expect(try await store.sessionIDs() == [sessionID])
+    }
+
+    @Test func fuelingPersistenceUniquenessAndDelete() async throws {
+        let store = InMemorySugarmanStore()
+        let event = FuelingEvent(timestamp: Date(timeIntervalSince1970: 100), carbohydrateGrams: 25, label: "gel")
+        try await store.insertFueling(event)
+        await #expect(throws: StoreError.duplicateFueling(event.id)) {
+            try await store.insertFueling(event)
+        }
+        let listed = try await store.fuelingEvents()
+        #expect(listed.count == 1)
+        #expect(listed.first?.label == "gel")
+        try await store.deleteFueling(id: event.id)
+        #expect(try await store.fuelingEvents().isEmpty)
+        try await store.insertFueling(event)
+        try await store.deleteAll()
+        #expect(try await store.fuelingEvents().isEmpty)
+    }
+
+    @Test func demoFixtureInsertsWithoutDuplicate() async throws {
+        let store = InMemorySugarmanStore()
+        let fixture = SyntheticDemoCatalog.make(.current, now: Date(timeIntervalSince1970: 1_700_000_000))
+        try await store.insertSession(fixture.session)
+        try await store.insertIdentity(fixture.identity)
+        for sample in fixture.samples {
+            try await store.insertSample(sample)
+        }
+        for workout in fixture.workouts {
+            try await store.insertWorkout(workout)
+        }
+        #expect(try await store.samples(sessionID: fixture.session.id).count == 8)
+        #expect(try await store.allSamples().allSatisfy { $0.decoderRevision == "synthetic-demo" })
+        await #expect(throws: StoreError.duplicateSession(fixture.session.id)) {
+            try await store.insertSession(fixture.session)
+        }
     }
 }
