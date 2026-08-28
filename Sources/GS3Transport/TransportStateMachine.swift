@@ -89,8 +89,6 @@ public struct TransportStateMachine: Sendable, Equatable {
         case (.subscribed, .readComplete):
             inFlight = false
             return []
-        case (.subscribed, let input) where isRead(input):
-            return startRead(input)
         case (.authenticating, _), (.binding, _), (.synchronizing, _), (.live, _):
             // These states exist so later milestones can extend the machine.
             // M0 cannot enter them without a refused mutating input.
@@ -112,18 +110,6 @@ public struct TransportStateMachine: Sendable, Equatable {
         }
         inFlight = true
         return [.read(characteristic)]
-    }
-
-    private mutating func startRead(_ input: TransportInput) -> [TransportEffect] {
-        guard case .readComplete = input else {
-            return [.fail(.invalidTransition(from: state))]
-        }
-        return []
-    }
-
-    private func isRead(_ input: TransportInput) -> Bool {
-        if case .readComplete = input { return true }
-        return false
     }
 
     private func isCommandStart(_ input: TransportInput) -> Bool {

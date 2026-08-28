@@ -11,7 +11,7 @@ public protocol CharacteristicMutating: Sendable {}
 /// Read-only diagnostic session. Disabled by default. Supports scan, connect,
 /// discover, and read of documented-readable characteristics only.
 public struct ReadOnlyDiagnosticProbe: Sendable {
-    public var isEnabled: Bool
+    public let isEnabled: Bool
     private let session: GS3TransportSession
 
     public init(isEnabled: Bool = false, runtime: any BluetoothRuntime) {

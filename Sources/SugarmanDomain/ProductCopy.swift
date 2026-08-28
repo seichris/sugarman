@@ -21,4 +21,7 @@ public enum ProductCopy: Sendable {
 
     public static let emptyDashboard =
         "No sensor session. Sugarman has not collected any glucose yet."
+
+    public static let connectedNoData =
+        "Connected, waiting for a reading. This is not current glucose."
 }

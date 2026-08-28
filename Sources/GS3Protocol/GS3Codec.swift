@@ -11,13 +11,21 @@ public enum GS3ProtocolRequest: Sendable, Equatable, CaseIterable {
 }
 
 /// Opaque frame wrapper. Production logs must never print `bytes`.
-public struct EncodedFrame: Sendable, Equatable {
+public struct EncodedFrame: Sendable, Equatable, CustomStringConvertible, CustomDebugStringConvertible {
     public let bytes: [UInt8]
     public let byteCount: Int
 
     public init(bytes: [UInt8]) {
         self.bytes = bytes
         self.byteCount = bytes.count
+    }
+
+    public var description: String {
+        "EncodedFrame(byteCount: \(byteCount))"
+    }
+
+    public var debugDescription: String {
+        description
     }
 }
 

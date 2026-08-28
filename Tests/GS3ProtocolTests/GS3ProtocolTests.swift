@@ -26,4 +26,16 @@ struct GS3ProtocolTests {
     @Test func factoryNeverReturnsAnImplementedCodec() {
         #expect(ProtocolVariant.allCases.allSatisfy { !$0.isImplemented })
     }
+
+    @Test func encodedFrameDescriptionOmitsBytes() {
+        let frame = EncodedFrame(bytes: [0xDE, 0xAD, 0xBE, 0xEF, 0x00])
+        let described = String(describing: frame)
+        let reflected = String(reflecting: frame)
+        #expect(described == "EncodedFrame(byteCount: 5)")
+        #expect(reflected == "EncodedFrame(byteCount: 5)")
+        #expect(!described.contains("222"))
+        #expect(!described.contains("DEAD"))
+        #expect(!reflected.contains("222"))
+        #expect(frame.bytes == [0xDE, 0xAD, 0xBE, 0xEF, 0x00])
+    }
 }

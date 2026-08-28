@@ -10,8 +10,9 @@ import SwiftData
 @available(iOS 26, macOS 26, *)
 @Model
 public final class GlucoseSampleRecord {
+    #Unique<GlucoseSampleRecord>([\.sessionID, \.sensorIndex])
     public var sessionID: UUID
-    public var sensorIndex: Int
+    public var sensorIndex: Int64
     public var sensorTimestamp: Date
     public var receiptTimestamp: Date
     public var milligramsPerDeciliter: Int
@@ -23,7 +24,7 @@ public final class GlucoseSampleRecord {
 
     public init(from sample: GlucoseSample) {
         self.sessionID = sample.sessionID
-        self.sensorIndex = Int(sample.sensorIndex)
+        self.sensorIndex = Int64(sample.sensorIndex)
         self.sensorTimestamp = sample.sensorTimestamp
         self.receiptTimestamp = sample.receiptTimestamp
         self.milligramsPerDeciliter = sample.milligramsPerDeciliter
@@ -53,6 +54,7 @@ public final class GlucoseSampleRecord {
 @available(iOS 26, macOS 26, *)
 @Model
 public final class SensorSessionRecord {
+    #Unique<SensorSessionRecord>([\.sessionID])
     public var sessionID: UUID
     public var sensorID: UUID
     public var lifecycleRaw: String
@@ -88,7 +90,7 @@ public actor SwiftDataSugarmanStore: SugarmanStoring {
 
     public func insertSample(_ sample: GlucoseSample) async throws {
         let sessionID = sample.sessionID
-        let index = Int(sample.sensorIndex)
+        let index = Int64(sample.sensorIndex)
         let existing = try modelContext.fetch(
             FetchDescriptor<GlucoseSampleRecord>(
                 predicate: #Predicate {
@@ -104,7 +106,7 @@ public actor SwiftDataSugarmanStore: SugarmanStoring {
     }
 
     public func sample(sessionID: UUID, sensorIndex: UInt32) async throws -> GlucoseSample? {
-        let index = Int(sensorIndex)
+        let index = Int64(sensorIndex)
         let found = try modelContext.fetch(
             FetchDescriptor<GlucoseSampleRecord>(
                 predicate: #Predicate {
@@ -125,6 +127,15 @@ public actor SwiftDataSugarmanStore: SugarmanStoring {
     }
 
     public func insertSession(_ session: SensorSession) async throws {
+        let id = session.id
+        let existing = try modelContext.fetch(
+            FetchDescriptor<SensorSessionRecord>(
+                predicate: #Predicate { $0.sessionID == id }
+            )
+        )
+        if !existing.isEmpty {
+            throw StoreError.duplicateSession(id)
+        }
         modelContext.insert(SensorSessionRecord(from: session))
         try modelContext.save()
     }

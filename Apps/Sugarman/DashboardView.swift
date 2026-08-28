@@ -12,7 +12,7 @@ struct DashboardView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("dashboard.no_dosing")
+                    Text(verbatim: ProductCopy.noDosing)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .padding(12)
@@ -66,6 +66,9 @@ struct DashboardView: View {
                     .font(.system(size: 48, weight: .semibold, design: .rounded))
             case .empty:
                 Text("dashboard.empty")
+                    .font(.title3)
+            case .connectedNoData:
+                Text(verbatim: ProductCopy.connectedNoData)
                     .font(.title3)
             case .disconnected:
                 Text("dashboard.disconnected")

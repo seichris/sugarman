@@ -26,7 +26,7 @@ let package = Package(
     targets: [
         .target(name: "SugarmanDomain"),
         .target(name: "GS3Protocol", dependencies: ["SugarmanDomain"]),
-        .target(name: "GS3Transport", dependencies: ["SugarmanDomain", "GS3Protocol"]),
+        .target(name: "GS3Transport", dependencies: ["SugarmanDomain"]),
         .target(name: "SensorOnboarding", dependencies: ["SugarmanDomain"]),
         .target(name: "AccountBinding", dependencies: ["SugarmanDomain"]),
         .target(name: "SugarmanStore", dependencies: ["SugarmanDomain"]),

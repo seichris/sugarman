@@ -35,6 +35,9 @@ public actor InMemorySugarmanStore: SugarmanStoring {
     }
 
     public func insertSession(_ session: SensorSession) async throws {
+        if sessions[session.id] != nil {
+            throw StoreError.duplicateSession(session.id)
+        }
         sessions[session.id] = session
     }
 

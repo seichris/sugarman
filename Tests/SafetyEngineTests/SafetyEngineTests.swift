@@ -111,4 +111,51 @@ struct SafetyEngineTests {
         #expect(result.showsValueAsCurrent == false)
         #expect(result.noDosingNotice.contains("dose insulin"))
     }
+
+    @Test func scanningIsNotDisconnected() {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let result = engine.evaluate(
+            now: now,
+            connection: .scanning,
+            lifecycle: .live,
+            latestSample: sample(age: 30, mgdl: 120)
+        )
+        #expect(result.isDisconnected == false)
+    }
+
+    @Test func connectedWithNilSampleIsConnectedNoData() {
+        let result = engine.evaluate(
+            now: Date(),
+            connection: .connected,
+            lifecycle: .live,
+            latestSample: nil
+        )
+        #expect(result.presentation == .connectedNoData)
+        #expect(result.showsValueAsCurrent == false)
+        #expect(result.isDisconnected == false)
+        #expect(result.notCurrentNotice == ProductCopy.connectedNoData)
+    }
+
+    @Test func subscribedWithNilSampleIsConnectedNoData() {
+        let result = engine.evaluate(
+            now: Date(),
+            connection: .subscribed,
+            lifecycle: .live,
+            latestSample: nil
+        )
+        #expect(result.presentation == .connectedNoData)
+        #expect(result.showsValueAsCurrent == false)
+    }
+
+    @Test func disconnectedFreshSampleStillNotCurrent() {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let result = engine.evaluate(
+            now: now,
+            connection: .disconnected,
+            lifecycle: .live,
+            latestSample: sample(age: 20, mgdl: 140)
+        )
+        #expect(result.showsValueAsCurrent == false)
+        #expect(result.isDisconnected)
+    }
 }

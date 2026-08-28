@@ -6,11 +6,9 @@ import SugarmanDomain
 
 public struct SafetyPolicy: Sendable, Equatable {
     public var staleAfterSeconds: TimeInterval
-    public var disconnectedGraceSeconds: TimeInterval
 
-    public init(staleAfterSeconds: TimeInterval = 11 * 60, disconnectedGraceSeconds: TimeInterval = 15 * 60) {
+    public init(staleAfterSeconds: TimeInterval = 11 * 60) {
         self.staleAfterSeconds = staleAfterSeconds
-        self.disconnectedGraceSeconds = disconnectedGraceSeconds
     }
 }
 
@@ -18,6 +16,7 @@ public struct SafetyPolicy: Sendable, Equatable {
 /// display a milligram value as the live reading.
 public enum ReadingPresentation: Sendable, Equatable {
     case empty
+    case connectedNoData
     case disconnected(readingAgeSeconds: TimeInterval?)
     case stale(readingAgeSeconds: TimeInterval)
     case warmUp
@@ -92,7 +91,16 @@ public struct SafetyEngine: Sendable {
         }
 
         guard let latestSample, let age else {
-            return assessment(.empty, stale: false, notCurrent: ProductCopy.emptyDashboard)
+            switch connection {
+            case .connected, .subscribed:
+                return assessment(
+                    .connectedNoData,
+                    stale: false,
+                    notCurrent: ProductCopy.connectedNoData
+                )
+            default:
+                return assessment(.empty, stale: false, notCurrent: ProductCopy.emptyDashboard)
+            }
         }
 
         if age >= policy.staleAfterSeconds {
@@ -112,9 +120,9 @@ public struct SafetyEngine: Sendable {
 
     private func isDisconnected(_ connection: ConnectionState) -> Bool {
         switch connection {
-        case .disconnected, .idle, .bluetoothUnavailable, .unauthorized, .scanning, .connecting:
+        case .disconnected, .idle, .bluetoothUnavailable, .unauthorized:
             return true
-        case .connected, .subscribed:
+        case .scanning, .connecting, .connected, .subscribed:
             return false
         }
     }

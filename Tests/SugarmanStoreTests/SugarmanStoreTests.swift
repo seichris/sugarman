@@ -45,4 +45,14 @@ struct SugarmanStoreTests {
         try await store.deleteAll()
         #expect(try await store.sessionIDs().isEmpty)
     }
+
+    @Test func duplicateSessionThrows() async throws {
+        let store = InMemorySugarmanStore()
+        let sessionID = UUID()
+        try await store.insertSession(SensorSession(id: sessionID, sensorID: UUID()))
+        await #expect(throws: StoreError.duplicateSession(sessionID)) {
+            try await store.insertSession(SensorSession(id: sessionID, sensorID: UUID()))
+        }
+        #expect(try await store.sessionIDs() == [sessionID])
+    }
 }

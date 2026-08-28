@@ -6,6 +6,7 @@ import SugarmanDomain
 
 public enum StoreError: Error, Sendable, Equatable {
     case duplicateSample(SampleKey)
+    case duplicateSession(UUID)
     case notFound
     case persistenceUnavailable
 }
