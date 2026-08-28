@@ -1,0 +1,6 @@
+[submodule "upstream/xdripswift"]
+	path = upstream/xdripswift
+	url = https://github.com/seichris/xdripswift.git
+[submodule "upstream/Juggluco"]
+	path = upstream/Juggluco
+	url = https://github.com/seichris/Juggluco.git
