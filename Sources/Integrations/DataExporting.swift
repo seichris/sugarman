@@ -21,12 +21,22 @@ public struct GlucoseExportRow: Sendable, Equatable, Codable {
     public var decoderRevision: String
 }
 
+public struct FuelingExportRow: Sendable, Equatable, Codable {
+    public var id: String
+    public var timestamp: String
+    public var carbohydrateGrams: Double?
+    public var label: String
+    public var notes: String?
+    public var sessionID: String?
+}
+
 public struct GlucoseExportDocument: Sendable, Equatable, Codable {
     public var schemaVersion: Int
     public var unit: String
     public var timeZone: String
     public var disclaimer: String
     public var samples: [GlucoseExportRow]
+    public var fueling: [FuelingExportRow]
 }
 
 /// RFC 4180 quoting. Every field is quoted; internal quotes are doubled.
@@ -88,33 +98,48 @@ public enum RFC4180CSV: Sendable {
 /// the caller passes a local `TimeZone`. That keeps the declared zone
 /// consistent with the formatted timestamps.
 ///
+/// JSON schema version 2 adds an optional-looking `fueling` array. CSV remains
+/// glucose rows only. Neither format includes owner account IDs.
+///
 /// Small datasets (including empty and fewer than 50 rows) are exported in
 /// full. This does not copy xDrip modulus-based chunking, which dropped
 /// remainder rows when `count % 50 == 0` was treated as a special case.
 public struct VersionedDataExporter: DataExporting {
-    public static let schemaVersion = 1
+    public static let schemaVersion = 2
     public static let unit = "mg/dL"
     public static let timeZoneIdentifier = RFC4180CSV.utcTimeZoneIdentifier
 
     public init() {}
 
     public func exportJSON(samples: [GlucoseSample]) throws -> Data {
-        try exportJSON(samples: samples, timeZone: .current)
+        try exportJSON(samples: samples, fueling: [], timeZone: .current)
     }
 
     public func exportCSV(samples: [GlucoseSample]) throws -> String {
         try exportCSV(samples: samples, timeZone: .current)
     }
 
-    public func exportJSON(samples: [GlucoseSample], timeZone _: TimeZone) throws -> Data {
-        let document = makeDocument(samples: samples)
+    public func exportJSON(samples: [GlucoseSample], timeZone: TimeZone) throws -> Data {
+        try exportJSON(samples: samples, fueling: [], timeZone: timeZone)
+    }
+
+    public func exportJSON(samples: [GlucoseSample], fueling: [FuelingEvent]) throws -> Data {
+        try exportJSON(samples: samples, fueling: fueling, timeZone: .current)
+    }
+
+    public func exportJSON(
+        samples: [GlucoseSample],
+        fueling: [FuelingEvent],
+        timeZone _: TimeZone
+    ) throws -> Data {
+        let document = makeDocument(samples: samples, fueling: fueling)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
         return try encoder.encode(document)
     }
 
     public func exportCSV(samples: [GlucoseSample], timeZone _: TimeZone) throws -> String {
-        let document = makeDocument(samples: samples)
+        let document = makeDocument(samples: samples, fueling: [])
         var lines = [
             RFC4180CSV.row(["schemaVersion", "unit", "timeZone", "disclaimer"]),
             RFC4180CSV.row([
@@ -154,10 +179,15 @@ public struct VersionedDataExporter: DataExporting {
         return lines.joined(separator: "\n")
     }
 
-    private func makeDocument(samples: [GlucoseSample]) -> GlucoseExportDocument {
+    private func utcFormatter() -> ISO8601DateFormatter {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime]
         formatter.timeZone = TimeZone(identifier: Self.timeZoneIdentifier) ?? TimeZone(secondsFromGMT: 0)
+        return formatter
+    }
+
+    private func makeDocument(samples: [GlucoseSample], fueling: [FuelingEvent]) -> GlucoseExportDocument {
+        let formatter = utcFormatter()
         let rows = sorted(samples).map { sample in
             GlucoseExportRow(
                 sessionID: sample.sessionID.uuidString,
@@ -171,12 +201,23 @@ public struct VersionedDataExporter: DataExporting {
                 decoderRevision: sample.decoderRevision
             )
         }
+        let fuelingRows = fueling.sorted { $0.timestamp < $1.timestamp }.map { event in
+            FuelingExportRow(
+                id: event.id.uuidString,
+                timestamp: formatter.string(from: event.timestamp),
+                carbohydrateGrams: event.carbohydrateGrams,
+                label: event.label,
+                notes: event.notes,
+                sessionID: event.sessionID?.uuidString
+            )
+        }
         return GlucoseExportDocument(
             schemaVersion: Self.schemaVersion,
             unit: Self.unit,
             timeZone: Self.timeZoneIdentifier,
             disclaimer: ProductCopy.noDosing,
-            samples: rows
+            samples: rows,
+            fueling: fuelingRows
         )
     }
 

@@ -189,7 +189,8 @@ final class AppModel {
 
     func exportJSON() async throws -> Data {
         let samples = try await store.allSamples()
-        return try exporter.exportJSON(samples: samples)
+        let fueling = try await store.fuelingEvents()
+        return try exporter.exportJSON(samples: samples, fueling: fueling)
     }
 
     func exportCSV() async throws -> String {

@@ -495,7 +495,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Exports include schema version, units, timezone, and sensor indices. They exclude credentials, account IDs, raw frames, MAC-like IDs, and full serials."
+            "value": "Exports include schema version, units, timezone, sensor indices, and fueling in JSON. They exclude credentials, account IDs, raw frames, MAC-like IDs, and full serials. CSV is glucose rows only."
           }
         }
       }
@@ -1410,6 +1410,86 @@
           "stringUnit": {
             "state": "translated",
             "value": "Unknown region (synthetic parse; not hardware proof)"
+          }
+        }
+      }
+    },
+    "dashboard.unit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unit"
+          }
+        }
+      },
+      "comment": "Glucose unit picker"
+    },
+    "dashboard.unit.mgdl": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "mg/dL"
+          }
+        }
+      }
+    },
+    "dashboard.unit.mmol": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "mmol/L"
+          }
+        }
+      }
+    },
+    "dashboard.glucose_mgdl_format": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d mg/dL"
+          }
+        }
+      },
+      "comment": "current glucose in milligrams per decilitre"
+    },
+    "dashboard.glucose_mmol_format": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%.1f mmol/L"
+          }
+        }
+      },
+      "comment": "current glucose in millimoles per litre"
+    },
+    "fueling.delete": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete fueling event"
+          }
+        }
+      }
+    },
+    "fueling.delete_hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Removes this fueling log from this device. Sugarman does not prescribe carbohydrate."
           }
         }
       }

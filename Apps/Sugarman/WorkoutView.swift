@@ -39,6 +39,11 @@ struct WorkoutView: View {
 
     private func workoutRow(_ workout: WorkoutContext) -> some View {
         let overlapping = model.samples(overlapping: workout)
+        let countText = String(
+            format: String(localized: "workout.glucose_count_format"),
+            locale: .current,
+            overlapping.count
+        )
         return VStack(alignment: .leading, spacing: 6) {
             Text(workout.activityType.capitalized)
                 .font(.headline)
@@ -48,13 +53,7 @@ struct WorkoutView: View {
                 Text(summary)
                     .font(.footnote)
             }
-            Text(
-                String(
-                    format: String(localized: "workout.glucose_count_format"),
-                    locale: .current,
-                    overlapping.count
-                )
-            )
+            Text(countText)
             .font(.footnote)
             .foregroundStyle(.secondary)
             Text("workout.no_advice")
@@ -62,6 +61,9 @@ struct WorkoutView: View {
                 .foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            Text("\(workout.activityType.capitalized), \(timeRange(workout)), \(countText), \(String(localized: "workout.no_advice"))")
+        )
     }
 
     private func timeRange(_ workout: WorkoutContext) -> String {

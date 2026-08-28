@@ -98,4 +98,31 @@ struct SugarmanDomainTests {
             }
         }
     }
+
+    @Test func millimolesUsesTenthsWhenPresentOtherwiseDividesBy18() {
+        let session = UUID()
+        let withTenths = GlucoseSample(
+            sessionID: session,
+            sensorIndex: 1,
+            sensorTimestamp: Date(timeIntervalSince1970: 1),
+            receiptTimestamp: Date(timeIntervalSince1970: 2),
+            milligramsPerDeciliter: 108,
+            originalTenthsMillimolesPerLiter: 61,
+            decoderRevision: "none"
+        )
+        let withoutTenths = GlucoseSample(
+            sessionID: session,
+            sensorIndex: 2,
+            sensorTimestamp: Date(timeIntervalSince1970: 1),
+            receiptTimestamp: Date(timeIntervalSince1970: 2),
+            milligramsPerDeciliter: 108,
+            decoderRevision: "none"
+        )
+        #expect(withTenths.millimolesPerLiter() == Double(61) / 10.0)
+        #expect(withoutTenths.millimolesPerLiter() == 108.0 / 18.0)
+        #expect(withTenths.value(in: .milligramsPerDeciliter) == 108.0)
+        #expect(withTenths.value(in: .millimolesPerLiter) == Double(61) / 10.0)
+        #expect(GlucoseUnit.milligramsPerDeciliter.displaySymbol == "mg/dL")
+        #expect(GlucoseUnit.millimolesPerLiter.displaySymbol == "mmol/L")
+    }
 }

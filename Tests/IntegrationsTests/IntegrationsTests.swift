@@ -37,15 +37,16 @@ struct IntegrationsTests {
     @Test func emptyExportHasSchemaAndNoDataRows() throws {
         let json = try exporter.exportJSON(samples: [], timeZone: zone)
         let document = try JSONDecoder().decode(GlucoseExportDocument.self, from: json)
-        #expect(document.schemaVersion == 1)
+        #expect(document.schemaVersion == 2)
         #expect(document.unit == "mg/dL")
         #expect(document.timeZone == "UTC")
         #expect(document.samples.isEmpty)
+        #expect(document.fueling.isEmpty)
         #expect(document.disclaimer == ProductCopy.noDosing)
         let csv = try exporter.exportCSV(samples: [], timeZone: zone)
         let records = RFC4180CSV.records(in: csv)
         #expect(records[0] == ["schemaVersion", "unit", "timeZone", "disclaimer"])
-        #expect(records[1][0] == "1")
+        #expect(records[1][0] == "2")
         #expect(records[1][1] == "mg/dL")
         #expect(records[1][2] == "UTC")
         let headerIndex = records.firstIndex { $0.first == "sessionID" }
@@ -179,5 +180,44 @@ struct IntegrationsTests {
         #expect(!csv.contains("accountID"))
         let decoded = try JSONDecoder().decode(GlucoseExportDocument.self, from: json)
         #expect(decoded.samples.count == 1)
+    }
+
+    @Test func jsonExportIncludesFuelingWithoutAccountIDsAndCSVStaysGlucose() async throws {
+        let store = InMemorySugarmanStore()
+        let owner = "owner-account-secret-xyz-42"
+        let sessionID = UUID()
+        try await store.insertSession(
+            SensorSession(id: sessionID, sensorID: UUID(), ownerAccountReference: owner)
+        )
+        try await store.insertSample(sample(session: sessionID, index: 4, mgdl: 99))
+        let gel = FuelingEvent(
+            id: UUID(uuidString: "CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC")!,
+            timestamp: Date(timeIntervalSince1970: 50),
+            carbohydrateGrams: 25,
+            label: "gel, banana",
+            notes: "athlete log",
+            sessionID: sessionID
+        )
+        try await store.insertFueling(gel)
+        let samples = try await store.allSamples()
+        let fueling = try await store.fuelingEvents()
+        let json = try exporter.exportJSON(samples: samples, fueling: fueling, timeZone: pacific)
+        let document = try JSONDecoder().decode(GlucoseExportDocument.self, from: json)
+        #expect(document.schemaVersion == 2)
+        #expect(document.fueling.count == 1)
+        #expect(document.fueling[0].label == "gel, banana")
+        #expect(document.fueling[0].carbohydrateGrams == 25)
+        #expect(document.fueling[0].sessionID == sessionID.uuidString)
+        #expect(document.fueling[0].timestamp == "1970-01-01T00:00:50Z")
+        let text = String(decoding: json, as: UTF8.self)
+        #expect(!text.contains(owner))
+        #expect(!text.contains("ownerAccount"))
+        #expect(!text.contains("accountID"))
+        let csv = try exporter.exportCSV(samples: samples, timeZone: pacific)
+        #expect(!csv.contains("gel, banana"))
+        #expect(!csv.contains("athlete log"))
+        #expect(!csv.contains(owner))
+        let records = RFC4180CSV.records(in: csv)
+        #expect(records[1][0] == "2")
     }
 }

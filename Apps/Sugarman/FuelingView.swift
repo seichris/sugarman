@@ -35,23 +35,13 @@ struct FuelingView: View {
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(model.fuelingEvents) { event in
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(event.label)
-                                    .font(.headline)
-                                if let grams = event.carbohydrateGrams {
-                                    Text(
-                                        String(
-                                            format: String(localized: "fueling.carbs_format"),
-                                            locale: .current,
-                                            grams
-                                        )
-                                    )
+                            fuelingRow(event)
+                                .accessibilityElement(children: .combine)
+                                .accessibilityLabel(Text(fuelingAccessibilityLabel(event)))
+                                .accessibilityHint(Text("fueling.delete_hint"))
+                                .accessibilityAction(named: Text("fueling.delete")) {
+                                    Task { await model.deleteFueling(event.id) }
                                 }
-                                Text(event.timestamp.formatted(date: .abbreviated, time: .shortened))
-                                    .font(.footnote)
-                                    .foregroundStyle(.secondary)
-                            }
-                            .accessibilityElement(children: .combine)
                         }
                         .onDelete { offsets in
                             let ids = offsets.map { model.fuelingEvents[$0].id }
@@ -66,6 +56,41 @@ struct FuelingView: View {
             }
             .navigationTitle("fueling.title")
         }
+    }
+
+    private func fuelingRow(_ event: FuelingEvent) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(event.label)
+                .font(.headline)
+            if let grams = event.carbohydrateGrams {
+                Text(
+                    String(
+                        format: String(localized: "fueling.carbs_format"),
+                        locale: .current,
+                        grams
+                    )
+                )
+            }
+            Text(event.timestamp.formatted(date: .abbreviated, time: .shortened))
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func fuelingAccessibilityLabel(_ event: FuelingEvent) -> String {
+        var parts = [event.label]
+        if let grams = event.carbohydrateGrams {
+            parts.append(
+                String(
+                    format: String(localized: "fueling.carbs_format"),
+                    locale: .current,
+                    grams
+                )
+            )
+        }
+        parts.append(event.timestamp.formatted(date: .abbreviated, time: .shortened))
+        parts.append(String(localized: "fueling.delete"))
+        return parts.joined(separator: ", ")
     }
 
     private func save() async {
