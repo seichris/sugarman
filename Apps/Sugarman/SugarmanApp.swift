@@ -36,6 +36,7 @@ final class AppModel {
     var probeEnabled: Bool
     var isSyntheticDemo: Bool
     var demoScenario: SyntheticDemoScenario?
+    var demoSessionID: UUID?
     var samples: [GlucoseSample]
     var sessions: [SensorSession]
     var fuelingEvents: [FuelingEvent]
@@ -43,6 +44,7 @@ final class AppModel {
     var identities: [SensorIdentity]
     var ownerAccountID: OwnerAccountID?
     var exporter: VersionedDataExporter
+    var demoLoadError: String?
 
     init(
         store: InMemorySugarmanStore = InMemorySugarmanStore(),
@@ -62,6 +64,7 @@ final class AppModel {
         self.probeEnabled = probeEnabled
         self.isSyntheticDemo = false
         self.demoScenario = nil
+        self.demoSessionID = nil
         self.samples = []
         self.sessions = []
         self.fuelingEvents = []
@@ -69,15 +72,20 @@ final class AppModel {
         self.identities = []
         self.ownerAccountID = nil
         self.exporter = VersionedDataExporter()
+        self.demoLoadError = nil
     }
 
-    var assessment: SafetyAssessment {
+    func assessment(at now: Date = Date()) -> SafetyAssessment {
         safety.evaluate(
-            now: Date(),
+            now: now,
             connection: connection,
             lifecycle: lifecycle,
             latestSample: latestSample
         )
+    }
+
+    var assessment: SafetyAssessment {
+        assessment(at: Date())
     }
 
     var activeSessionID: UUID? {
@@ -97,29 +105,41 @@ final class AppModel {
         }
     }
 
-    func loadDemo(_ scenario: SyntheticDemoScenario) async {
-        try? await store.deleteAll()
-        let fixture = SyntheticDemoCatalog.make(scenario)
-        try? await store.insertSession(fixture.session)
-        try? await store.insertIdentity(fixture.identity)
-        for sample in fixture.samples {
-            try? await store.insertSample(sample)
+    func loadDemo(_ scenario: SyntheticDemoScenario) async throws {
+        demoLoadError = nil
+        do {
+            try await store.deleteAll()
+            clearLivePresentation()
+            let fixture = SyntheticDemoCatalog.make(scenario)
+            try await store.insertSession(fixture.session)
+            try await store.insertIdentity(fixture.identity)
+            for sample in fixture.samples {
+                try await store.insertSample(sample)
+            }
+            for workout in fixture.workouts {
+                try await store.insertWorkout(workout)
+            }
+            connection = fixture.connection
+            lifecycle = fixture.lifecycle
+            isSyntheticDemo = true
+            demoScenario = scenario
+            demoSessionID = fixture.session.id
+            await refresh()
+        } catch {
+            try? await store.deleteAll()
+            clearLivePresentation()
+            await refresh()
+            demoLoadError = error.localizedDescription
+            throw error
         }
-        for workout in fixture.workouts {
-            try? await store.insertWorkout(workout)
-        }
-        connection = fixture.connection
-        lifecycle = fixture.lifecycle
-        isSyntheticDemo = true
-        demoScenario = scenario
-        await refresh()
     }
 
     func addFueling(label: String, carbohydrateGrams: Double?, timestamp: Date) async {
         let event = FuelingEvent(
             timestamp: timestamp,
             carbohydrateGrams: carbohydrateGrams,
-            label: label
+            label: label,
+            sessionID: activeSessionID
         )
         try? await store.insertFueling(event)
         await refresh()
@@ -142,24 +162,27 @@ final class AppModel {
     }
 
     func deleteSession(_ id: UUID) async {
-        try? await store.delete(sessionID: id)
-        if sessions.count <= 1 {
-            latestSample = nil
-            lifecycle = .unknown
-            connection = .disconnected
-            isSyntheticDemo = false
-            demoScenario = nil
+        let wasOnlySession = sessions.count <= 1
+        let wasDemoSession = demoSessionID == id
+        do {
+            try await store.delete(sessionID: id)
+        } catch {
+            demoLoadError = error.localizedDescription
+            await refresh()
+            return
+        }
+        if wasOnlySession || wasDemoSession {
+            clearLivePresentation()
         }
         await refresh()
+        if sessions.isEmpty {
+            clearLivePresentation()
+        }
     }
 
     func deleteAllLocalData() async {
         try? await store.deleteAll()
-        latestSample = nil
-        lifecycle = .unknown
-        connection = .disconnected
-        isSyntheticDemo = false
-        demoScenario = nil
+        clearLivePresentation()
         ownerAccountID = nil
         await refresh()
     }
@@ -181,5 +204,14 @@ final class AppModel {
             sample.sensorTimestamp >= start && sample.sensorTimestamp <= end
         }
         .sorted { $0.sensorIndex < $1.sensorIndex }
+    }
+
+    private func clearLivePresentation() {
+        latestSample = nil
+        lifecycle = .unknown
+        connection = .disconnected
+        isSyntheticDemo = false
+        demoScenario = nil
+        demoSessionID = nil
     }
 }

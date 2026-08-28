@@ -17,6 +17,11 @@ struct DashboardView: View {
                     if model.isSyntheticDemo {
                         SyntheticDemoBanner()
                     }
+                    if let demoLoadError = model.demoLoadError {
+                        Text(demoLoadError)
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                    }
                     statusCard
                     readingCard
                     Text("dashboard.athlete_purpose")
@@ -32,7 +37,9 @@ struct DashboardView: View {
                         Section("demo.replaces_data") {
                             ForEach(SyntheticDemoScenario.allCases) { scenario in
                                 Button(demoTitle(scenario)) {
-                                    Task { await model.loadDemo(scenario) }
+                                    Task {
+                                        try await model.loadDemo(scenario)
+                                    }
                                 }
                             }
                         }

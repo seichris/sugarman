@@ -75,6 +75,10 @@ public actor InMemorySugarmanStore: SugarmanStoring {
     public func delete(sessionID: UUID) async throws {
         sessions[sessionID] = nil
         samples = samples.filter { $0.key.sessionID != sessionID }
+        // Workouts and identities are global (no sessionID) and are removed
+        // by deleteAll only. Session-scoped fueling is deleted here; unscoped
+        // fueling (sessionID == nil) is kept.
+        fueling = fueling.filter { $0.value.sessionID != sessionID }
     }
 
     public func deleteAll() async throws {

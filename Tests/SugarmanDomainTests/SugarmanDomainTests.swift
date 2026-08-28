@@ -58,8 +58,11 @@ struct SugarmanDomainTests {
     @Test func workoutAndFuelingHaveNoPrescription() {
         let workout = WorkoutContext(start: Date(), activityType: "run")
         let fueling = FuelingEvent(timestamp: Date(), carbohydrateGrams: 30, label: "gel")
+        let scoped = FuelingEvent(timestamp: Date(), label: "bar", sessionID: UUID())
         #expect(workout.activityType == "run")
         #expect(fueling.label == "gel")
+        #expect(fueling.sessionID == nil)
+        #expect(scoped.sessionID != nil)
     }
 
     @Test func syntheticDemoCatalogIsLabeledAndDrivesSafetyStates() {

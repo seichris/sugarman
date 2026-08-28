@@ -52,9 +52,19 @@ struct SensorOnboardingTests {
     @Test func sanitizedFixtureParsesWithoutSideEffects() throws {
         let result = try parser.parse("SUGARMAN-FIXTURE/01234567890123/A…Z")
         #expect(result.gtin == "01234567890123")
-        #expect(result.redactedSerial == "A…Z")
+        #expect(result.redactedSerial == SerialRedaction.redact("A…Z"))
         #expect(result.protocolHypothesis.rawValue == "unknown")
         #expect(result.confidence == .low)
+        #expect(result.isSynthetic)
+    }
+
+    @Test func fixturePayloadDoesNotEchoFullSerial() throws {
+        let fullSerial = "FULLSERIAL9999"
+        let result = try defaultParser.parse("SUGARMAN-FIXTURE/01234567890123/\(fullSerial)")
+        #expect(result.redactedSerial == "…9999")
+        #expect(result.redactedSerial != fullSerial)
+        #expect(!result.redactedSerial.contains("FULLSERIAL"))
+        #expect(result.gtin == "01234567890123")
         #expect(result.isSynthetic)
     }
 

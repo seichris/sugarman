@@ -81,11 +81,47 @@ struct SugarmanStoreTests {
         let listed = try await store.fuelingEvents()
         #expect(listed.count == 1)
         #expect(listed.first?.label == "gel")
+        #expect(listed.first?.sessionID == nil)
         try await store.deleteFueling(id: event.id)
         #expect(try await store.fuelingEvents().isEmpty)
         try await store.insertFueling(event)
         try await store.deleteAll()
         #expect(try await store.fuelingEvents().isEmpty)
+    }
+
+    @Test func deleteSessionRemovesMatchingFuelingKeepsUnscoped() async throws {
+        let store = InMemorySugarmanStore()
+        let sessionA = UUID()
+        let sessionB = UUID()
+        try await store.insertSession(SensorSession(id: sessionA, sensorID: UUID()))
+        try await store.insertSession(SensorSession(id: sessionB, sensorID: UUID()))
+        try await store.insertSample(makeSample(session: sessionA, index: 1))
+        let scopedA = FuelingEvent(
+            timestamp: Date(timeIntervalSince1970: 10),
+            label: "gel-a",
+            sessionID: sessionA
+        )
+        let scopedB = FuelingEvent(
+            timestamp: Date(timeIntervalSince1970: 20),
+            label: "gel-b",
+            sessionID: sessionB
+        )
+        let unscoped = FuelingEvent(
+            timestamp: Date(timeIntervalSince1970: 30),
+            label: "unscoped-gel",
+            sessionID: nil
+        )
+        try await store.insertFueling(scopedA)
+        try await store.insertFueling(scopedB)
+        try await store.insertFueling(unscoped)
+        try await store.delete(sessionID: sessionA)
+        let remaining = try await store.fuelingEvents()
+        #expect(remaining.map(\.label) == ["gel-b", "unscoped-gel"])
+        #expect(try await store.sample(sessionID: sessionA, sensorIndex: 1) == nil)
+        try await store.deleteAll()
+        #expect(try await store.fuelingEvents().isEmpty)
+        #expect(try await store.workouts().isEmpty)
+        #expect(try await store.identities().isEmpty)
     }
 
     @Test func demoFixtureInsertsWithoutDuplicate() async throws {

@@ -92,6 +92,7 @@ public final class FuelingEventRecord {
     public var carbohydrateGrams: Double?
     public var label: String
     public var notes: String?
+    public var sessionID: UUID?
 
     public init(from event: FuelingEvent) {
         self.eventID = event.id
@@ -99,6 +100,7 @@ public final class FuelingEventRecord {
         self.carbohydrateGrams = event.carbohydrateGrams
         self.label = event.label
         self.notes = event.notes
+        self.sessionID = event.sessionID
     }
 
     public func domainValue() -> FuelingEvent {
@@ -107,7 +109,8 @@ public final class FuelingEventRecord {
             timestamp: timestamp,
             carbohydrateGrams: carbohydrateGrams,
             label: label,
-            notes: notes
+            notes: notes,
+            sessionID: sessionID
         )
     }
 }
@@ -301,6 +304,10 @@ public actor SwiftDataSugarmanStore: SugarmanStoring {
             )
         )
         for record in sampleRecords {
+            modelContext.delete(record)
+        }
+        let fuelingRecords = try modelContext.fetch(FetchDescriptor<FuelingEventRecord>())
+        for record in fuelingRecords where record.sessionID == sessionID {
             modelContext.delete(record)
         }
         try modelContext.save()

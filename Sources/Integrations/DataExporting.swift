@@ -29,15 +29,72 @@ public struct GlucoseExportDocument: Sendable, Equatable, Codable {
     public var samples: [GlucoseExportRow]
 }
 
+/// RFC 4180 quoting. Every field is quoted; internal quotes are doubled.
+public enum RFC4180CSV: Sendable {
+    public static let utcTimeZoneIdentifier = "UTC"
+
+    public static func quote(_ field: String) -> String {
+        "\"" + field.replacingOccurrences(of: "\"", with: "\"\"") + "\""
+    }
+
+    public static func row(_ fields: [String]) -> String {
+        fields.map(quote).joined(separator: ",")
+    }
+
+    public static func parseRow(_ line: String) -> [String] {
+        var fields: [String] = []
+        var current = ""
+        var inQuotes = false
+        var index = line.startIndex
+        while index < line.endIndex {
+            let character = line[index]
+            if inQuotes {
+                if character == "\"" {
+                    let next = line.index(after: index)
+                    if next < line.endIndex, line[next] == "\"" {
+                        current.append("\"")
+                        index = next
+                    } else {
+                        inQuotes = false
+                    }
+                } else {
+                    current.append(character)
+                }
+            } else if character == "\"" {
+                inQuotes = true
+            } else if character == "," {
+                fields.append(current)
+                current = ""
+            } else {
+                current.append(character)
+            }
+            index = line.index(after: index)
+        }
+        fields.append(current)
+        return fields
+    }
+
+    public static func records(in csv: String) -> [[String]] {
+        csv.split(separator: "\n", omittingEmptySubsequences: false)
+            .map { parseRow(String($0)) }
+            .filter { !($0.count == 1 && $0[0].isEmpty) }
+    }
+}
+
 /// Versioned export without credentials, authentication material, frames,
 /// account IDs, MAC-like identifiers, or full serials.
 ///
+/// Timestamps are always UTC (`Z`) and `timeZone` is always `"UTC"`, even if
+/// the caller passes a local `TimeZone`. That keeps the declared zone
+/// consistent with the formatted timestamps.
+///
 /// Small datasets (including empty and fewer than 50 rows) are exported in
-/// full. This does not copy xDrip's modulus-based chunking, which dropped
+/// full. This does not copy xDrip modulus-based chunking, which dropped
 /// remainder rows when `count % 50 == 0` was treated as a special case.
 public struct VersionedDataExporter: DataExporting {
     public static let schemaVersion = 1
     public static let unit = "mg/dL"
+    public static let timeZoneIdentifier = RFC4180CSV.utcTimeZoneIdentifier
 
     public init() {}
 
@@ -49,25 +106,39 @@ public struct VersionedDataExporter: DataExporting {
         try exportCSV(samples: samples, timeZone: .current)
     }
 
-    public func exportJSON(samples: [GlucoseSample], timeZone: TimeZone) throws -> Data {
-        let document = makeDocument(samples: samples, timeZone: timeZone)
+    public func exportJSON(samples: [GlucoseSample], timeZone _: TimeZone) throws -> Data {
+        let document = makeDocument(samples: samples)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
         return try encoder.encode(document)
     }
 
-    public func exportCSV(samples: [GlucoseSample], timeZone: TimeZone) throws -> String {
-        let document = makeDocument(samples: samples, timeZone: timeZone)
+    public func exportCSV(samples: [GlucoseSample], timeZone _: TimeZone) throws -> String {
+        let document = makeDocument(samples: samples)
         var lines = [
-            "schemaVersion=\(document.schemaVersion)",
-            "unit=\(document.unit)",
-            "timeZone=\(document.timeZone)",
-            "disclaimer=\(document.disclaimer)",
-            "sessionID,sensorIndex,sensorTimestamp,receiptTimestamp,milligramsPerDeciliter,trend,quality,source,decoderRevision",
+            RFC4180CSV.row(["schemaVersion", "unit", "timeZone", "disclaimer"]),
+            RFC4180CSV.row([
+                String(document.schemaVersion),
+                document.unit,
+                document.timeZone,
+                document.disclaimer,
+            ]),
+            "",
+            RFC4180CSV.row([
+                "sessionID",
+                "sensorIndex",
+                "sensorTimestamp",
+                "receiptTimestamp",
+                "milligramsPerDeciliter",
+                "trend",
+                "quality",
+                "source",
+                "decoderRevision",
+            ]),
         ]
         for row in document.samples {
             lines.append(
-                [
+                RFC4180CSV.row([
                     row.sessionID,
                     String(row.sensorIndex),
                     row.sensorTimestamp,
@@ -77,16 +148,16 @@ public struct VersionedDataExporter: DataExporting {
                     row.quality,
                     row.source,
                     row.decoderRevision,
-                ].joined(separator: ",")
+                ])
             )
         }
         return lines.joined(separator: "\n")
     }
 
-    private func makeDocument(samples: [GlucoseSample], timeZone: TimeZone) -> GlucoseExportDocument {
+    private func makeDocument(samples: [GlucoseSample]) -> GlucoseExportDocument {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime]
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.timeZone = TimeZone(identifier: Self.timeZoneIdentifier) ?? TimeZone(secondsFromGMT: 0)
         let rows = sorted(samples).map { sample in
             GlucoseExportRow(
                 sessionID: sample.sessionID.uuidString,
@@ -103,7 +174,7 @@ public struct VersionedDataExporter: DataExporting {
         return GlucoseExportDocument(
             schemaVersion: Self.schemaVersion,
             unit: Self.unit,
-            timeZone: timeZone.identifier,
+            timeZone: Self.timeZoneIdentifier,
             disclaimer: ProductCopy.noDosing,
             samples: rows
         )

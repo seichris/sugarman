@@ -88,7 +88,7 @@ public struct BoundedPackageParser: PackageParsing {
             productName: nil,
             gtin: String(parts[0]),
             sku: nil,
-            redactedSerial: String(parts[1]),
+            redactedSerial: SerialRedaction.redact(String(parts[1])),
             regionHypothesis: "synthetic fixture; not hardware proof",
             protocolHypothesis: .unknown,
             confidence: .low,
