@@ -4,6 +4,9 @@
 import Foundation
 import Testing
 @testable import GS3Transport
+#if canImport(CoreBluetooth)
+import CoreBluetooth
+#endif
 
 struct GS3TransportTests {
     @Test func scanConnectDiscoverReadPath() {
@@ -115,6 +118,13 @@ struct GS3TransportTests {
         #expect(session.state == .scanning)
     }
 
+    @Test func permissionDeniedIsDistinctFromBluetoothUnavailable() {
+        #expect(TransportError.permissionDenied != TransportError.bluetoothUnavailable)
+        #expect(TransportError.permissionDenied.description != TransportError.bluetoothUnavailable.description)
+        #expect(TransportError.permissionDenied.description == "Bluetooth permission was denied.")
+        #expect(TransportError.bluetoothUnavailable.description == "Bluetooth is unavailable.")
+    }
+
     @Test func permissionAndBluetoothUnavailableEndSession() async throws {
         let unavailableRuntime = RecordingBluetoothRuntime()
         let unavailable = GS3TransportSession(runtime: unavailableRuntime)
@@ -126,11 +136,13 @@ struct GS3TransportTests {
 
         let permissionRuntime = RecordingBluetoothRuntime()
         let permission = GS3TransportSession(runtime: permissionRuntime)
-        await #expect(throws: TransportError.bluetoothUnavailable) {
+        await #expect(throws: TransportError.permissionDenied) {
             try await permission.handle(.permissionDenied)
         }
         #expect(permission.state == .ended)
         #expect(permissionRuntime.log.effects.contains(.stopScan))
+        #expect(permissionRuntime.log.effects.contains(.fail(.permissionDenied)))
+        #expect(!permissionRuntime.log.effects.contains(.fail(.bluetoothUnavailable)))
     }
 
     @Test func cancelStopsScanAndConnection() async throws {
@@ -205,6 +217,93 @@ struct GS3TransportTests {
         let effects = machine.beginAllowlistedRead(UUID())
         #expect(effects == [.fail(.mutatingOperationRefused)])
     }
+
+
+    @Test func commandStartIncludesScanConnectAndRead() {
+        let machine = TransportStateMachine()
+        #expect(machine.isCommandStart(.startScan))
+        #expect(machine.isCommandStart(.connect(peripheralID: UUID())))
+        #expect(!machine.isCommandStart(.advertisement(peripheralID: UUID())))
+        #expect(!machine.isCommandStart(.subscribed))
+    }
+
+    @Test func connectWhileScanningIsAllowedDespiteInFlight() {
+        var machine = TransportStateMachine()
+        #expect(machine.send(.startScan) == [.startScan])
+        #expect(machine.inFlight)
+        let id = UUID()
+        #expect(machine.send(.connect(peripheralID: id)) == [.stopScan, .connect(id)])
+        #expect(machine.state == .connecting)
+    }
+
+    @Test func secondConnectFromIdleWhileInFlightIsBlocked() {
+        var machine = TransportStateMachine(state: .idle, inFlight: true)
+        let id = UUID()
+        #expect(machine.send(.connect(peripheralID: id)) == [.fail(.commandInFlight)])
+        #expect(machine.state == .idle)
+    }
+
+    @Test func secondReadWhileInFlightIsBlocked() {
+        var machine = TransportStateMachine()
+        let id = UUID()
+        _ = machine.send(.startScan)
+        _ = machine.send(.connect(peripheralID: id))
+        _ = machine.send(.connected)
+        _ = machine.send(.servicesDiscovered)
+        _ = machine.send(.characteristicsDiscovered)
+        _ = machine.send(.subscribed)
+        let characteristic = DocumentedReadableCharacteristic.manufacturerName
+        #expect(machine.beginAllowlistedRead(characteristic) == [.read(characteristic)])
+        #expect(machine.inFlight)
+        #expect(machine.beginAllowlistedRead(characteristic) == [.fail(.commandInFlight)])
+        #expect(machine.send(.requestAuthentication) == [.fail(.authenticationUnimplemented)])
+        #expect(machine.send(.requestBinding) == [.fail(.bindingUnimplemented)])
+        #expect(machine.state == .subscribed)
+    }
+
+    @Test func backoffJitterStaysWithinBounds() {
+        let low = TransportBackoff.delaySeconds(attempt: 0, unitJitter: 0)
+        let high = TransportBackoff.delaySeconds(attempt: 0, unitJitter: 1)
+        #expect(low <= high)
+        #expect(low >= 0)
+        #expect(high <= TransportBackoff.defaultMaximumSeconds)
+        #expect(TransportBackoff.delaySeconds(attempt: 0, unitJitter: -4) == low)
+        #expect(TransportBackoff.delaySeconds(attempt: 0, unitJitter: 8) == high)
+        let capped = TransportBackoff.delaySeconds(attempt: 20, unitJitter: 1)
+        #expect(capped <= TransportBackoff.defaultMaximumSeconds)
+        let later = TransportBackoff.delaySeconds(attempt: 3, unitJitter: 0.5)
+        let early = TransportBackoff.delaySeconds(attempt: 0, unitJitter: 0.5)
+        #expect(later >= early)
+    }
+
+    @Test func recordingRuntimeRemainsDefaultAndMachineFailClosesAuthBind() async throws {
+        let runtime = RecordingBluetoothRuntime()
+        let session = GS3TransportSession(runtime: runtime)
+        try await session.handle(.startScan)
+        await #expect(throws: TransportError.authenticationUnimplemented) {
+            try await session.handle(.requestAuthentication)
+        }
+        await #expect(throws: TransportError.bindingUnimplemented) {
+            try await session.handle(.requestBinding)
+        }
+        #expect(session.state == .scanning)
+    }
+
+#if canImport(CoreBluetooth)
+    @Test func coreBluetoothConstantsAndAuthorizationMapping() {
+        #expect(CoreBluetoothRuntime.restorationIdentifier == "app.sugarman.ios.gs3.transport")
+        #expect(CoreBluetoothRuntime.queueLabel == "app.sugarman.ios.gs3.transport")
+        #expect(BluetoothAuthorizationMapping.transportError(for: .denied) == .permissionDenied)
+        #expect(BluetoothAuthorizationMapping.transportError(for: .restricted) == .permissionDenied)
+        #expect(BluetoothAuthorizationMapping.transportError(for: .allowedAlways) == nil)
+        #expect(BluetoothAuthorizationMapping.transportError(for: .notDetermined) == nil)
+        #expect(BluetoothAuthorizationMapping.transportError(forManagerState: .unauthorized) == .permissionDenied)
+        #expect(BluetoothAuthorizationMapping.transportError(forManagerState: .poweredOff) == .bluetoothUnavailable)
+        #expect(BluetoothAuthorizationMapping.transportError(forManagerState: .unsupported) == .bluetoothUnavailable)
+        #expect(BluetoothAuthorizationMapping.transportError(forManagerState: .poweredOn) == nil)
+        #expect(BluetoothAuthorizationMapping.transportError(forManagerState: .unknown) == nil)
+    }
+#endif
 
     @Test func dedicatedQueueLabel() {
         let runtime = RecordingBluetoothRuntime()

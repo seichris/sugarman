@@ -175,5 +175,49 @@ struct SwiftDataSugarmanStoreTests {
         let latest = try await store.latestSample(sessionID: session)
         #expect(latest?.sensorIndex == 2)
     }
+
+    @Test func crashBetweenInsertsPreservesUniqueness() async throws {
+        guard #available(iOS 26, macOS 26, *) else { return }
+        let container = try SwiftDataSugarmanStore.makeContainer(inMemory: true)
+        let store = SwiftDataSugarmanStore(modelContainer: container)
+        let session = UUID()
+        let first = makeSample(session: session, index: 1)
+        let second = makeSample(session: session, index: 2)
+        try await store.insertSample(first)
+        let unsaved = ModelContext(container)
+        unsaved.insert(GlucoseSampleRecord(from: second))
+        let recovered = SwiftDataSugarmanStore(modelContainer: container)
+        #expect(try await recovered.sample(sessionID: session, sensorIndex: 1)?.sensorIndex == 1)
+        #expect(try await recovered.sample(sessionID: session, sensorIndex: 2) == nil)
+        await #expect(throws: StoreError.duplicateSample(SampleKey(sessionID: session, sensorIndex: 1))) {
+            try await recovered.insertSample(makeSample(session: session, index: 1))
+        }
+        try await recovered.insertSample(second)
+        #expect(try await recovered.samples(sessionID: session).count == 2)
+    }
+
+    @Test func reopeningExistingContainerKeepsSamples() async throws {
+        guard #available(iOS 26, macOS 26, *) else { return }
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "sugarman-reopen-\(UUID().uuidString)",
+            isDirectory: true
+        )
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let url = directory.appendingPathComponent("sugarman.store")
+        let session = UUID()
+        let sample = makeSample(session: session, index: 1)
+        do {
+            let store = SwiftDataSugarmanStore(modelContainer: try SwiftDataSugarmanStore.makeContainer(url: url))
+            try await store.insertSession(SensorSession(id: session, sensorID: UUID()))
+            try await store.insertSample(sample)
+        }
+        let reopened = SwiftDataSugarmanStore(modelContainer: try SwiftDataSugarmanStore.makeContainer(url: url))
+        #expect(try await reopened.sample(sessionID: session, sensorIndex: 1)?.sensorIndex == 1)
+        await #expect(throws: StoreError.duplicateSample(SampleKey(sessionID: session, sensorIndex: 1))) {
+            try await reopened.insertSample(makeSample(session: session, index: 1))
+        }
+        try await reopened.insertSample(makeSample(session: session, index: 2))
+        #expect(try await reopened.samples(sessionID: session).count == 2)
+    }
 }
 #endif

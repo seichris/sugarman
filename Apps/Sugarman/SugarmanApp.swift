@@ -51,6 +51,7 @@ final class AppModel {
     var identities: [SensorIdentity]
     var ownerAccountID: OwnerAccountID?
     var exporter: VersionedDataExporter
+    var exportFileWriter: PrivacyExportFileWriter
     var demoLoadError: String?
 
     static func bootstrapped() -> AppModel {
@@ -89,6 +90,7 @@ final class AppModel {
         self.identities = []
         self.ownerAccountID = nil
         self.exporter = VersionedDataExporter()
+        self.exportFileWriter = PrivacyExportFileWriter()
         self.demoLoadError = demoLoadError
     }
 
@@ -182,6 +184,14 @@ final class AppModel {
 
     func deleteFueling(_ id: UUID) async {
         try? await store.deleteFueling(id: id)
+        await refresh()
+    }
+
+    func chooseSession(_ id: UUID) async {
+        selectedSessionID = id
+        if demoSessionID != id {
+            demoSessionID = nil
+        }
         await refresh()
     }
 

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Sugarman contributors
 
+import Foundation
 import Testing
 @testable import SensorOnboarding
 
@@ -127,4 +128,73 @@ struct SensorOnboardingTests {
         #expect(SerialRedaction.redact("…WXYZ") == "…WXYZ")
         #expect(SerialRedaction.redact("AB") == "…AB")
     }
+
+    @Test func gs1ParenthesizedAndConcatenatedParse() throws {
+        let parenthesized = try defaultParser.parse("(01)01234567890123(21)SYNTHSERIAL99")
+        #expect(parenthesized.gtin == "01234567890123")
+        #expect(parenthesized.redactedSerial == "…AL99")
+        #expect(parenthesized.formatName == "gs1-udi-synthetic")
+        #expect(parenthesized.confidence == .low)
+        #expect(parenthesized.isSynthetic)
+        #expect(parenthesized.protocolHypothesis.rawValue == "unknown")
+        #expect(parenthesized.regionHypothesis.contains("not hardware proof"))
+
+        let withOptional = try defaultParser.parse("(01)01234567890123(17)251231(10)LOT42(21)SER1234")
+        #expect(withOptional.gtin == "01234567890123")
+        #expect(withOptional.redactedSerial == "…1234")
+
+        let concatenated = try defaultParser.parse("010123456789012321SER1234")
+        #expect(concatenated.gtin == "01234567890123")
+        #expect(concatenated.redactedSerial == "…1234")
+
+        let gs = String(GS1ElementString.groupSeparator)
+        let withGS = try defaultParser.parse("010123456789012310LOT42" + gs + "21SER99ZZ")
+        #expect(withGS.gtin == "01234567890123")
+        #expect(withGS.redactedSerial == "…99ZZ")
+    }
+
+    @Test func gs1UnknownTruncatedEmptyNULStillFailClosed() {
+        #expect(throws: OnboardingError.unsupportedFormat(reason: "no supported Data Matrix profile; hardware fixtures are required")) {
+            try parser.parse("01 06900000000000 21 ABCDEF")
+        }
+        #expect(throws: OnboardingError.unsupportedFormat(reason: "truncated GS1/UDI payload")) {
+            try defaultParser.parse("(01)01234567890123")
+        }
+        #expect(throws: OnboardingError.unsupportedFormat(reason: "truncated GS1/UDI payload")) {
+            try defaultParser.parse("(01)0123")
+        }
+        #expect(throws: OnboardingError.emptyPayload) {
+            try defaultParser.parse("")
+        }
+        #expect(throws: OnboardingError.unsupportedFormat(reason: "NUL bytes are not allowed")) {
+            try defaultParser.parse("(01)01234567890123(21)AB\0CD")
+        }
+        let oversized = "(01)01234567890123(21)" + String(repeating: "X", count: 5000)
+        #expect(throws: OnboardingError.payloadTooLarge) {
+            try defaultParser.parse(oversized)
+        }
+    }
+
+    @Test func stubScannerFeedsGS1Parser() async throws {
+        let scanner = StubBarcodeImageScanner(
+            payloadsToReturn: ["(01)01234567890123(21)SYNTHSERIAL99"]
+        )
+        let payloads = try await scanner.payloads(fromImageData: Data())
+        #expect(payloads.count == 1)
+        let parsed = try defaultParser.parse(payloads[0])
+        #expect(parsed.gtin == "01234567890123")
+        #expect(parsed.redactedSerial == "…AL99")
+    }
+
+#if canImport(Vision)
+    @Test func visionScannerOnTinyPNGReturnsNoPayload() async throws {
+        let scanner = VisionDataMatrixScanner()
+        let png = Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")!
+        let payloads = try await scanner.payloads(fromImageData: png)
+        #expect(payloads.isEmpty)
+        await #expect(throws: OnboardingError.invalidEncoding) {
+            try await scanner.payloads(fromImageData: Data([0x00, 0x01, 0x02]))
+        }
+    }
+#endif
 }

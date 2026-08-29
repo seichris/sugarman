@@ -10,6 +10,11 @@ struct HistoryView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    ActiveSessionBanner()
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                }
                 if model.isSyntheticDemo {
                     Section {
                         SyntheticDemoBanner()

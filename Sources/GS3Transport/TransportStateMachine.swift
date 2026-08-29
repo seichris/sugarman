@@ -29,10 +29,14 @@ public struct TransportStateMachine: Sendable, Equatable {
             return failClosed(.authenticationUnimplemented)
         case .requestBinding:
             return failClosed(.bindingUnimplemented)
-        case .bluetoothUnavailable, .permissionDenied:
+        case .bluetoothUnavailable:
             inFlight = false
             state = .ended
             return [.stopScan, .fail(.bluetoothUnavailable)]
+        case .permissionDenied:
+            inFlight = false
+            state = .ended
+            return [.stopScan, .fail(.permissionDenied)]
         case .cancel:
             inFlight = false
             let id = peripheralID
@@ -55,7 +59,7 @@ public struct TransportStateMachine: Sendable, Equatable {
             break
         }
 
-        if inFlight && isCommandStart(input) {
+        if inFlight && isCommandStart(input) && !isAllowedConnectWhileScanning(input) {
             return [.fail(.commandInFlight)]
         }
 
@@ -117,13 +121,23 @@ public struct TransportStateMachine: Sendable, Equatable {
         return [.read(characteristic)]
     }
 
-    private func isCommandStart(_ input: TransportInput) -> Bool {
+    /// Command starts occupy the single in-flight slot: `startScan`, `connect`,
+    /// and allowlisted reads (`beginAllowlistedRead`). Connect while scanning
+    /// is the allowed transition from `.scanning` and is not blocked.
+    public func isCommandStart(_ input: TransportInput) -> Bool {
         switch input {
-        case .startScan:
+        case .startScan, .connect:
             return true
         default:
             return false
         }
+    }
+
+    private func isAllowedConnectWhileScanning(_ input: TransportInput) -> Bool {
+        if case .connect = input, state == .scanning {
+            return true
+        }
+        return false
     }
 
     private mutating func handleTimeout() -> [TransportEffect] {
@@ -144,8 +158,8 @@ public struct TransportStateMachine: Sendable, Equatable {
     }
 }
 
-/// Serial-queue owner wrapping the state machine. CoreBluetooth adapters
-/// (added after P1) must hop onto `queue` and must not log frame bytes.
+/// Serial-queue owner wrapping the state machine. The CoreBluetooth adapter
+/// hops onto `queue` and must not log frame bytes or issue characteristic writes.
 public final class GS3TransportSession: @unchecked Sendable {
     public let queue: DispatchQueue
     private var machine: TransportStateMachine

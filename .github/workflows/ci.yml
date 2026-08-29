@@ -29,3 +29,30 @@ jobs:
         run: swift --version && xcodebuild -version
       - name: Test portable modules
         run: swift test --enable-swift-testing
+
+  xcodebuild-ios:
+    name: xcodebuild iOS Simulator
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - name: Show toolchain
+        run: xcodebuild -version && xcodebuild -showsdks
+      - name: Build iOS app for Simulator
+        run: |
+          set -euo pipefail
+          SDK_LINE="$(xcodebuild -showsdks | awk '/iphonesimulator/{print $NF}' | tail -n 1 || true)"
+          if [ -z "${SDK_LINE}" ]; then
+            echo "No iOS Simulator SDK on this runner; skipping xcodebuild."
+            exit 0
+          fi
+          SDK_VERSION="$(echo "${SDK_LINE}" | sed -E 's/[^0-9]*([0-9]+).*/\1/')"
+          echo "Using ${SDK_LINE} (major ${SDK_VERSION})"
+          if [ "${SDK_VERSION}" -lt 26 ]; then
+            echo "iOS Simulator SDK ${SDK_VERSION} cannot build the iOS 26 deployment target; skipping."
+            echo "Prefer a runner with Xcode 26 / iOS 26 SDK so this job actually compiles."
+            exit 0
+          fi
+          xcodebuild -scheme Sugarman -destination 'generic/platform=iOS Simulator' -configuration Debug build CODE_SIGNING_ALLOWED=NO
+

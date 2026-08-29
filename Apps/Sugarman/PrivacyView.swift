@@ -8,9 +8,7 @@ struct PrivacyView: View {
     @Environment(AppModel.self) private var model
     @State private var confirmDeleteAll = false
     @State private var sessionPendingDelete: UUID?
-    @State private var exportText = ""
-    @State private var exportTitle = ""
-    @State private var showExport = false
+    @State private var exportFileURL: URL?
     @State private var exportError: String?
 
     var body: some View {
@@ -21,18 +19,35 @@ struct PrivacyView: View {
                     Text("privacy.no_cloud")
                     Text(verbatim: ProductCopy.noDosing)
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.primary)
                 }
                 Section("privacy.export") {
                     Button("privacy.export_json") {
                         Task { await export(kind: .json) }
                     }
+                    .accessibilityLabel(Text("privacy.export_json"))
+                    .accessibilityHint(Text("privacy.export_file_hint"))
                     Button("privacy.export_csv") {
                         Task { await export(kind: .csv) }
                     }
+                    .accessibilityLabel(Text("privacy.export_csv"))
+                    .accessibilityHint(Text("privacy.export_file_hint"))
                     Text("privacy.export_body")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+                    if let exportFileURL {
+                        ShareLink(item: exportFileURL) {
+                            Label(
+                                exportFileURL.lastPathComponent,
+                                systemImage: "square.and.arrow.up"
+                            )
+                        }
+                        .accessibilityLabel(Text("privacy.share_file"))
+                        .accessibilityHint(Text("privacy.share_file_hint"))
+                        Text("privacy.export_file_ready")
+                            .font(.footnote)
+                            .foregroundStyle(.primary)
+                    }
                     if let exportError {
                         Text(exportError)
                             .foregroundStyle(.red)
@@ -53,6 +68,10 @@ struct PrivacyView: View {
                                     Text(session.id.uuidString)
                                         .font(.footnote)
                                         .foregroundStyle(.secondary)
+                                    if model.activeSessionID == session.id {
+                                        Text("session.active_badge")
+                                            .font(.footnote.weight(.semibold))
+                                    }
                                 }
                             }
                             .accessibilityLabel(Text("privacy.delete_session"))
@@ -99,27 +118,6 @@ struct PrivacyView: View {
             } message: {
                 Text("privacy.delete_session_body")
             }
-            .sheet(isPresented: $showExport) {
-                NavigationStack {
-                    ScrollView {
-                        Text(exportText)
-                            .font(.footnote.monospaced())
-                            .textSelection(.enabled)
-                            .padding()
-                    }
-                    .navigationTitle(Text(exportTitle))
-                    .toolbar {
-                        ToolbarItem(placement: .confirmationAction) {
-                            ShareLink(item: exportText) {
-                                Label("privacy.share", systemImage: "square.and.arrow.up")
-                            }
-                        }
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button("privacy.done") { showExport = false }
-                        }
-                    }
-                }
-            }
         }
     }
 
@@ -131,18 +129,19 @@ struct PrivacyView: View {
     private func export(kind: ExportKind) async {
         exportError = nil
         do {
+            let writer = model.exportFileWriter
+            let directory = FileManager.default.temporaryDirectory
             switch kind {
             case .json:
                 let data = try await model.exportJSON()
-                exportText = String(decoding: data, as: UTF8.self)
-                exportTitle = String(localized: "privacy.export_json")
+                exportFileURL = try writer.writeJSON(data, to: directory)
             case .csv:
-                exportText = try await model.exportCSV()
-                exportTitle = String(localized: "privacy.export_csv")
+                let text = try await model.exportCSV()
+                exportFileURL = try writer.writeCSV(text, to: directory)
             }
-            showExport = true
         } catch {
             exportError = error.localizedDescription
+            exportFileURL = nil
         }
     }
 }

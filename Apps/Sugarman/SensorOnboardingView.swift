@@ -5,6 +5,13 @@ import AccountBinding
 import SensorOnboarding
 import SugarmanDomain
 import SwiftUI
+import UniformTypeIdentifiers
+#if canImport(CoreTransferable)
+import CoreTransferable
+#endif
+#if canImport(PhotosUI)
+import PhotosUI
+#endif
 
 struct SensorOnboardingView: View {
     @Environment(AppModel.self) private var model
@@ -17,9 +24,18 @@ struct SensorOnboardingView: View {
     @State private var ownerID = ""
     @State private var ownerStatus = String(localized: "onboarding.owner_idle")
     @State private var confirmStore = false
+    @State private var showFileImporter = false
+#if canImport(PhotosUI)
+    @State private var pickerItem: PhotosPickerItem?
+#endif
 
     private let packageParser = BoundedPackageParser()
     private let ndefParser = BoundedNDEFParser()
+#if canImport(Vision)
+    private let imageScanner: any BarcodeImageScanning = VisionDataMatrixScanner()
+#else
+    private let imageScanner: any BarcodeImageScanning = StubBarcodeImageScanner()
+#endif
 
     var body: some View {
         NavigationStack {
@@ -27,6 +43,18 @@ struct SensorOnboardingView: View {
                 Section("sensor.hardware") {
                     Text("sensor.camera_unavailable")
                     Text("sensor.nfc_unavailable")
+#if canImport(PhotosUI)
+                    PhotosPicker(selection: $pickerItem, matching: .images) {
+                        Label("sensor.import_image", systemImage: "photo")
+                    }
+                    .accessibilityLabel(Text("sensor.import_image"))
+                    .accessibilityHint(Text("sensor.import_image_hint"))
+#endif
+                    Button("sensor.import_file") {
+                        showFileImporter = true
+                    }
+                    .accessibilityLabel(Text("sensor.import_file"))
+                    .accessibilityHint(Text("sensor.import_file_hint"))
                     Text("onboarding.no_commands")
                         .foregroundStyle(.secondary)
                 }
@@ -109,14 +137,38 @@ struct SensorOnboardingView: View {
             } message: {
                 Text("sensor.confirm_body")
             }
+            .fileImporter(
+                isPresented: $showFileImporter,
+                allowedContentTypes: [.image],
+                allowsMultipleSelection: false
+            ) { result in
+                switch result {
+                case .success(let urls):
+                    if let url = urls.first {
+                        Task { await importFile(url) }
+                    }
+                case .failure(let error):
+                    parseMessage = error.localizedDescription
+                }
+            }
+#if canImport(PhotosUI)
+            .onChange(of: pickerItem) { _, item in
+                guard let item else { return }
+                Task { await importPickerItem(item) }
+            }
+#endif
         }
     }
 
     private func parsePayloads() {
+        applyParsedPackage(packageText, ndef: ndefText)
+    }
+
+    private func applyParsedPackage(_ package: String, ndef: String) {
         parsedIdentity = nil
         do {
-            if packageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                && ndefText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            if package.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                && ndef.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 parseMessage = String(localized: "sensor.parse_idle")
                 return
             }
@@ -127,22 +179,22 @@ struct SensorOnboardingView: View {
             var region = String(localized: "sensor.unknown_region")
             var confidence = EvidenceConfidence.unsupported
 
-            if !packageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                let package = try packageParser.parse(packageText)
-                productName = package.productName
-                sku = package.sku
-                gtin = package.gtin
-                serial = package.redactedSerial
-                region = package.regionHypothesis
-                confidence = package.confidence
+            if !package.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                let parsed = try packageParser.parse(package)
+                productName = parsed.productName
+                sku = parsed.sku
+                gtin = parsed.gtin
+                serial = parsed.redactedSerial
+                region = parsed.regionHypothesis
+                confidence = parsed.confidence
             }
-            if !ndefText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                let ndef = try ndefParser.parse(ndefText)
-                productName = ndef.productName ?? productName
-                sku = ndef.sku ?? sku
-                serial = ndef.redactedSerial ?? serial
-                region = ndef.regionHypothesis
-                confidence = ndef.confidence
+            if !ndef.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                let parsed = try ndefParser.parse(ndef)
+                productName = parsed.productName ?? productName
+                sku = parsed.sku ?? sku
+                serial = parsed.redactedSerial ?? serial
+                region = parsed.regionHypothesis
+                confidence = parsed.confidence
             }
 
             parsedIdentity = SensorIdentity(
@@ -162,6 +214,51 @@ struct SensorOnboardingView: View {
         }
     }
 
+    private func importImageData(_ data: Data) async {
+        do {
+            let payloads = try await imageScanner.payloads(fromImageData: data)
+            guard let first = payloads.first else {
+                parseMessage = String(localized: "sensor.no_barcode")
+                parsedIdentity = nil
+                return
+            }
+            packageText = first
+            applyParsedPackage(first, ndef: "")
+        } catch {
+            parseMessage = error.localizedDescription
+            parsedIdentity = nil
+        }
+    }
+
+#if canImport(PhotosUI)
+    private func importPickerItem(_ item: PhotosPickerItem) async {
+        do {
+            if let picked = try await item.loadTransferable(type: PickedImageData.self) {
+                await importImageData(picked.data)
+                return
+            }
+            parseMessage = String(localized: "sensor.no_barcode")
+        } catch {
+            parseMessage = error.localizedDescription
+        }
+    }
+#endif
+
+    private func importFile(_ url: URL) async {
+        let accessed = url.startAccessingSecurityScopedResource()
+        defer {
+            if accessed {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        do {
+            let data = try Data(contentsOf: url)
+            await importImageData(data)
+        } catch {
+            parseMessage = error.localizedDescription
+        }
+    }
+
     private func storeParsedIdentity() async {
         guard let parsedIdentity else { return }
         await model.confirmIdentity(parsedIdentity)
@@ -169,3 +266,14 @@ struct SensorOnboardingView: View {
         self.parsedIdentity = nil
     }
 }
+
+private struct PickedImageData: Transferable {
+    let data: Data
+
+    static var transferRepresentation: some TransferRepresentation {
+        DataRepresentation(importedContentType: .image) { data in
+            PickedImageData(data: data)
+        }
+    }
+}
+
