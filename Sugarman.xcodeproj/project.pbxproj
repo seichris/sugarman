@@ -1,0 +1,458 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		17C620CE59FF8DAD029BD6DB /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 015AE5A8B5FB8B171B34FD9B /* Localizable.xcstrings */; };
+		18547DFCFF92039200422D99 /* GS3Transport in Frameworks */ = {isa = PBXBuildFile; productRef = 9BD053E9E2482A4DF749F1BC /* GS3Transport */; };
+		2180F84F9A632C8BD78BEB55 /* Integrations in Frameworks */ = {isa = PBXBuildFile; productRef = 67DE8DC36AEDDAE5D84B6DDD /* Integrations */; };
+		279867D011F2F2B3ED5C1F49 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3776611985DB564BF1E3EC5E /* Assets.xcassets */; };
+		2EF675425C2DD153A1B9B281 /* OnboardingPlaceholderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 245BAB5754A87747C6B7617D /* OnboardingPlaceholderView.swift */; };
+		3112B5FDC7B10EC2E0A7F499 /* SugarmanStore in Frameworks */ = {isa = PBXBuildFile; productRef = 375AFB438175197FEB7F5409 /* SugarmanStore */; };
+		560BC0BADE45D27FAC05D341 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29BED539403ADB33595539AE /* DashboardView.swift */; };
+		78E8C92384E18DBC9C515A18 /* SugarmanDomain in Frameworks */ = {isa = PBXBuildFile; productRef = ADE13AEECE159CEFFE400572 /* SugarmanDomain */; };
+		837CABEF38C1FB95E82266F5 /* GS3Protocol in Frameworks */ = {isa = PBXBuildFile; productRef = 5391074AF6B3847D8D21EB21 /* GS3Protocol */; };
+		9CD79405070151AA125610EB /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F1463176FB0AB503E0DBC95 /* RootView.swift */; };
+		B2FC75E9F9317D3F50202930 /* SafetyEngine in Frameworks */ = {isa = PBXBuildFile; productRef = A9114B2D0C315218CD65C655 /* SafetyEngine */; };
+		D0CD0CAD05AD3E611AE84928 /* SensorOnboarding in Frameworks */ = {isa = PBXBuildFile; productRef = F705304B1A41ECB50B19865E /* SensorOnboarding */; };
+		DAE2954C63A3A8ABC2A4E9A9 /* AccountBinding in Frameworks */ = {isa = PBXBuildFile; productRef = 6816F1F47828A1F57E5EE72A /* AccountBinding */; };
+		E15309AE01C533808742A893 /* SugarmanApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4704D8B1664BAC86165C699F /* SugarmanApp.swift */; };
+		E957FF0A866DAEBEE78F454D /* PrivacyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D62AEF0933A5D37DBD9819B /* PrivacyView.swift */; };
+		FF8873FC56CAC156D746ECE0 /* SugarmanDiagnostics in Frameworks */ = {isa = PBXBuildFile; productRef = 68C83594A30351E0BAA91AE3 /* SugarmanDiagnostics */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		015AE5A8B5FB8B171B34FD9B /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		1F1463176FB0AB503E0DBC95 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		245BAB5754A87747C6B7617D /* OnboardingPlaceholderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingPlaceholderView.swift; sourceTree = "<group>"; };
+		29BED539403ADB33595539AE /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
+		3776611985DB564BF1E3EC5E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		4704D8B1664BAC86165C699F /* SugarmanApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SugarmanApp.swift; sourceTree = "<group>"; };
+		5D62AEF0933A5D37DBD9819B /* PrivacyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyView.swift; sourceTree = "<group>"; };
+		6D7D5408CC201C89747826BF /* Sugarman.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Sugarman.entitlements; sourceTree = "<group>"; };
+		BF74DB52FA25D6BED9C37F44 /* sugarman */ = {isa = PBXFileReference; lastKnownFileType = folder; name = sugarman; path = .; sourceTree = SOURCE_ROOT; };
+		E6EE39F377CDFD5147B0BA60 /* Sugarman.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Sugarman.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A7BFD405F4A98B0492E9DBA9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				78E8C92384E18DBC9C515A18 /* SugarmanDomain in Frameworks */,
+				837CABEF38C1FB95E82266F5 /* GS3Protocol in Frameworks */,
+				18547DFCFF92039200422D99 /* GS3Transport in Frameworks */,
+				D0CD0CAD05AD3E611AE84928 /* SensorOnboarding in Frameworks */,
+				DAE2954C63A3A8ABC2A4E9A9 /* AccountBinding in Frameworks */,
+				3112B5FDC7B10EC2E0A7F499 /* SugarmanStore in Frameworks */,
+				B2FC75E9F9317D3F50202930 /* SafetyEngine in Frameworks */,
+				2180F84F9A632C8BD78BEB55 /* Integrations in Frameworks */,
+				FF8873FC56CAC156D746ECE0 /* SugarmanDiagnostics in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		1DA3660768658D95F2A415E1 = {
+			isa = PBXGroup;
+			children = (
+				E336DDEFEFA910CEE926952E /* Apps */,
+				3935FB384078684757B5D8ED /* Packages */,
+				528AA3F734E2DAB8B1224CF7 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		297046D61D4874D6A9DD5E85 /* Sugarman */ = {
+			isa = PBXGroup;
+			children = (
+				3776611985DB564BF1E3EC5E /* Assets.xcassets */,
+				29BED539403ADB33595539AE /* DashboardView.swift */,
+				015AE5A8B5FB8B171B34FD9B /* Localizable.xcstrings */,
+				245BAB5754A87747C6B7617D /* OnboardingPlaceholderView.swift */,
+				5D62AEF0933A5D37DBD9819B /* PrivacyView.swift */,
+				1F1463176FB0AB503E0DBC95 /* RootView.swift */,
+				6D7D5408CC201C89747826BF /* Sugarman.entitlements */,
+				4704D8B1664BAC86165C699F /* SugarmanApp.swift */,
+			);
+			path = Sugarman;
+			sourceTree = "<group>";
+		};
+		3935FB384078684757B5D8ED /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				BF74DB52FA25D6BED9C37F44 /* sugarman */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+		528AA3F734E2DAB8B1224CF7 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				E6EE39F377CDFD5147B0BA60 /* Sugarman.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		E336DDEFEFA910CEE926952E /* Apps */ = {
+			isa = PBXGroup;
+			children = (
+				297046D61D4874D6A9DD5E85 /* Sugarman */,
+			);
+			path = Apps;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		366A36D7DA44EAA9CC9323F4 /* Sugarman */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 27382CBEB7ABE015254998AD /* Build configuration list for PBXNativeTarget "Sugarman" */;
+			buildPhases = (
+				922B24DDF5FDC5188344E121 /* Sources */,
+				9DFBEDD36082A1A0BAA91088 /* Resources */,
+				A7BFD405F4A98B0492E9DBA9 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Sugarman;
+			packageProductDependencies = (
+				ADE13AEECE159CEFFE400572 /* SugarmanDomain */,
+				5391074AF6B3847D8D21EB21 /* GS3Protocol */,
+				9BD053E9E2482A4DF749F1BC /* GS3Transport */,
+				F705304B1A41ECB50B19865E /* SensorOnboarding */,
+				6816F1F47828A1F57E5EE72A /* AccountBinding */,
+				375AFB438175197FEB7F5409 /* SugarmanStore */,
+				A9114B2D0C315218CD65C655 /* SafetyEngine */,
+				67DE8DC36AEDDAE5D84B6DDD /* Integrations */,
+				68C83594A30351E0BAA91AE3 /* SugarmanDiagnostics */,
+			);
+			productName = Sugarman;
+			productReference = E6EE39F377CDFD5147B0BA60 /* Sugarman.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		1629A711C4E6E9715C20378B /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 2600;
+				TargetAttributes = {
+					366A36D7DA44EAA9CC9323F4 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 97B5E0A48EA4FD9E8F4CD456 /* Build configuration list for PBXProject "Sugarman" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 1DA3660768658D95F2A415E1;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				53623F0EB37D22A8963174A5 /* XCLocalSwiftPackageReference "." */,
+			);
+			preferredProjectObjectVersion = 77;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				366A36D7DA44EAA9CC9323F4 /* Sugarman */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		9DFBEDD36082A1A0BAA91088 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				279867D011F2F2B3ED5C1F49 /* Assets.xcassets in Resources */,
+				17C620CE59FF8DAD029BD6DB /* Localizable.xcstrings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		922B24DDF5FDC5188344E121 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				560BC0BADE45D27FAC05D341 /* DashboardView.swift in Sources */,
+				2EF675425C2DD153A1B9B281 /* OnboardingPlaceholderView.swift in Sources */,
+				E957FF0A866DAEBEE78F454D /* PrivacyView.swift in Sources */,
+				9CD79405070151AA125610EB /* RootView.swift in Sources */,
+				E15309AE01C533808742A893 /* SugarmanApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		131CFD0EB2482A3476EDEA39 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SELECTED_FILES = empty;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 0.0.1;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		423CBBC7D667417B54276211 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CODE_SIGN_ENTITLEMENTS = Apps/Sugarman/Sugarman.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Apps/Sugarman/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = app.sugarman.ios;
+				PRODUCT_NAME = Sugarman;
+				SDKROOT = iphoneos;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		AD123E43C1EA37C8F28F1258 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CODE_SIGN_ENTITLEMENTS = Apps/Sugarman/Sugarman.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Apps/Sugarman/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = app.sugarman.ios;
+				PRODUCT_NAME = Sugarman;
+				SDKROOT = iphoneos;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		ADAA0A0882FAEBF88DF6E8DD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SELECTED_FILES = empty;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 0.0.1;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		27382CBEB7ABE015254998AD /* Build configuration list for PBXNativeTarget "Sugarman" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				423CBBC7D667417B54276211 /* Debug */,
+				AD123E43C1EA37C8F28F1258 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		97B5E0A48EA4FD9E8F4CD456 /* Build configuration list for PBXProject "Sugarman" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				131CFD0EB2482A3476EDEA39 /* Debug */,
+				ADAA0A0882FAEBF88DF6E8DD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		53623F0EB37D22A8963174A5 /* XCLocalSwiftPackageReference "." */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = .;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		375AFB438175197FEB7F5409 /* SugarmanStore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SugarmanStore;
+		};
+		5391074AF6B3847D8D21EB21 /* GS3Protocol */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = GS3Protocol;
+		};
+		67DE8DC36AEDDAE5D84B6DDD /* Integrations */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Integrations;
+		};
+		6816F1F47828A1F57E5EE72A /* AccountBinding */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = AccountBinding;
+		};
+		68C83594A30351E0BAA91AE3 /* SugarmanDiagnostics */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SugarmanDiagnostics;
+		};
+		9BD053E9E2482A4DF749F1BC /* GS3Transport */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = GS3Transport;
+		};
+		A9114B2D0C315218CD65C655 /* SafetyEngine */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SafetyEngine;
+		};
+		ADE13AEECE159CEFFE400572 /* SugarmanDomain */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SugarmanDomain;
+		};
+		F705304B1A41ECB50B19865E /* SensorOnboarding */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SensorOnboarding;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 1629A711C4E6E9715C20378B /* Project object */;
+}

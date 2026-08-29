@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>NFCReaderUsageDescription</key>
+	<string>Sugarman can read an owned sensor package or tag to identify the sensor. Scanning does not activate or bind the sensor.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Sugarman uses Bluetooth to connect to an owned glucose sensor you have already set up. It does not send sensor commands until hardware evidence gates pass.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>Sugarman uses Bluetooth to connect to an owned glucose sensor you have already set up.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Sugarman can scan a package Data Matrix to identify an owned sensor. Scanning does not send sensor commands.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Sugarman can read workouts you choose to share so you can overlay them with glucose. HealthKit glucose writes are disabled until validation gates pass.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Sugarman may later write validated glucose to Apple Health. HealthKit glucose writes are disabled in this build.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>bluetooth-central</string>
+	</array>
+	<key>UILaunchScreen</key>
+	<dict/>
+</dict>
+</plist>

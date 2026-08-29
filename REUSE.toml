@@ -1,0 +1,12 @@
+version = 1
+
+SPDX-PackageName = "Sugarman"
+SPDX-PackageDownloadLocation = "https://github.com/seichris/sugarman"
+SPDX-PackageLicense = "GPL-3.0-or-later"
+SPDX-PackageCopyrightText = "Copyright (C) 2026 Sugarman contributors"
+
+[[annotations]]
+path = ["**"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "Copyright (C) 2026 Sugarman contributors"
+SPDX-License-Identifier = "GPL-3.0-or-later"

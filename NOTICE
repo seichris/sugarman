@@ -1,0 +1,12 @@
+Sugarman
+Copyright (C) 2026 Sugarman contributors
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+See LICENSE for the full GPLv3 text. SPDX: GPL-3.0-or-later.
+
+Corresponding source for distributed binaries is the Git tag named in
+README.md and docs/provenance/registry.json.

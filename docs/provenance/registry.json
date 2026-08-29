@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "project_licence": "GPL-3.0-or-later",
+  "corresponding_source": {
+    "policy": "Tag every externally distributed build and archive this repository at that tag, including Package.swift, project.yml, Xcode project, tests, and Scripts/. Upstream submodules are reference-only and are not required to rebuild the Sugarman app binary.",
+    "repository": "https://github.com/seichris/sugarman",
+    "tag_pattern": "sugarman-<version>-<git-sha>"
+  },
+  "records": []
+}
