@@ -42,8 +42,7 @@ public enum NDEFTextRecordExtractor: Sendable {
         var texts: [String] = []
         for message in messages {
             for record in message.records {
-                if let payload = record.wellKnownTypeTextPayload(), !payload.0.isEmpty {
-                    let text = payload.0
+                if let text = record.wellKnownTypeTextPayload().0, !text.isEmpty {
                     texts.append(text)
                     continue
                 }
