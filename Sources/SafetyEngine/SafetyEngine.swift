@@ -22,6 +22,7 @@ public enum ReadingPresentation: Sendable, Equatable {
     case warmUp
     case sensorError
     case expired
+    case questionable
     case current(mgdl: Int, readingAgeSeconds: TimeInterval)
 }
 
@@ -109,6 +110,23 @@ public struct SafetyEngine: Sendable {
                 stale: true,
                 notCurrent: ProductCopy.stale
             )
+        }
+
+        switch latestSample.quality {
+        case .error:
+            return assessment(
+                .sensorError,
+                stale: false,
+                notCurrent: ProductCopy.notCurrentReading
+            )
+        case .questionable:
+            return assessment(
+                .questionable,
+                stale: false,
+                notCurrent: ProductCopy.questionableSample
+            )
+        case .ok, .unknown:
+            break
         }
 
         return assessment(

@@ -25,6 +25,9 @@ public enum ProductCopy: Sendable {
     public static let connectedNoData =
         "Connected, waiting for a reading. This is not current glucose."
 
+    public static let questionableSample =
+        "This reading is questionable. It is not a current glucose value."
+
     public static let syntheticDemo =
         "Synthetic demo data. This is not a real sensor."
 

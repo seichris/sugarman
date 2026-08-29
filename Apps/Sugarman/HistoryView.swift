@@ -44,6 +44,11 @@ struct HistoryView: View {
                  ? String(localized: "history.synthetic_row")
                  : String(localized: "history.sample_row"))
                 .font(.headline)
+            Text(glucoseLabel(sample))
+                .font(.body.monospacedDigit())
+            Text("history.not_current")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
             Text(indexLabel(sample))
             Text(ageLabel(sample))
             Text(trendLabel(sample))
@@ -53,6 +58,23 @@ struct HistoryView: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel(sample))
+    }
+
+    private func glucoseLabel(_ sample: GlucoseSample) -> String {
+        switch model.preferredUnit {
+        case .milligramsPerDeciliter:
+            return String(
+                format: String(localized: "history.glucose_mgdl_format"),
+                locale: .current,
+                sample.milligramsPerDeciliter
+            )
+        case .millimolesPerLiter:
+            return String(
+                format: String(localized: "history.glucose_mmol_format"),
+                locale: .current,
+                sample.millimolesPerLiter()
+            )
+        }
     }
 
     private func indexLabel(_ sample: GlucoseSample) -> String {
@@ -90,6 +112,9 @@ struct HistoryView: View {
     }
 
     private func accessibilityLabel(_ sample: GlucoseSample) -> Text {
-        Text("\(indexLabel(sample)), \(ageLabel(sample)), \(trendLabel(sample)), \(sourceLabel(sample))")
+        let historical = String(localized: "history.accessibility_historical")
+        return Text(
+            "\(historical), \(glucoseLabel(sample)), \(indexLabel(sample)), \(ageLabel(sample)), \(trendLabel(sample)), \(sourceLabel(sample))"
+        )
     }
 }

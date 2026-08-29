@@ -31,7 +31,11 @@ struct DashboardView: View {
                             ForEach(SyntheticDemoScenario.allCases) { scenario in
                                 Button(demoTitle(scenario)) {
                                     Task {
-                                        try await model.loadDemo(scenario)
+                                        do {
+                                            try await model.loadDemo(scenario)
+                                        } catch {
+                                            // loadDemo already sets demoLoadError
+                                        }
                                     }
                                 }
                             }
@@ -125,6 +129,9 @@ struct DashboardView: View {
             case .expired:
                 Text("dashboard.expired")
                     .font(.title3)
+            case .questionable:
+                Text("dashboard.questionable")
+                    .font(.title3)
             }
             if let notice = assessment.notCurrentNotice, !assessment.showsValueAsCurrent {
                 Text(notice)
@@ -201,6 +208,7 @@ struct DashboardView: View {
         case .sensorError: "demo.error"
         case .expired: "demo.expired"
         case .connectedNoData: "demo.connected_no_data"
+        case .questionableSample: "demo.questionable"
         }
     }
 }

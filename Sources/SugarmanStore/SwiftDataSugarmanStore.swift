@@ -188,7 +188,12 @@ public final class SensorIdentityRecord {
 @available(iOS 26, macOS 26, *)
 @ModelActor
 public actor SwiftDataSugarmanStore: SugarmanStoring {
-    public static func makeContainer(inMemory: Bool) throws -> ModelContainer {
+    nonisolated public static func make(inMemory: Bool) throws -> SwiftDataSugarmanStore {
+        let container = try makeContainer(inMemory: inMemory)
+        return SwiftDataSugarmanStore(modelContainer: container)
+    }
+
+    nonisolated public static func makeContainer(inMemory: Bool) throws -> ModelContainer {
         let schema = Schema([
             GlucoseSampleRecord.self,
             SensorSessionRecord.self,
@@ -196,12 +201,55 @@ public actor SwiftDataSugarmanStore: SugarmanStoring {
             WorkoutContextRecord.self,
             SensorIdentityRecord.self,
         ])
-        let configuration = ModelConfiguration(
-            schema: schema,
-            isStoredInMemoryOnly: inMemory,
-            cloudKitDatabase: .none
+        let configuration: ModelConfiguration
+        if inMemory {
+            configuration = ModelConfiguration(
+                schema: schema,
+                isStoredInMemoryOnly: true,
+                cloudKitDatabase: .none
+            )
+        } else {
+            let url = try persistentStoreURL()
+            configuration = ModelConfiguration(
+                "Sugarman",
+                schema: schema,
+                url: url,
+                cloudKitDatabase: .none
+            )
+        }
+        let container = try ModelContainer(for: schema, configurations: [configuration])
+        if !inMemory {
+            try applyFileProtection(at: try persistentStoreURL())
+        }
+        return container
+    }
+
+    nonisolated private static func persistentStoreURL() throws -> URL {
+        let base = try FileManager.default.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
         )
-        return try ModelContainer(for: schema, configurations: [configuration])
+        let directory = base.appendingPathComponent("Sugarman", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try applyFileProtection(at: directory)
+        var resourceValues = URLResourceValues()
+        resourceValues.isExcludedFromBackup = true
+        var mutableDirectory = directory
+        try mutableDirectory.setResourceValues(resourceValues)
+        return directory.appendingPathComponent("sugarman.store")
+    }
+
+    nonisolated private static func applyFileProtection(at url: URL) throws {
+        #if os(iOS)
+        let path = url.path
+        guard FileManager.default.fileExists(atPath: path) else { return }
+        try FileManager.default.setAttributes(
+            [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication],
+            ofItemAtPath: path
+        )
+        #endif
     }
 
     public func insertSample(_ sample: GlucoseSample) async throws {

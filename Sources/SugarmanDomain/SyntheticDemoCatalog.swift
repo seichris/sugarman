@@ -13,6 +13,7 @@ public enum SyntheticDemoScenario: String, Sendable, CaseIterable, Identifiable,
     case sensorError
     case expired
     case connectedNoData
+    case questionableSample
 
     public var id: String { rawValue }
 
@@ -57,7 +58,7 @@ public enum SyntheticDemoCatalog: Sendable {
         let includeSamples: Bool
 
         switch scenario {
-        case .current:
+        case .current, .questionableSample:
             connection = .subscribed
             lifecycle = .live
             endedAt = nil
@@ -125,7 +126,12 @@ public enum SyntheticDemoCatalog: Sendable {
 
         let samples: [GlucoseSample]
         if includeSamples {
-            samples = makeSamples(sessionID: sessionID, now: now, latestAge: sampleAge)
+            samples = makeSamples(
+                sessionID: sessionID,
+                now: now,
+                latestAge: sampleAge,
+                scenario: scenario
+            )
         } else {
             samples = []
         }
@@ -149,7 +155,12 @@ public enum SyntheticDemoCatalog: Sendable {
         )
     }
 
-    private static func makeSamples(sessionID: UUID, now: Date, latestAge: TimeInterval) -> [GlucoseSample] {
+    private static func makeSamples(
+        sessionID: UUID,
+        now: Date,
+        latestAge: TimeInterval,
+        scenario: SyntheticDemoScenario
+    ) -> [GlucoseSample] {
         let values = [92, 98, 104, 110, 108, 102, 99, 105]
         let trends: [GlucoseTrend] = [
             .stable, .rising, .rising, .stable, .falling, .falling, .stable, .stable,
@@ -159,6 +170,16 @@ public enum SyntheticDemoCatalog: Sendable {
             let age = latestAge + Double(values.count - 1 - offset) * 5 * 60
             let timestamp = now.addingTimeInterval(-age)
             let source: SampleSource = offset < 3 ? .backfill : .live
+            let isLatest = offset == values.count - 1
+            let quality: SampleQuality
+            switch scenario {
+            case .sensorError:
+                quality = .error
+            case .questionableSample where isLatest:
+                quality = .questionable
+            default:
+                quality = .ok
+            }
             return GlucoseSample(
                 sessionID: sessionID,
                 sensorIndex: index,
@@ -167,7 +188,7 @@ public enum SyntheticDemoCatalog: Sendable {
                 milligramsPerDeciliter: mgdl,
                 originalTenthsMillimolesPerLiter: Int((Double(mgdl) / 18.0 * 10.0).rounded()),
                 trend: trends[offset],
-                quality: .ok,
+                quality: quality,
                 source: source,
                 decoderRevision: decoderRevision
             )

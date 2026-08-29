@@ -14,7 +14,7 @@ import SwiftUI
 
 @main
 struct SugarmanApp: App {
-    @State private var model = AppModel()
+    @State private var model = AppModel.bootstrapped()
 
     var body: some Scene {
         WindowGroup {
@@ -27,16 +27,23 @@ struct SugarmanApp: App {
 @Observable
 @MainActor
 final class AppModel {
-    var store: InMemorySugarmanStore
+    static let preferredUnitDefaultsKey = "app.sugarman.preferredUnit"
+
+    var store: any SugarmanStoring
     var safety: SafetyEngine
     var connection: ConnectionState
     var lifecycle: SensorLifecycleState
     var latestSample: GlucoseSample?
-    var preferredUnit: GlucoseUnit
+    var preferredUnit: GlucoseUnit {
+        didSet {
+            UserDefaults.standard.set(preferredUnit.rawValue, forKey: Self.preferredUnitDefaultsKey)
+        }
+    }
     var probeEnabled: Bool
     var isSyntheticDemo: Bool
     var demoScenario: SyntheticDemoScenario?
     var demoSessionID: UUID?
+    var selectedSessionID: UUID?
     var samples: [GlucoseSample]
     var sessions: [SensorSession]
     var fuelingEvents: [FuelingEvent]
@@ -46,14 +53,20 @@ final class AppModel {
     var exporter: VersionedDataExporter
     var demoLoadError: String?
 
+    static func bootstrapped() -> AppModel {
+        let result = SugarmanStoreFactory.makePersistent()
+        return AppModel(store: result.store, demoLoadError: result.loadError)
+    }
+
     init(
-        store: InMemorySugarmanStore = InMemorySugarmanStore(),
+        store: any SugarmanStoring = InMemorySugarmanStore(),
         safety: SafetyEngine = SafetyEngine(),
         connection: ConnectionState = .disconnected,
         lifecycle: SensorLifecycleState = .unknown,
         latestSample: GlucoseSample? = nil,
-        preferredUnit: GlucoseUnit = .milligramsPerDeciliter,
-        probeEnabled: Bool = false
+        preferredUnit: GlucoseUnit? = nil,
+        probeEnabled: Bool = false,
+        demoLoadError: String? = nil
     ) {
         self.store = store
         self.safety = safety
@@ -61,10 +74,14 @@ final class AppModel {
         self.lifecycle = lifecycle
         self.latestSample = latestSample
         self.preferredUnit = preferredUnit
+            ?? UserDefaults.standard.string(forKey: Self.preferredUnitDefaultsKey)
+                .flatMap(GlucoseUnit.init(rawValue:))
+            ?? .milligramsPerDeciliter
         self.probeEnabled = probeEnabled
         self.isSyntheticDemo = false
         self.demoScenario = nil
         self.demoSessionID = nil
+        self.selectedSessionID = nil
         self.samples = []
         self.sessions = []
         self.fuelingEvents = []
@@ -72,7 +89,7 @@ final class AppModel {
         self.identities = []
         self.ownerAccountID = nil
         self.exporter = VersionedDataExporter()
-        self.demoLoadError = nil
+        self.demoLoadError = demoLoadError
     }
 
     func assessment(at now: Date = Date()) -> SafetyAssessment {
@@ -89,7 +106,11 @@ final class AppModel {
     }
 
     var activeSessionID: UUID? {
-        sessions.first?.id
+        ActiveSessionSelection.resolve(
+            sessions: sessions,
+            demoSessionID: demoSessionID,
+            selectedSessionID: selectedSessionID
+        )
     }
 
     func refresh() async {
@@ -98,8 +119,17 @@ final class AppModel {
         fuelingEvents = (try? await store.fuelingEvents()) ?? []
         workouts = (try? await store.workouts()) ?? []
         identities = (try? await store.identities()) ?? []
-        if let sessionID = activeSessionID {
-            latestSample = try? await store.latestSample(sessionID: sessionID)
+        if samples.contains(where: { $0.decoderRevision == SyntheticDemoCatalog.decoderRevision }) {
+            isSyntheticDemo = true
+        }
+        let resolved = ActiveSessionSelection.resolve(
+            sessions: sessions,
+            demoSessionID: demoSessionID,
+            selectedSessionID: selectedSessionID
+        )
+        selectedSessionID = resolved
+        if let resolved {
+            latestSample = try? await store.latestSample(sessionID: resolved)
         } else {
             latestSample = nil
         }
@@ -124,6 +154,11 @@ final class AppModel {
             isSyntheticDemo = true
             demoScenario = scenario
             demoSessionID = fixture.session.id
+            selectedSessionID = ActiveSessionSelection.selectionAfterInsert(
+                insertedID: fixture.session.id,
+                sessions: [fixture.session],
+                currentSelection: nil
+            )
             await refresh()
         } catch {
             try? await store.deleteAll()
@@ -153,6 +188,13 @@ final class AppModel {
     func confirmIdentity(_ identity: SensorIdentity) async {
         try? await store.insertIdentity(identity)
         await refresh()
+        if sessions.count == 1, let only = sessions.first {
+            selectedSessionID = ActiveSessionSelection.selectionAfterInsert(
+                insertedID: only.id,
+                sessions: sessions,
+                currentSelection: selectedSessionID
+            )
+        }
     }
 
     func storeOwnerAccountID(_ raw: String) throws -> OwnerAccountID {
@@ -164,6 +206,7 @@ final class AppModel {
     func deleteSession(_ id: UUID) async {
         let wasOnlySession = sessions.count <= 1
         let wasDemoSession = demoSessionID == id
+        let wasSelected = selectedSessionID == id
         do {
             try await store.delete(sessionID: id)
         } catch {
@@ -173,6 +216,8 @@ final class AppModel {
         }
         if wasOnlySession || wasDemoSession {
             clearLivePresentation()
+        } else if wasSelected {
+            selectedSessionID = nil
         }
         await refresh()
         if sessions.isEmpty {
@@ -214,5 +259,6 @@ final class AppModel {
         isSyntheticDemo = false
         demoScenario = nil
         demoSessionID = nil
+        selectedSessionID = nil
     }
 }

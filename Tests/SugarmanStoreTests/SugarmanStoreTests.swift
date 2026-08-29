@@ -6,6 +6,10 @@ import Testing
 import SugarmanDomain
 @testable import SugarmanStore
 
+#if canImport(SwiftData)
+import SwiftData
+#endif
+
 struct SugarmanStoreTests {
     func makeSample(session: UUID, index: UInt32) -> GlucoseSample {
         GlucoseSample(
@@ -142,3 +146,34 @@ struct SugarmanStoreTests {
         }
     }
 }
+
+#if canImport(SwiftData)
+struct SwiftDataSugarmanStoreTests {
+    func makeSample(session: UUID, index: UInt32) -> GlucoseSample {
+        GlucoseSample(
+            sessionID: session,
+            sensorIndex: index,
+            sensorTimestamp: Date(timeIntervalSince1970: Double(index)),
+            receiptTimestamp: Date(timeIntervalSince1970: Double(index) + 1),
+            milligramsPerDeciliter: 100,
+            decoderRevision: "none"
+        )
+    }
+
+    @Test func uniquenessOnSessionAndIndex() async throws {
+        guard #available(iOS 26, macOS 26, *) else { return }
+        let container = try SwiftDataSugarmanStore.makeContainer(inMemory: true)
+        let store = SwiftDataSugarmanStore(modelContainer: container)
+        let session = UUID()
+        try await store.insertSample(makeSample(session: session, index: 1))
+        await #expect(throws: StoreError.duplicateSample(SampleKey(sessionID: session, sensorIndex: 1))) {
+            try await store.insertSample(makeSample(session: session, index: 1))
+        }
+        let kept = try await store.sample(sessionID: session, sensorIndex: 1)
+        #expect(kept?.sensorIndex == 1)
+        try await store.insertSample(makeSample(session: session, index: 2))
+        let latest = try await store.latestSample(sessionID: session)
+        #expect(latest?.sensorIndex == 2)
+    }
+}
+#endif
