@@ -16,7 +16,7 @@ struct BTSnoopAnalyzerTests {
         #expect(summary.leAdvertisementCount == 1)
         #expect(summary.connectionEventCount == 1)
         #expect(summary.attPduCount >= 4)
-        #expect(summary.advertisedNames == ["SyntheticLab"])
+        #expect(summary.advertisedNames == ["redacted-name(len:12)"])
         #expect(summary.advertisedServiceUUIDs.contains("180A"))
         #expect(summary.manufacturerDataLengths.contains(4))
         #expect(summary.hciPeerAddressFieldObserved)
@@ -38,6 +38,17 @@ struct BTSnoopAnalyzerTests {
             #expect(!blob.contains("AES"))
             #expect(!blob.contains("\u{01}#Eg\u{89}\u{AB}"))
         }
+    }
+
+    @Test func arbitrarySixByteSerialIsNotAddressEvidence() throws {
+        let data = SyntheticBTSnoop.labCapture(
+            includePeerInManufacturerData: false,
+            includeSixByteSerial: true,
+            serialPayload: Array("ABCDEF".utf8)
+        )
+        let summary = try BTSnoopAnalyzer.summarize(data: data)
+        #expect(!summary.sixByteFieldInDeviceInformationRead)
+        #expect(summary.sixByteAddressSource == .notFound)
     }
 
     @Test func deviceInformationSourceWhenOnlySerialIsSixBytes() throws {
@@ -76,6 +87,35 @@ struct BTSnoopAnalyzerTests {
         }
         #expect(throws: BTSnoopError.truncated) {
             try BTSnoopAnalyzer.summarize(data: Data("short".utf8))
+        }
+    }
+
+    @Test func rejectsUnsupportedVersionDatalinkAndTrailingTruncation() {
+        var unsupportedVersion = SyntheticBTSnoop.labCapture(
+            includePeerInManufacturerData: false,
+            includeSixByteSerial: false
+        )
+        unsupportedVersion.replaceSubrange(8..<12, with: [0x00, 0x00, 0x00, 0x02])
+        #expect(throws: BTSnoopError.unsupportedVersion(2)) {
+            try BTSnoopAnalyzer.summarize(data: unsupportedVersion)
+        }
+
+        var unsupported = SyntheticBTSnoop.labCapture(
+            includePeerInManufacturerData: false,
+            includeSixByteSerial: false
+        )
+        unsupported.replaceSubrange(12..<16, with: [0x00, 0x00, 0x03, 0xE9])
+        #expect(throws: BTSnoopError.unsupportedDatalink(1001)) {
+            try BTSnoopAnalyzer.summarize(data: unsupported)
+        }
+
+        var trailing = SyntheticBTSnoop.labCapture(
+            includePeerInManufacturerData: false,
+            includeSixByteSerial: false
+        )
+        trailing.append(0x00)
+        #expect(throws: BTSnoopError.truncated) {
+            try BTSnoopAnalyzer.summarize(data: trailing)
         }
     }
 

@@ -35,8 +35,11 @@ public final class GlucoseSampleRecord {
         self.decoderRevision = sample.decoderRevision
     }
 
-    public func domainValue() -> GlucoseSample {
-        GlucoseSample(
+    public func domainValue() throws -> GlucoseSample {
+        guard sensorIndex >= 0, sensorIndex <= Int64(UInt32.max) else {
+            throw StoreError.invalidSensorIndex(sensorIndex)
+        }
+        return GlucoseSample(
             sessionID: sessionID,
             sensorIndex: UInt32(sensorIndex),
             sensorTimestamp: sensorTimestamp,
@@ -45,7 +48,7 @@ public final class GlucoseSampleRecord {
             originalTenthsMillimolesPerLiter: originalTenthsMillimolesPerLiter,
             trend: GlucoseTrend(rawValue: trendRaw) ?? .unknown,
             quality: SampleQuality(rawValue: qualityRaw) ?? .unknown,
-            source: SampleSource(rawValue: sourceRaw) ?? .live,
+            source: SampleSource(rawValue: sourceRaw) ?? .unknown,
             decoderRevision: decoderRevision
         )
     }
@@ -61,6 +64,14 @@ public final class SensorSessionRecord {
     public var connectionRaw: String
     public var protocolRaw: String
     public var ownerAccountReference: String?
+    public var activatedAt: Date?
+    public var warmUpEndsAt: Date?
+    public var expectedEndsAt: Date?
+    public var endedAt: Date?
+    public var lastRequestedIndex: Int64?
+    public var lastReceivedIndex: Int64?
+    public var lastCommittedIndex: Int64?
+    public var sensorErrorCode: String?
 
     public init(from session: SensorSession) {
         self.sessionID = session.id
@@ -69,17 +80,57 @@ public final class SensorSessionRecord {
         self.connectionRaw = session.connection.rawValue
         self.protocolRaw = session.protocolVariant.rawValue
         self.ownerAccountReference = session.ownerAccountReference
+        self.activatedAt = session.activatedAt
+        self.warmUpEndsAt = session.warmUpEndsAt
+        self.expectedEndsAt = session.expectedEndsAt
+        self.endedAt = session.endedAt
+        self.lastRequestedIndex = session.lastRequestedIndex.map(Int64.init)
+        self.lastReceivedIndex = session.lastReceivedIndex.map(Int64.init)
+        self.lastCommittedIndex = session.lastCommittedIndex.map(Int64.init)
+        self.sensorErrorCode = session.sensorErrorCode
     }
 
-    public func domainValue() -> SensorSession {
+    public func update(from session: SensorSession) {
+        sensorID = session.sensorID
+        lifecycleRaw = session.lifecycle.rawValue
+        connectionRaw = session.connection.rawValue
+        protocolRaw = session.protocolVariant.rawValue
+        ownerAccountReference = session.ownerAccountReference
+        activatedAt = session.activatedAt
+        warmUpEndsAt = session.warmUpEndsAt
+        expectedEndsAt = session.expectedEndsAt
+        endedAt = session.endedAt
+        lastRequestedIndex = session.lastRequestedIndex.map(Int64.init)
+        lastReceivedIndex = session.lastReceivedIndex.map(Int64.init)
+        lastCommittedIndex = session.lastCommittedIndex.map(Int64.init)
+        sensorErrorCode = session.sensorErrorCode
+    }
+
+    public func domainValue() throws -> SensorSession {
         SensorSession(
             id: sessionID,
             sensorID: sensorID,
+            activatedAt: activatedAt,
+            warmUpEndsAt: warmUpEndsAt,
+            expectedEndsAt: expectedEndsAt,
+            endedAt: endedAt,
             ownerAccountReference: ownerAccountReference,
+            lastRequestedIndex: try checkedIndex(lastRequestedIndex),
+            lastReceivedIndex: try checkedIndex(lastReceivedIndex),
+            lastCommittedIndex: try checkedIndex(lastCommittedIndex),
             protocolVariant: ProtocolVariant(rawValue: protocolRaw) ?? .unknown,
             lifecycle: SensorLifecycleState(rawValue: lifecycleRaw) ?? .unknown,
-            connection: ConnectionState(rawValue: connectionRaw) ?? .disconnected
+            connection: ConnectionState(rawValue: connectionRaw) ?? .disconnected,
+            sensorErrorCode: sensorErrorCode
         )
+    }
+
+    private func checkedIndex(_ value: Int64?) throws -> UInt32? {
+        guard let value else { return nil }
+        guard value >= 0, value <= Int64(UInt32.max) else {
+            throw StoreError.invalidSensorIndex(value)
+        }
+        return UInt32(value)
     }
 }
 
@@ -120,6 +171,7 @@ public final class FuelingEventRecord {
 public final class WorkoutContextRecord {
     #Unique<WorkoutContextRecord>([\.workoutID])
     public var workoutID: UUID
+    public var sessionID: UUID?
     public var healthKitWorkoutUUID: UUID?
     public var start: Date
     public var end: Date?
@@ -128,6 +180,7 @@ public final class WorkoutContextRecord {
 
     public init(from workout: WorkoutContext) {
         self.workoutID = workout.id
+        self.sessionID = workout.sessionID
         self.healthKitWorkoutUUID = workout.healthKitWorkoutUUID
         self.start = workout.start
         self.end = workout.end
@@ -138,6 +191,7 @@ public final class WorkoutContextRecord {
     public func domainValue() -> WorkoutContext {
         WorkoutContext(
             id: workoutID,
+            sessionID: sessionID,
             healthKitWorkoutUUID: healthKitWorkoutUUID,
             start: start,
             end: end,
@@ -158,6 +212,11 @@ public final class SensorIdentityRecord {
     public var redactedSerial: String
     public var protocolRaw: String
     public var classificationEvidenceRevision: String
+    public var udiIssuingAgency: String?
+    public var peerUUID: UUID?
+    public var firmwareRevision: String?
+    public var hardwareRevision: String?
+    public var manufacturer: String?
 
     public init(from identity: SensorIdentity) {
         self.identityID = identity.id
@@ -167,6 +226,11 @@ public final class SensorIdentityRecord {
         self.redactedSerial = identity.redactedSerial
         self.protocolRaw = identity.protocolVariant.rawValue
         self.classificationEvidenceRevision = identity.classificationEvidenceRevision
+        self.udiIssuingAgency = identity.udiIssuingAgency
+        self.peerUUID = identity.peerUUID
+        self.firmwareRevision = identity.firmwareRevision
+        self.hardwareRevision = identity.hardwareRevision
+        self.manufacturer = identity.manufacturer
     }
 
     public func domainValue() -> SensorIdentity {
@@ -176,6 +240,11 @@ public final class SensorIdentityRecord {
             sku: sku,
             gtin: gtin,
             redactedSerial: redactedSerial,
+            udiIssuingAgency: udiIssuingAgency,
+            peerUUID: peerUUID,
+            firmwareRevision: firmwareRevision,
+            hardwareRevision: hardwareRevision,
+            manufacturer: manufacturer,
             protocolVariant: ProtocolVariant(rawValue: protocolRaw) ?? .unknown,
             classificationEvidenceRevision: classificationEvidenceRevision
         )
@@ -295,7 +364,7 @@ public actor SwiftDataSugarmanStore: SugarmanStoring {
                 }
             )
         )
-        return found.first?.domainValue()
+        return try found.first?.domainValue()
     }
 
     public func latestSample(sessionID: UUID) async throws -> GlucoseSample? {
@@ -304,7 +373,7 @@ public actor SwiftDataSugarmanStore: SugarmanStoring {
                 predicate: #Predicate { $0.sessionID == sessionID }
             )
         )
-        return found.max(by: { $0.sensorIndex < $1.sensorIndex })?.domainValue()
+        return try found.max(by: { $0.sensorIndex < $1.sensorIndex })?.domainValue()
     }
 
     public func samples(sessionID: UUID) async throws -> [GlucoseSample] {
@@ -313,12 +382,12 @@ public actor SwiftDataSugarmanStore: SugarmanStoring {
                 predicate: #Predicate { $0.sessionID == sessionID }
             )
         )
-        return found.map { $0.domainValue() }.sorted { $0.sensorIndex < $1.sensorIndex }
+        return try found.map { try $0.domainValue() }.sorted { $0.sensorIndex < $1.sensorIndex }
     }
 
     public func allSamples() async throws -> [GlucoseSample] {
         let found = try modelContext.fetch(FetchDescriptor<GlucoseSampleRecord>())
-        return found.map { $0.domainValue() }.sorted { lhs, rhs in
+        return try found.map { try $0.domainValue() }.sorted { lhs, rhs in
             if lhs.sessionID != rhs.sessionID {
                 return lhs.sessionID.uuidString < rhs.sessionID.uuidString
             }
@@ -340,18 +409,31 @@ public actor SwiftDataSugarmanStore: SugarmanStoring {
         try modelContext.save()
     }
 
+    public func updateSession(_ session: SensorSession) async throws {
+        let id = session.id
+        let records = try modelContext.fetch(
+            FetchDescriptor<SensorSessionRecord>(
+                predicate: #Predicate { $0.sessionID == id }
+            )
+        )
+        guard let record = records.first else { throw StoreError.notFound }
+        record.update(from: session)
+        try modelContext.save()
+    }
+
     public func session(id: UUID) async throws -> SensorSession? {
         let found = try modelContext.fetch(
             FetchDescriptor<SensorSessionRecord>(
                 predicate: #Predicate { $0.sessionID == id }
             )
         )
-        return found.first?.domainValue()
+        return try found.first?.domainValue()
     }
 
     public func allSessions() async throws -> [SensorSession] {
         let records = try modelContext.fetch(FetchDescriptor<SensorSessionRecord>())
-        return records.map { $0.domainValue() }
+        return try records.map { try $0.domainValue() }
+            .sorted { $0.id.uuidString < $1.id.uuidString }
     }
 
     public func delete(sessionID: UUID) async throws {
@@ -360,6 +442,7 @@ public actor SwiftDataSugarmanStore: SugarmanStoring {
                 predicate: #Predicate { $0.sessionID == sessionID }
             )
         )
+        guard !sessionRecords.isEmpty else { throw StoreError.notFound }
         for record in sessionRecords {
             modelContext.delete(record)
         }
@@ -373,6 +456,10 @@ public actor SwiftDataSugarmanStore: SugarmanStoring {
         }
         let fuelingRecords = try modelContext.fetch(FetchDescriptor<FuelingEventRecord>())
         for record in fuelingRecords where record.sessionID == sessionID {
+            modelContext.delete(record)
+        }
+        let workoutRecords = try modelContext.fetch(FetchDescriptor<WorkoutContextRecord>())
+        for record in workoutRecords where record.sessionID == sessionID {
             modelContext.delete(record)
         }
         try modelContext.save()
@@ -417,6 +504,7 @@ public actor SwiftDataSugarmanStore: SugarmanStoring {
                 predicate: #Predicate { $0.eventID == id }
             )
         )
+        guard !records.isEmpty else { throw StoreError.notFound }
         for record in records {
             modelContext.delete(record)
         }
@@ -458,7 +546,7 @@ public actor SwiftDataSugarmanStore: SugarmanStoring {
 
     public func identities() async throws -> [SensorIdentity] {
         let records = try modelContext.fetch(FetchDescriptor<SensorIdentityRecord>())
-        return records.map { $0.domainValue() }
+        return records.map { $0.domainValue() }.sorted { $0.id.uuidString < $1.id.uuidString }
     }
 }
 #else

@@ -6,9 +6,14 @@ import SugarmanDomain
 
 public struct SafetyPolicy: Sendable, Equatable {
     public var staleAfterSeconds: TimeInterval
+    public var futureToleranceSeconds: TimeInterval
 
-    public init(staleAfterSeconds: TimeInterval = 11 * 60) {
+    public init(
+        staleAfterSeconds: TimeInterval = 11 * 60,
+        futureToleranceSeconds: TimeInterval = 60
+    ) {
         self.staleAfterSeconds = staleAfterSeconds
+        self.futureToleranceSeconds = futureToleranceSeconds
     }
 }
 
@@ -53,7 +58,11 @@ public struct SafetyEngine: Sendable {
         lifecycle: SensorLifecycleState,
         latestSample: GlucoseSample?
     ) -> SafetyAssessment {
-        let age = latestSample.map { now.timeIntervalSince($0.receiptTimestamp) }
+        let sensorAge = latestSample.map { now.timeIntervalSince($0.sensorTimestamp) }
+        let receiptAge = latestSample.map { now.timeIntervalSince($0.receiptTimestamp) }
+        let age = latestSample.map { sample in
+            max(0, max(now.timeIntervalSince(sample.sensorTimestamp), now.timeIntervalSince(sample.receiptTimestamp)))
+        }
         let disconnected = isDisconnected(connection)
         let noDosing = ProductCopy.noDosing
 
@@ -112,6 +121,26 @@ public struct SafetyEngine: Sendable {
             )
         }
 
+
+        if sensorAge.map({ $0 < -policy.futureToleranceSeconds }) == true
+            || receiptAge.map({ $0 < -policy.futureToleranceSeconds }) == true {
+            return assessment(
+                .questionable,
+                stale: false,
+                notCurrent: ProductCopy.questionableSample
+            )
+        }
+
+        guard lifecycle == .live,
+              connection == .subscribed,
+              latestSample.source == .live else {
+            return assessment(
+                .questionable,
+                stale: false,
+                notCurrent: ProductCopy.questionableSample
+            )
+        }
+
         switch latestSample.quality {
         case .error:
             return assessment(
@@ -119,13 +148,13 @@ public struct SafetyEngine: Sendable {
                 stale: false,
                 notCurrent: ProductCopy.notCurrentReading
             )
-        case .questionable:
+        case .questionable, .unknown:
             return assessment(
                 .questionable,
                 stale: false,
                 notCurrent: ProductCopy.questionableSample
             )
-        case .ok, .unknown:
+        case .ok:
             break
         }
 
@@ -138,9 +167,9 @@ public struct SafetyEngine: Sendable {
 
     private func isDisconnected(_ connection: ConnectionState) -> Bool {
         switch connection {
-        case .disconnected, .idle, .bluetoothUnavailable, .unauthorized:
+        case .disconnected, .idle, .scanning, .connecting, .bluetoothUnavailable, .unauthorized:
             return true
-        case .scanning, .connecting, .connected, .subscribed:
+        case .connected, .subscribed:
             return false
         }
     }

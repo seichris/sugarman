@@ -29,16 +29,13 @@ struct DataMatrixCameraView: UIViewControllerRepresentable {
     }
 }
 
-final class DataMatrixCaptureController: UIViewController, AVCaptureVideoDataOutputSampleBufferDelegate {
+@MainActor
+final class DataMatrixCaptureController: UIViewController {
     var onPayload: ((String) -> Void)?
     var onCancel: (() -> Void)?
 
-    private let session = AVCaptureSession()
-    private let output = AVCaptureVideoDataOutput()
-    private let sessionQueue = DispatchQueue(label: "app.sugarman.ios.camera")
-    private let frameQueue = DispatchQueue(label: "app.sugarman.ios.camera.frames")
-    private var didEmit = false
     private let previewLayer = AVCaptureVideoPreviewLayer()
+    private var captureEngine: DataMatrixCaptureEngine?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -57,13 +54,22 @@ final class DataMatrixCaptureController: UIViewController, AVCaptureVideoDataOut
             cancel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 12),
         ])
 
-        AVCaptureDevice.requestAccess(for: .video) { granted in
+        let engine = DataMatrixCaptureEngine(
+            onPayload: { [weak self] payload in
+                self?.onPayload?(payload)
+            },
+            onFailure: { [weak self] in
+                self?.onCancel?()
+            }
+        )
+        captureEngine = engine
+        previewLayer.session = engine.session
+
+        AVCaptureDevice.requestAccess(for: .video) { [engine] granted in
             if granted {
-                self.configureSession()
+                engine.start()
             } else {
-                DispatchQueue.main.async {
-                    self.onCancel?()
-                }
+                engine.reportFailure()
             }
         }
     }
@@ -75,19 +81,51 @@ final class DataMatrixCaptureController: UIViewController, AVCaptureVideoDataOut
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        sessionQueue.async {
-            if self.session.isRunning {
-                self.session.stopRunning()
-            }
-        }
+        captureEngine?.stop()
     }
 
     @objc private func cancelTapped() {
         onCancel?()
     }
 
-    private func configureSession() {
+}
+
+/// AVFoundation and Vision work is confined to private serial queues instead
+/// of the main-actor view controller. The callbacks cross back to MainActor.
+private final class DataMatrixCaptureEngine: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, @unchecked Sendable {
+    let session = AVCaptureSession()
+
+    private let output = AVCaptureVideoDataOutput()
+    private let sessionQueue = DispatchQueue(label: "app.sugarman.ios.camera")
+    private let frameQueue = DispatchQueue(label: "app.sugarman.ios.camera.frames")
+    private let onPayload: @MainActor @Sendable (String) -> Void
+    private let onFailure: @MainActor @Sendable () -> Void
+    /// Accessed only on `frameQueue`.
+    private var didEmit = false
+    /// Accessed only on `sessionQueue`.
+    private var configured = false
+    /// Accessed only on `sessionQueue`. Prevents a late camera-permission
+    /// callback from starting capture after the sheet has been dismissed.
+    private var shouldRun = true
+
+    init(
+        onPayload: @escaping @MainActor @Sendable (String) -> Void,
+        onFailure: @escaping @MainActor @Sendable () -> Void
+    ) {
+        self.onPayload = onPayload
+        self.onFailure = onFailure
+        super.init()
+    }
+
+    func start() {
         sessionQueue.async {
+            guard self.shouldRun else { return }
+            if self.configured {
+                if !self.session.isRunning {
+                    self.session.startRunning()
+                }
+                return
+            }
             self.session.beginConfiguration()
             self.session.sessionPreset = .high
             guard
@@ -96,22 +134,36 @@ final class DataMatrixCaptureController: UIViewController, AVCaptureVideoDataOut
                 self.session.canAddInput(input)
             else {
                 self.session.commitConfiguration()
-                DispatchQueue.main.async {
-                    self.onCancel?()
-                }
+                self.reportFailure()
                 return
             }
             self.session.addInput(input)
             self.output.alwaysDiscardsLateVideoFrames = true
             self.output.setSampleBufferDelegate(self, queue: self.frameQueue)
-            if self.session.canAddOutput(self.output) {
-                self.session.addOutput(self.output)
+            guard self.session.canAddOutput(self.output) else {
+                self.session.commitConfiguration()
+                self.reportFailure()
+                return
             }
+            self.session.addOutput(self.output)
             self.session.commitConfiguration()
-            DispatchQueue.main.async {
-                self.previewLayer.session = self.session
-            }
+            self.configured = true
             self.session.startRunning()
+        }
+    }
+
+    func stop() {
+        sessionQueue.async {
+            self.shouldRun = false
+            if self.session.isRunning {
+                self.session.stopRunning()
+            }
+        }
+    }
+
+    func reportFailure() {
+        Task { @MainActor [onFailure] in
+            onFailure()
         }
     }
 
@@ -138,14 +190,15 @@ final class DataMatrixCaptureController: UIViewController, AVCaptureVideoDataOut
     }
 
     private func emit(_ payload: String) {
-        sessionQueue.async {
-            guard !self.didEmit else { return }
-            self.didEmit = true
+        guard !didEmit else { return }
+        didEmit = true
+        let payloadHandler = onPayload
+        sessionQueue.async { [self, payloadHandler] in
             if self.session.isRunning {
                 self.session.stopRunning()
             }
-            DispatchQueue.main.async {
-                self.onPayload(payload)
+            Task { @MainActor in
+                payloadHandler(payload)
             }
         }
     }

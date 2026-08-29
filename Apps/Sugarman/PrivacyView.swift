@@ -99,7 +99,13 @@ struct PrivacyView: View {
                         Button("privacy.probe_scan") {
                             Task { await model.probeSession.startScan() }
                         }
+                        .disabled(model.probeSession.selectedPeripheralID != nil)
                         .accessibilityHint(Text("privacy.probe_scan_hint"))
+                        if model.probeSession.selectedPeripheralID != nil {
+                            Button("privacy.probe_disconnect") {
+                                Task { await model.probeSession.disconnect() }
+                            }
+                        }
                         Text(model.probeSession.status)
                             .font(.footnote)
                         if model.probeSession.peripherals.isEmpty {
@@ -129,6 +135,7 @@ struct PrivacyView: View {
                                     }
                                 }
                                 .accessibilityHint(Text("privacy.probe_connect_hint"))
+                                .disabled(model.probeSession.selectedPeripheralID != nil)
                             }
                         }
                         if let dis = model.probeSession.deviceInformation {
@@ -154,6 +161,11 @@ struct PrivacyView: View {
                         confirmDeleteAll = true
                     }
                 }
+                if let storeErrorMessage = model.storeErrorMessage {
+                    Section("privacy.local_storage") {
+                        Text(storeErrorMessage).foregroundStyle(.red)
+                    }
+                }
                 Section("privacy.licence") {
                     Text("privacy.gpl")
                 }
@@ -161,7 +173,13 @@ struct PrivacyView: View {
             .navigationTitle("privacy.title")
             .confirmationDialog("privacy.delete_confirm_title", isPresented: $confirmDeleteAll) {
                 Button("privacy.delete_all", role: .destructive) {
-                    Task { await model.deleteAllLocalData() }
+                    Task {
+                        do {
+                            try await model.deleteAllLocalData()
+                        } catch {
+                            model.storeErrorMessage = error.localizedDescription
+                        }
+                    }
                 }
             } message: {
                 Text("privacy.delete_confirm_body")
@@ -175,7 +193,13 @@ struct PrivacyView: View {
             ) {
                 Button("privacy.delete_session", role: .destructive) {
                     if let id = sessionPendingDelete {
-                        Task { await model.deleteSession(id) }
+                        Task {
+                            do {
+                                try await model.deleteSession(id)
+                            } catch {
+                                model.storeErrorMessage = error.localizedDescription
+                            }
+                        }
                     }
                     sessionPendingDelete = nil
                 }

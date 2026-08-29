@@ -12,6 +12,30 @@ public enum StoreError: Error, Sendable, Equatable {
     case duplicateIdentity(UUID)
     case notFound
     case persistenceUnavailable
+    case invalidSensorIndex(Int64)
+}
+
+extension StoreError: LocalizedError {
+    public var errorDescription: String? {
+        switch self {
+        case .duplicateSample:
+            "A glucose sample with the same sensor index already exists."
+        case .duplicateSession:
+            "This sensor session already exists."
+        case .duplicateFueling:
+            "This fueling event already exists."
+        case .duplicateWorkout:
+            "This workout already exists."
+        case .duplicateIdentity:
+            "This sensor identity already exists."
+        case .notFound:
+            "The requested local record was not found."
+        case .persistenceUnavailable:
+            "Persistent local storage is unavailable. No data will be saved until this is resolved."
+        case .invalidSensorIndex(let value):
+            "Stored sensor index \(value) is invalid."
+        }
+    }
 }
 
 public protocol SugarmanStoring: Sendable {
@@ -21,6 +45,7 @@ public protocol SugarmanStoring: Sendable {
     func samples(sessionID: UUID) async throws -> [GlucoseSample]
     func allSamples() async throws -> [GlucoseSample]
     func insertSession(_ session: SensorSession) async throws
+    func updateSession(_ session: SensorSession) async throws
     func session(id: UUID) async throws -> SensorSession?
     func allSessions() async throws -> [SensorSession]
     func delete(sessionID: UUID) async throws

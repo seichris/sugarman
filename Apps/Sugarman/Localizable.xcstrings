@@ -379,6 +379,17 @@
         }
       }
     },
+    "privacy.local_storage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local storage"
+          }
+        }
+      }
+    },
     "privacy.probe_disabled": {
       "extractionState": "manual",
       "localizations": {
@@ -677,13 +688,24 @@
         }
       }
     },
-    "demo.replaces_data": {
+    "demo.isolated_data": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Loading a demo replaces locally stored Sugarman data with synthetic fixtures."
+            "value": "Demo data is isolated. Your persistent local data is not changed."
+          }
+        }
+      }
+    },
+    "demo.exit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exit demo and return to local data"
           }
         }
       }
@@ -915,6 +937,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Rising quickly"
+          }
+        }
+      }
+    },
+    "history.source.unknown": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unknown source"
           }
         }
       }
@@ -1856,6 +1889,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Read Device Information (serial omitted)."
+          }
+        }
+      }
+    },
+    "privacy.probe_disconnect": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disconnect"
+          }
+        }
+      }
+    },
+    "privacy.probe_disconnected": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disconnected from the peripheral."
           }
         }
       }

@@ -9,16 +9,27 @@ enum SyntheticBTSnoop {
     static let writePayload: [UInt8] = [0xC0, 0xFF, 0xEE, 0x11, 0x22, 0x33]
     static let localName = "SyntheticLab"
 
-    static func labCapture(includePeerInManufacturerData: Bool, includeSixByteSerial: Bool) -> Data {
+    static func labCapture(
+        includePeerInManufacturerData: Bool,
+        includeSixByteSerial: Bool,
+        serialPayload: [UInt8]? = nil
+    ) -> Data {
         var packets: [Data] = []
         packets.append(h4Event(legacyAdvertisement(includePeerInManufacturerData: includePeerInManufacturerData)))
         packets.append(h4Event(connectionComplete()))
         packets.append(h4ACL(att: Data([0x11, 0x06, 0x01, 0x00, 0x10, 0x00, 0x0A, 0x18])))
+        // Characteristic declarations: value handle 3 = manufacturer (2A29),
+        // value handle 5 = serial number (2A25).
+        packets.append(h4ACL(att: Data([
+            0x09, 0x07,
+            0x02, 0x00, 0x02, 0x03, 0x00, 0x29, 0x2A,
+            0x04, 0x00, 0x02, 0x05, 0x00, 0x25, 0x2A,
+        ])))
         packets.append(h4ACL(att: Data([0x0A, 0x03, 0x00])))
         packets.append(h4ACL(att: Data([0x0B]) + Data("Acme".utf8)))
-        packets.append(h4ACL(att: Data([0x0A, 0x25, 0x00])))
+        packets.append(h4ACL(att: Data([0x0A, 0x05, 0x00])))
         if includeSixByteSerial {
-            packets.append(h4ACL(att: Data([0x0B]) + Data(peer)))
+            packets.append(h4ACL(att: Data([0x0B]) + Data(serialPayload ?? peer)))
         } else {
             packets.append(h4ACL(att: Data([0x0B]) + Data("SN".utf8)))
         }

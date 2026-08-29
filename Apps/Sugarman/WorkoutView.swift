@@ -23,11 +23,11 @@ struct WorkoutView: View {
                     }
                 }
                 Section("workout.list") {
-                    if model.workouts.isEmpty {
+                    if model.visibleWorkouts.isEmpty {
                         Text("workout.empty")
                             .foregroundStyle(.secondary)
                     } else {
-                        ForEach(model.workouts) { workout in
+                        ForEach(model.visibleWorkouts) { workout in
                             workoutRow(workout)
                         }
                     }

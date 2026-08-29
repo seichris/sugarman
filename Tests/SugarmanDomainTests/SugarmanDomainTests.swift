@@ -201,4 +201,36 @@ struct SugarmanDomainTests {
             ) == earlyID
         )
     }
+
+    @Test func activeSessionFiltersSamplesAndScopedFueling() {
+        let a = UUID()
+        let b = UUID()
+        let sampleA = GlucoseSample(
+            sessionID: a,
+            sensorIndex: 1,
+            sensorTimestamp: Date(timeIntervalSince1970: 1),
+            receiptTimestamp: Date(timeIntervalSince1970: 2),
+            milligramsPerDeciliter: 100,
+            decoderRevision: "test"
+        )
+        let sampleB = GlucoseSample(
+            sessionID: b,
+            sensorIndex: 1,
+            sensorTimestamp: Date(timeIntervalSince1970: 1),
+            receiptTimestamp: Date(timeIntervalSince1970: 2),
+            milligramsPerDeciliter: 110,
+            decoderRevision: "test"
+        )
+        #expect(ActiveSessionSelection.samples([sampleB, sampleA], for: a) == [sampleA])
+        #expect(ActiveSessionSelection.samples([sampleB, sampleA], for: nil).isEmpty)
+
+        let scopedA = FuelingEvent(timestamp: Date(timeIntervalSince1970: 1), label: "a", sessionID: a)
+        let scopedB = FuelingEvent(timestamp: Date(timeIntervalSince1970: 2), label: "b", sessionID: b)
+        let unscoped = FuelingEvent(timestamp: Date(timeIntervalSince1970: 3), label: "all")
+        #expect(ActiveSessionSelection.fuelingEvents([scopedB, unscoped, scopedA], for: a) == [scopedA, unscoped])
+        let workoutA = WorkoutContext(sessionID: a, start: Date(timeIntervalSince1970: 1), activityType: "run")
+        let workoutB = WorkoutContext(sessionID: b, start: Date(timeIntervalSince1970: 2), activityType: "ride")
+        #expect(ActiveSessionSelection.workouts([workoutB, workoutA], for: a) == [workoutA])
+        #expect(ActiveSessionSelection.workouts([workoutB, workoutA], for: nil).isEmpty)
+    }
 }

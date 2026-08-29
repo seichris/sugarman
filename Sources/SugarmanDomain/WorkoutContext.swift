@@ -6,6 +6,7 @@ import Foundation
 /// Optional HealthKit workout overlay. No automated fueling prescription.
 public struct WorkoutContext: Sendable, Equatable, Codable, Identifiable, Hashable {
     public var id: UUID
+    public var sessionID: UUID?
     public var healthKitWorkoutUUID: UUID?
     public var start: Date
     public var end: Date?
@@ -14,6 +15,7 @@ public struct WorkoutContext: Sendable, Equatable, Codable, Identifiable, Hashab
 
     public init(
         id: UUID = UUID(),
+        sessionID: UUID? = nil,
         healthKitWorkoutUUID: UUID? = nil,
         start: Date,
         end: Date? = nil,
@@ -21,6 +23,7 @@ public struct WorkoutContext: Sendable, Equatable, Codable, Identifiable, Hashab
         summary: String? = nil
     ) {
         self.id = id
+        self.sessionID = sessionID
         self.healthKitWorkoutUUID = healthKitWorkoutUUID
         self.start = start
         self.end = end

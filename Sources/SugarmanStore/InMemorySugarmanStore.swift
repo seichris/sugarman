@@ -64,6 +64,11 @@ public actor InMemorySugarmanStore: SugarmanStoring {
         sessions[session.id] = session
     }
 
+    public func updateSession(_ session: SensorSession) async throws {
+        guard sessions[session.id] != nil else { throw StoreError.notFound }
+        sessions[session.id] = session
+    }
+
     public func session(id: UUID) async throws -> SensorSession? {
         sessions[id]
     }
@@ -73,12 +78,13 @@ public actor InMemorySugarmanStore: SugarmanStoring {
     }
 
     public func delete(sessionID: UUID) async throws {
+        guard sessions[sessionID] != nil else { throw StoreError.notFound }
         sessions[sessionID] = nil
         samples = samples.filter { $0.key.sessionID != sessionID }
-        // Workouts and identities are global (no sessionID) and are removed
-        // by deleteAll only. Session-scoped fueling is deleted here; unscoped
-        // fueling (sessionID == nil) is kept.
+        // Identities are global and are removed by deleteAll only. Scoped
+        // fueling and workouts are deleted with their session.
         fueling = fueling.filter { $0.value.sessionID != sessionID }
+        workoutRecords = workoutRecords.filter { $0.value.sessionID != sessionID }
     }
 
     public func deleteAll() async throws {
@@ -105,6 +111,7 @@ public actor InMemorySugarmanStore: SugarmanStoring {
     }
 
     public func deleteFueling(id: UUID) async throws {
+        guard fueling[id] != nil else { throw StoreError.notFound }
         fueling[id] = nil
     }
 
