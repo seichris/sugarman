@@ -1200,7 +1200,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Paste a synthetic SUGARMAN-SYNTHETIC payload. Camera and NFC stay stubbed."
+            "value": "Paste a payload, import an image, or on a physical iPhone scan the package Data Matrix or NDEF tag. Confirm before storing. No sensor command is sent."
           }
         }
       }
@@ -1724,6 +1724,259 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sets the session used for the latest reading and new fueling events."
+          }
+        }
+      }
+    },
+    "sensor.camera_scan": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scan Data Matrix"
+          }
+        }
+      }
+    },
+    "sensor.camera_scan_hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opens the camera to read a package Data Matrix (QR fallback). Parsing still requires confirmation. No sensor command is sent."
+          }
+        }
+      }
+    },
+    "sensor.camera_cancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel camera"
+          }
+        }
+      }
+    },
+    "sensor.nfc_scan": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Read NDEF tag"
+          }
+        }
+      }
+    },
+    "sensor.nfc_scan_hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Starts a Core NFC NDEF reader. Scanning does not activate or bind the sensor."
+          }
+        }
+      }
+    },
+    "privacy.probe_device_help": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Default off. On a physical iPhone this uses Core Bluetooth for scan, connect, and Device Information reads only."
+          }
+        }
+      }
+    },
+    "privacy.probe_simulator": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The read-only Bluetooth probe is disabled in the simulator. Use a physical iPhone."
+          }
+        }
+      }
+    },
+    "privacy.probe_no_writes": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The probe cannot send writes, authenticate, bind, or activate a sensor."
+          }
+        }
+      }
+    },
+    "privacy.probe_ready": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Probe enabled. Scan for owned peripherals. No writes will be sent."
+          }
+        }
+      }
+    },
+    "privacy.probe_scanning": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scanning. Showing name, identifier UUID, and RSSI only."
+          }
+        }
+      }
+    },
+    "privacy.probe_connecting": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connecting for Device Information reads only."
+          }
+        }
+      }
+    },
+    "privacy.probe_dis_ok": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Read Device Information (serial omitted)."
+          }
+        }
+      }
+    },
+    "privacy.probe_scan": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scan"
+          }
+        }
+      }
+    },
+    "privacy.probe_scan_hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Starts a Bluetooth scan. Discovered names, UUIDs, and RSSI are listed. Frame bytes are not logged."
+          }
+        }
+      }
+    },
+    "privacy.probe_empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No peripherals discovered yet."
+          }
+        }
+      }
+    },
+    "privacy.probe_unnamed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unnamed peripheral"
+          }
+        }
+      }
+    },
+    "privacy.probe_rssi_format": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RSSI %d"
+          }
+        }
+      }
+    },
+    "privacy.probe_connect_hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connects and reads Device Information only. Does not write."
+          }
+        }
+      }
+    },
+    "privacy.probe_manufacturer": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manufacturer"
+          }
+        }
+      }
+    },
+    "privacy.probe_model": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Model"
+          }
+        }
+      }
+    },
+    "privacy.probe_hardware": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hardware"
+          }
+        }
+      }
+    },
+    "privacy.probe_firmware": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Firmware"
+          }
+        }
+      }
+    },
+    "privacy.probe_software": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Software"
           }
         }
       }

@@ -79,11 +79,66 @@ struct PrivacyView: View {
                     }
                 }
                 Section("privacy.diagnostics") {
-                    Toggle("privacy.probe_toggle", isOn: Bindable(model).probeEnabled)
-                        .disabled(true)
-                    Text("privacy.probe_disabled")
+                    Toggle(
+                        "privacy.probe_toggle",
+                        isOn: Binding(
+                            get: { model.probeSession.isEnabled },
+                            set: { enabled in
+                                Task { await model.probeSession.setEnabled(enabled) }
+                            }
+                        )
+                    )
+                    .disabled(!model.probeSession.canEnable)
+                    Text(model.probeSession.canEnable ? "privacy.probe_device_help" : "privacy.probe_simulator")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+                    Text("privacy.probe_no_writes")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    if model.probeSession.isEnabled {
+                        Button("privacy.probe_scan") {
+                            Task { await model.probeSession.startScan() }
+                        }
+                        .accessibilityHint(Text("privacy.probe_scan_hint"))
+                        Text(model.probeSession.status)
+                            .font(.footnote)
+                        if model.probeSession.peripherals.isEmpty {
+                            Text("privacy.probe_empty")
+                                .foregroundStyle(.secondary)
+                        } else {
+                            ForEach(model.probeSession.peripherals, id: \.peripheralID) { item in
+                                Button {
+                                    Task { await model.probeSession.connectAndRead(item.peripheralID) }
+                                } label: {
+                                    VStack(alignment: .leading) {
+                                        Text(item.name ?? String(localized: "privacy.probe_unnamed"))
+                                        Text(item.peripheralID.uuidString)
+                                            .font(.footnote)
+                                            .foregroundStyle(.secondary)
+                                        if let rssi = item.rssi {
+                                            Text(
+                                                String(
+                                                    format: String(localized: "privacy.probe_rssi_format"),
+                                                    locale: .current,
+                                                    rssi
+                                                )
+                                            )
+                                            .font(.footnote)
+                                            .foregroundStyle(.secondary)
+                                        }
+                                    }
+                                }
+                                .accessibilityHint(Text("privacy.probe_connect_hint"))
+                            }
+                        }
+                        if let dis = model.probeSession.deviceInformation {
+                            LabeledContent("privacy.probe_manufacturer", value: dis.manufacturerName ?? "—")
+                            LabeledContent("privacy.probe_model", value: dis.modelNumber ?? "—")
+                            LabeledContent("privacy.probe_hardware", value: dis.hardwareRevision ?? "—")
+                            LabeledContent("privacy.probe_firmware", value: dis.firmwareRevision ?? "—")
+                            LabeledContent("privacy.probe_software", value: dis.softwareRevision ?? "—")
+                        }
+                    }
                 }
                 Section("privacy.deletion") {
                     Button("privacy.delete_all", role: .destructive) {

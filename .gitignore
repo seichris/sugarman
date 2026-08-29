@@ -41,3 +41,8 @@ libcxm_protocol*
 .DS_Store
 *~
 .idea/
+
+# HCI / bugreport dumps that might land in the worktree
+btsnoop_hci.log
+bugreport*.zip
+bugreport*.txt

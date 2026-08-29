@@ -18,6 +18,11 @@ and similar patterns. Do not force-add them.
 
 ## Private corpus layout (local only)
 
+Filled P0 copies use [P0_INVENTORY.template.md](P0_INVENTORY.template.md)
+and optionally [p0-inventory.schema.json](p0-inventory.schema.json). The P1
+procedure is [P1_CAPTURE_RUNBOOK.md](P1_CAPTURE_RUNBOOK.md). Device signing
+is [LOCAL_SIGNING.md](LOCAL_SIGNING.md).
+
 Keep a directory **outside** this Git worktree, for example:
 
 ```
