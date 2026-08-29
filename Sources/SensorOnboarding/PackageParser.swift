@@ -5,12 +5,37 @@ import Foundation
 import SugarmanDomain
 
 public struct PackageParseResult: Sendable, Equatable {
+    public var productName: String?
     public var gtin: String?
     public var sku: String?
     public var redactedSerial: String
+    public var regionHypothesis: String
     public var protocolHypothesis: ProtocolVariant
     public var confidence: EvidenceConfidence
     public var formatName: String
+    public var isSynthetic: Bool
+
+    public init(
+        productName: String? = nil,
+        gtin: String? = nil,
+        sku: String? = nil,
+        redactedSerial: String,
+        regionHypothesis: String,
+        protocolHypothesis: ProtocolVariant,
+        confidence: EvidenceConfidence,
+        formatName: String,
+        isSynthetic: Bool
+    ) {
+        self.productName = productName
+        self.gtin = gtin
+        self.sku = sku
+        self.redactedSerial = redactedSerial
+        self.regionHypothesis = regionHypothesis
+        self.protocolHypothesis = protocolHypothesis
+        self.confidence = confidence
+        self.formatName = formatName
+        self.isSynthetic = isSynthetic
+    }
 }
 
 public protocol PackageParsing: Sendable {
@@ -19,10 +44,14 @@ public protocol PackageParsing: Sendable {
 
 /// Bounded package parser. Does not send sensor commands and does not copy
 /// offset-based upstream parsers. Unknown formats fail closed.
+///
+/// Default limit is 4 KiB. Truncated, oversized, empty, NUL, and unknown
+/// payloads are rejected.
 public struct BoundedPackageParser: PackageParsing {
+    public static let defaultMaximumUTF8Bytes = 4096
     public var maximumUTF8Bytes: Int
 
-    public init(maximumUTF8Bytes: Int = 512) {
+    public init(maximumUTF8Bytes: Int = BoundedPackageParser.defaultMaximumUTF8Bytes) {
         self.maximumUTF8Bytes = maximumUTF8Bytes
     }
 
@@ -36,26 +65,82 @@ public struct BoundedPackageParser: PackageParsing {
             throw OnboardingError.payloadTooLarge
         }
         if trimmed.contains("\0") {
-            throw OnboardingError.invalidEncoding
+            throw OnboardingError.unsupportedFormat(reason: "NUL bytes are not allowed")
         }
-        // Independently defined sanitized fixture prefix. Not an upstream SKU table.
         if trimmed.hasPrefix("SUGARMAN-FIXTURE/") {
-            let body = String(trimmed.dropFirst("SUGARMAN-FIXTURE/".count))
-            let parts = body.split(separator: "/", maxSplits: 1, omittingEmptySubsequences: false)
-            guard parts.count == 2 else {
-                throw OnboardingError.unsupportedFormat(reason: "fixture must be SUGARMAN-FIXTURE/gtin/redactedSerial")
-            }
-            return PackageParseResult(
-                gtin: String(parts[0]),
-                sku: nil,
-                redactedSerial: String(parts[1]),
-                protocolHypothesis: .unknown,
-                confidence: .low,
-                formatName: "sugarman-sanitized-fixture"
-            )
+            return try parseLegacyFixture(trimmed)
+        }
+        if trimmed.hasPrefix("SUGARMAN-SYNTHETIC") && !trimmed.hasPrefix("SUGARMAN-SYNTHETIC-NDEF") {
+            return try parseSynthetic(trimmed)
         }
         throw OnboardingError.unsupportedFormat(
             reason: "no supported Data Matrix profile; hardware fixtures are required"
         )
+    }
+
+    private func parseLegacyFixture(_ trimmed: String) throws -> PackageParseResult {
+        let body = String(trimmed.dropFirst("SUGARMAN-FIXTURE/".count))
+        let parts = body.split(separator: "/", maxSplits: 1, omittingEmptySubsequences: false)
+        guard parts.count == 2, !parts[0].isEmpty, !parts[1].isEmpty else {
+            throw OnboardingError.unsupportedFormat(reason: "truncated SUGARMAN-FIXTURE payload")
+        }
+        return PackageParseResult(
+            productName: nil,
+            gtin: String(parts[0]),
+            sku: nil,
+            redactedSerial: SerialRedaction.redact(String(parts[1])),
+            regionHypothesis: "synthetic fixture; not hardware proof",
+            protocolHypothesis: .unknown,
+            confidence: .low,
+            formatName: "sugarman-sanitized-fixture",
+            isSynthetic: true
+        )
+    }
+
+    private func parseSynthetic(_ trimmed: String) throws -> PackageParseResult {
+        let body: String
+        if trimmed.hasPrefix("SUGARMAN-SYNTHETIC/") {
+            body = String(trimmed.dropFirst("SUGARMAN-SYNTHETIC/".count))
+        } else if trimmed.hasPrefix("SUGARMAN-SYNTHETIC") {
+            body = String(trimmed.dropFirst("SUGARMAN-SYNTHETIC".count))
+        } else {
+            throw OnboardingError.unsupportedFormat(reason: "truncated synthetic package payload")
+        }
+        let fields = SyntheticFieldParser.fields(in: body)
+        guard let serial = fields["serial"], !serial.isEmpty else {
+            throw OnboardingError.unsupportedFormat(reason: "synthetic package payload missing serial")
+        }
+        let sku = fields["sku"]
+        let productFromSKU = sku.flatMap { DocumentedSKUClassification.productName(for: $0) }
+        let region = sku.map { DocumentedSKUClassification.regionHypothesis(for: $0) }
+            ?? "Unknown region (synthetic parse; not hardware proof)"
+        return PackageParseResult(
+            productName: fields["product"] ?? productFromSKU ?? "Synthetic demo sensor",
+            gtin: fields["gtin"],
+            sku: sku,
+            redactedSerial: SerialRedaction.redact(serial),
+            regionHypothesis: region,
+            protocolHypothesis: .unknown,
+            confidence: .unsupported,
+            formatName: "synthetic-demo",
+            isSynthetic: true
+        )
+    }
+}
+
+enum SyntheticFieldParser {
+    static func fields(in body: String) -> [String: String] {
+        var result: [String: String] = [:]
+        let separators = CharacterSet.whitespacesAndNewlines.union(CharacterSet(charactersIn: ";/"))
+        for token in body.components(separatedBy: separators) where !token.isEmpty {
+            let parts = token.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
+            guard parts.count == 2 else { continue }
+            let key = parts[0].trimmingCharacters(in: .whitespaces).lowercased()
+            let value = parts[1].trimmingCharacters(in: .whitespaces)
+            if !key.isEmpty, !value.isEmpty {
+                result[key] = value
+            }
+        }
+        return result
     }
 }

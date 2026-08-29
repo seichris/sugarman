@@ -302,6 +302,17 @@
       },
       "comment": "redacted owner id"
     },
+    "onboarding.no_email": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Email addresses and MD5 logins are not accepted."
+          }
+        }
+      }
+    },
     "privacy.title": {
       "extractionState": "manual",
       "localizations": {
@@ -445,6 +456,127 @@
         }
       }
     },
+    "privacy.export": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export"
+          }
+        }
+      }
+    },
+    "privacy.export_json": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export JSON"
+          }
+        }
+      }
+    },
+    "privacy.export_csv": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export CSV"
+          }
+        }
+      }
+    },
+    "privacy.export_body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exports include schema version, units, timezone, sensor indices, and fueling in JSON. They exclude credentials, account IDs, raw frames, MAC-like IDs, and full serials. CSV is glucose rows only."
+          }
+        }
+      }
+    },
+    "privacy.sessions": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sessions"
+          }
+        }
+      }
+    },
+    "privacy.no_sessions": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No stored sessions."
+          }
+        }
+      }
+    },
+    "privacy.delete_session": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete this session"
+          }
+        }
+      }
+    },
+    "privacy.delete_session_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete this session?"
+          }
+        }
+      }
+    },
+    "privacy.delete_session_body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This removes the selected session and its glucose samples from this device."
+          }
+        }
+      }
+    },
+    "privacy.share": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Share"
+          }
+        }
+      }
+    },
+    "privacy.done": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done"
+          }
+        }
+      }
+    },
     "Live": {
       "extractionState": "manual",
       "localizations": {
@@ -452,6 +584,61 @@
           "stringUnit": {
             "state": "translated",
             "value": "Live"
+          }
+        }
+      }
+    },
+    "History": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "History"
+          }
+        }
+      }
+    },
+    "Workout": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workout"
+          }
+        }
+      }
+    },
+    "Fueling": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fueling"
+          }
+        }
+      }
+    },
+    "Sensor": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sensor"
+          }
+        }
+      }
+    },
+    "Privacy": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Privacy"
           }
         }
       }
@@ -467,13 +654,910 @@
         }
       }
     },
-    "Privacy": {
+    "demo.menu": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Privacy"
+            "value": "Demo"
+          }
+        }
+      },
+      "comment": "Loads synthetic glucose states"
+    },
+    "demo.hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a synthetic glucose state to preview in the simulator."
+          }
+        }
+      }
+    },
+    "demo.replaces_data": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading a demo replaces locally stored Sugarman data with synthetic fixtures."
+          }
+        }
+      }
+    },
+    "demo.current": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Current reading (synthetic)"
+          }
+        }
+      }
+    },
+    "demo.stale": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stale reading (synthetic)"
+          }
+        }
+      }
+    },
+    "demo.disconnected": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disconnected (synthetic)"
+          }
+        }
+      }
+    },
+    "demo.warmup": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Warm-up (synthetic)"
+          }
+        }
+      }
+    },
+    "demo.error": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sensor error (synthetic)"
+          }
+        }
+      }
+    },
+    "demo.expired": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expired (synthetic)"
+          }
+        }
+      }
+    },
+    "demo.connected_no_data": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connected, no data (synthetic)"
+          }
+        }
+      }
+    },
+    "history.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "History"
+          }
+        }
+      }
+    },
+    "history.samples": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Glucose samples"
+          }
+        }
+      }
+    },
+    "history.empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No glucose samples. Load a synthetic demo from Live to preview history."
+          }
+        }
+      }
+    },
+    "history.overlay_later": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workout overlay is not implemented in this slice."
+          }
+        }
+      }
+    },
+    "history.synthetic_row": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synthetic glucose sample"
+          }
+        }
+      }
+    },
+    "history.sample_row": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Glucose sample"
+          }
+        }
+      }
+    },
+    "history.index_format": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sensor index %d"
+          }
+        }
+      }
+    },
+    "history.age_format": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Age: %d min %d sec"
+          }
+        }
+      }
+    },
+    "history.trend.unknown": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trend unknown"
+          }
+        }
+      }
+    },
+    "history.trend.fallingQuickly": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Falling quickly"
+          }
+        }
+      }
+    },
+    "history.trend.falling": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Falling"
+          }
+        }
+      }
+    },
+    "history.trend.stable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stable"
+          }
+        }
+      }
+    },
+    "history.trend.rising": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rising"
+          }
+        }
+      }
+    },
+    "history.trend.risingQuickly": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rising quickly"
+          }
+        }
+      }
+    },
+    "history.source.live": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Source: live"
+          }
+        }
+      }
+    },
+    "history.source.backfill": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Source: backfill"
+          }
+        }
+      }
+    },
+    "workout.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workout"
+          }
+        }
+      }
+    },
+    "workout.list": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workouts"
+          }
+        }
+      }
+    },
+    "workout.empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No workouts. Load a synthetic demo from Live to preview a correlated run."
+          }
+        }
+      }
+    },
+    "workout.glucose_count_format": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d glucose samples overlap this workout"
+          }
+        }
+      }
+    },
+    "workout.no_advice": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Athlete insight only. This is not medical advice."
+          }
+        }
+      }
+    },
+    "fueling.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fueling"
+          }
+        }
+      }
+    },
+    "fueling.add": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add fueling event"
+          }
+        }
+      }
+    },
+    "fueling.label_field": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Label, for example gel"
+          }
+        }
+      }
+    },
+    "fueling.carbs_field": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carbohydrate grams (optional)"
+          }
+        }
+      }
+    },
+    "fueling.timestamp": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Time"
+          }
+        }
+      }
+    },
+    "fueling.save": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save fueling event"
+          }
+        }
+      }
+    },
+    "fueling.save_hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stores a local fueling log. Sugarman does not prescribe carbohydrate."
+          }
+        }
+      }
+    },
+    "fueling.list": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Logged fueling"
+          }
+        }
+      }
+    },
+    "fueling.empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No fueling events yet."
+          }
+        }
+      }
+    },
+    "fueling.carbs_format": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%.0f g carbohydrate"
+          }
+        }
+      }
+    },
+    "sensor.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sensor"
+          }
+        }
+      }
+    },
+    "sensor.hardware": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hardware capture"
+          }
+        }
+      }
+    },
+    "sensor.camera_unavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camera Data Matrix capture is not available in the simulator."
+          }
+        }
+      }
+    },
+    "sensor.nfc_unavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NFC NDEF capture is not available in the simulator."
+          }
+        }
+      }
+    },
+    "sensor.package": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Package and tag text"
+          }
+        }
+      }
+    },
+    "sensor.package_field": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paste synthetic package text"
+          }
+        }
+      }
+    },
+    "sensor.ndef_field": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Optional synthetic NDEF payload"
+          }
+        }
+      }
+    },
+    "sensor.parse": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parse pasted text"
+          }
+        }
+      }
+    },
+    "sensor.parse_idle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paste a synthetic SUGARMAN-SYNTHETIC payload. Camera and NFC stay stubbed."
+          }
+        }
+      }
+    },
+    "sensor.parse_ok": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parsed a synthetic identity. Confirm before storing."
+          }
+        }
+      }
+    },
+    "sensor.parsed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parsed identity"
+          }
+        }
+      }
+    },
+    "sensor.product": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Product"
+          }
+        }
+      }
+    },
+    "sensor.sku": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SKU"
+          }
+        }
+      }
+    },
+    "sensor.serial": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Redacted serial"
+          }
+        }
+      }
+    },
+    "sensor.region": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Region hypothesis"
+          }
+        }
+      }
+    },
+    "sensor.protocol": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Protocol"
+          }
+        }
+      }
+    },
+    "sensor.confidence": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Protocol confidence"
+          }
+        }
+      }
+    },
+    "sensor.synthetic_notice": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synthetic parse only. Protocol confidence is unsupported. This is not a real sensor."
+          }
+        }
+      }
+    },
+    "sensor.confirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Store identity"
+          }
+        }
+      }
+    },
+    "sensor.confirm_hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stores the redacted identity locally. No sensor command is sent."
+          }
+        }
+      }
+    },
+    "sensor.confirm_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Store this identity?"
+          }
+        }
+      }
+    },
+    "sensor.confirm_body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sugarman will store the redacted product identity locally. It will not authenticate, bind, or activate a sensor."
+          }
+        }
+      }
+    },
+    "sensor.stored": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stored identities"
+          }
+        }
+      }
+    },
+    "sensor.no_identity": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No sensor identity stored."
+          }
+        }
+      }
+    },
+    "sensor.stored_ok": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stored the redacted synthetic identity."
+          }
+        }
+      }
+    },
+    "sensor.unknown_product": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unknown product"
+          }
+        }
+      }
+    },
+    "sensor.unknown_sku": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No SKU"
+          }
+        }
+      }
+    },
+    "sensor.unknown_region": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unknown region (synthetic parse; not hardware proof)"
+          }
+        }
+      }
+    },
+    "dashboard.unit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unit"
+          }
+        }
+      },
+      "comment": "Glucose unit picker"
+    },
+    "dashboard.unit.mgdl": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "mg/dL"
+          }
+        }
+      }
+    },
+    "dashboard.unit.mmol": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "mmol/L"
+          }
+        }
+      }
+    },
+    "dashboard.glucose_mgdl_format": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d mg/dL"
+          }
+        }
+      },
+      "comment": "current glucose in milligrams per decilitre"
+    },
+    "dashboard.glucose_mmol_format": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%.1f mmol/L"
+          }
+        }
+      },
+      "comment": "current glucose in millimoles per litre"
+    },
+    "fueling.delete": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete fueling event"
+          }
+        }
+      }
+    },
+    "fueling.delete_hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Removes this fueling log from this device. Sugarman does not prescribe carbohydrate."
+          }
+        }
+      }
+    },
+    "dashboard.questionable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This reading is questionable. It is not a current glucose value."
+          }
+        }
+      }
+    },
+    "demo.questionable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questionable sample (synthetic)"
+          }
+        }
+      }
+    },
+    "history.glucose_mgdl_format": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d mg/dL"
+          }
+        }
+      },
+      "comment": "historical glucose in milligrams per decilitre"
+    },
+    "history.glucose_mmol_format": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%.1f mmol/L"
+          }
+        }
+      },
+      "comment": "historical glucose in millimoles per litre"
+    },
+    "history.not_current": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Historical value. This is not a current reading."
+          }
+        }
+      }
+    },
+    "history.accessibility_historical": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Historical glucose, not a current reading"
           }
         }
       }

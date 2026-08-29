@@ -6,5 +6,28 @@
     "repository": "https://github.com/seichris/sugarman",
     "tag_pattern": "sugarman-<version>-<git-sha>"
   },
-  "records": []
+  "records": [
+    {
+      "id": "prov-20260828-sku-classification-labels",
+      "upstream_project": "Juggluco",
+      "upstream_url": "https://github.com/seichris/Juggluco",
+      "pinned_commit": "11d016eb3aeffe77e86d9522f5192e83790b5a21",
+      "source_path": "Common/src/main/cpp/sensoren.hpp",
+      "source_blob_sha256": "not-copied-source-not-ingested",
+      "copyright_holders": ["Juggluco contributors"],
+      "history_reviewed": false,
+      "file_header_licence": "GPL-3.0-or-later",
+      "repository_licence": "GPL-3.0",
+      "purpose_and_behavior_taken": "SKU strings 64221 and 64300 are used only as classification labels documented in docs/MAINLAND_GS3_IOS_IMPLEMENTATION_PLAN.md. No Juggluco source was copied. Protocol confidence remains unsupported. This is not Mainland hardware proof.",
+      "reuse_mode": "behavioral",
+      "sugarman_destination_path": "Sources/SensorOnboarding/SKUClassification.swift",
+      "modification_date": "2026-08-28",
+      "author": "chris",
+      "fixtures_origin": "synthetic",
+      "fixtures_capture_sha256": "synthetic",
+      "reviewer": "chris",
+      "legal_review_status": "lean-local",
+      "notes": "Independently authored synthetic fixtures only. Parser confidence stays unsupported/unknown."
+    }
+  ]
 }

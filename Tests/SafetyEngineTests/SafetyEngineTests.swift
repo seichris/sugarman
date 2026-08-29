@@ -10,7 +10,11 @@ struct SafetyEngineTests {
     let engine = SafetyEngine(policy: SafetyPolicy(staleAfterSeconds: 600))
     let sessionID = UUID()
 
-    func sample(age: TimeInterval, mgdl: Int = 110) -> GlucoseSample {
+    func sample(
+        age: TimeInterval,
+        mgdl: Int = 110,
+        quality: SampleQuality = .unknown
+    ) -> GlucoseSample {
         let now = Date(timeIntervalSince1970: 1_700_000_000)
         return GlucoseSample(
             sessionID: sessionID,
@@ -18,6 +22,7 @@ struct SafetyEngineTests {
             sensorTimestamp: now.addingTimeInterval(-age),
             receiptTimestamp: now.addingTimeInterval(-age),
             milligramsPerDeciliter: mgdl,
+            quality: quality,
             decoderRevision: "none"
         )
     }
@@ -72,6 +77,54 @@ struct SafetyEngineTests {
             #expect(age == 60)
         } else {
             Issue.record("expected current presentation, got \(result.presentation)")
+        }
+    }
+
+    @Test func okQualityFreshSubscribedLiveIsCurrent() {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let result = engine.evaluate(
+            now: now,
+            connection: .subscribed,
+            lifecycle: .live,
+            latestSample: sample(age: 20, mgdl: 101, quality: .ok)
+        )
+        #expect(result.showsValueAsCurrent)
+        if case .current(let mgdl, _) = result.presentation {
+            #expect(mgdl == 101)
+        } else {
+            Issue.record("expected current presentation, got \(result.presentation)")
+        }
+    }
+
+    @Test func errorQualityFreshSubscribedLiveIsNeverCurrent() {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let result = engine.evaluate(
+            now: now,
+            connection: .subscribed,
+            lifecycle: .live,
+            latestSample: sample(age: 15, mgdl: 180, quality: .error)
+        )
+        #expect(result.showsValueAsCurrent == false)
+        #expect(result.presentation == .sensorError)
+        #expect(result.notCurrentNotice == ProductCopy.notCurrentReading)
+        if case .current = result.presentation {
+            Issue.record("error quality must never present as current")
+        }
+    }
+
+    @Test func questionableQualityFreshSubscribedLiveIsNeverCurrent() {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let result = engine.evaluate(
+            now: now,
+            connection: .subscribed,
+            lifecycle: .live,
+            latestSample: sample(age: 15, mgdl: 180, quality: .questionable)
+        )
+        #expect(result.showsValueAsCurrent == false)
+        #expect(result.presentation == .questionable)
+        #expect(result.notCurrentNotice == ProductCopy.questionableSample)
+        if case .current = result.presentation {
+            Issue.record("questionable quality must never present as current")
         }
     }
 

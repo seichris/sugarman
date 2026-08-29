@@ -43,7 +43,7 @@ let package = Package(
         .testTarget(name: "AccountBindingTests", dependencies: ["AccountBinding"]),
         .testTarget(name: "SugarmanStoreTests", dependencies: ["SugarmanStore", "SugarmanDomain"]),
         .testTarget(name: "SafetyEngineTests", dependencies: ["SafetyEngine", "SugarmanDomain"]),
-        .testTarget(name: "IntegrationsTests", dependencies: ["Integrations", "SugarmanDomain"]),
+        .testTarget(name: "IntegrationsTests", dependencies: ["Integrations", "SugarmanDomain", "SugarmanStore"]),
         .testTarget(
             name: "SugarmanDiagnosticsTests",
             dependencies: ["SugarmanDiagnostics", "GS3Transport"]
