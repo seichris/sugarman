@@ -1980,6 +1980,40 @@
           }
         }
       }
+    },
+    "privacy.probe_share_gatt": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Share redacted GATT map"
+          }
+        }
+      },
+      "comment": "Share a JSON GATT map with UUIDs and byte counts only"
+    },
+    "privacy.probe_share_gatt_hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shares a JSON file of service and characteristic UUIDs, properties, and value lengths. Raw values and serials are omitted."
+          }
+        }
+      }
+    },
+    "privacy.probe_gatt_body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The GATT map lists UUIDs, properties, and value byte counts. It never includes raw serials or characteristic value bytes."
+          }
+        }
+      }
     }
   },
   "version": "1.1"

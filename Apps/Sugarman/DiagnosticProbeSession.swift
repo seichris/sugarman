@@ -26,6 +26,8 @@ final class DiagnosticProbeSession {
     var status = String(localized: "privacy.probe_disabled")
     var deviceInformation: DeviceInformationSnapshot?
     var selectedPeripheralID: UUID?
+    var gattMap: RedactedGATTMap?
+    var gattMapFileURL: URL?
 
     private var probe: ReadOnlyDiagnosticProbe?
     #if canImport(CoreBluetooth)
@@ -48,6 +50,8 @@ final class DiagnosticProbeSession {
         peripherals = []
         deviceInformation = nil
         selectedPeripheralID = nil
+        gattMap = nil
+        gattMapFileURL = nil
 
         guard enabled else {
             isEnabled = false
@@ -102,6 +106,11 @@ final class DiagnosticProbeSession {
         do {
             let snapshot = try await probe.connectAndReadDeviceInformation(peripheralID: peripheralID)
             deviceInformation = snapshot
+            let name = peripherals.first(where: { $0.peripheralID == peripheralID })?.name
+            let map = probe.redactedGATTMap(peripheralID: peripheralID, localName: name)
+            gattMap = map
+            let directory = FileManager.default.temporaryDirectory
+            gattMapFileURL = try GATTMapFileWriter().write(map, to: directory)
             status = String(localized: "privacy.probe_dis_ok")
         } catch {
             status = error.localizedDescription

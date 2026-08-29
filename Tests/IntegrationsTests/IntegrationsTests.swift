@@ -34,6 +34,10 @@ struct IntegrationsTests {
         }
     }
 
+    @Test func healthKitGlucoseWritesRemainDisabled() {
+        #expect(HealthKitWritePolicy.glucoseWritesEnabled == false)
+    }
+
     @Test func emptyExportHasSchemaAndNoDataRows() throws {
         let json = try exporter.exportJSON(samples: [], timeZone: zone)
         let document = try JSONDecoder().decode(GlucoseExportDocument.self, from: json)
