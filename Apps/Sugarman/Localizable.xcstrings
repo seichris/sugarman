@@ -1561,6 +1561,172 @@
           }
         }
       }
+    },
+    "sensor.import_image": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import barcode image"
+          }
+        }
+      }
+    },
+    "sensor.import_image_hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a photo of a Data Matrix. Parsing still requires confirmation. No sensor command is sent."
+          }
+        }
+      }
+    },
+    "sensor.import_file": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import barcode file"
+          }
+        }
+      }
+    },
+    "sensor.import_file_hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose an image file of a Data Matrix. Parsing still requires confirmation."
+          }
+        }
+      }
+    },
+    "sensor.no_barcode": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Data Matrix payload was found in that image."
+          }
+        }
+      }
+    },
+    "privacy.export_file_hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Writes a UTF-8 file you can share. It does not include account IDs, frames, or full serials."
+          }
+        }
+      }
+    },
+    "privacy.share_file": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Share export file"
+          }
+        }
+      }
+    },
+    "privacy.share_file_hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shares the UTF-8 export file, not a giant text sheet."
+          }
+        }
+      }
+    },
+    "privacy.export_file_ready": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export file is ready to share."
+          }
+        }
+      }
+    },
+    "session.active_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Active session"
+          }
+        }
+      }
+    },
+    "session.active_id_format": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Session %@"
+          }
+        }
+      },
+      "comment": "short session identifier"
+    },
+    "session.active_used_for": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This session is used for the latest reading and new fueling events."
+          }
+        }
+      }
+    },
+    "session.none": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No active session. Load a demo or store a sensor identity first."
+          }
+        }
+      }
+    },
+    "session.active_badge": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Active"
+          }
+        }
+      }
+    },
+    "session.picker_hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sets the session used for the latest reading and new fueling events."
+          }
+        }
+      }
     }
   },
   "version": "1.1"

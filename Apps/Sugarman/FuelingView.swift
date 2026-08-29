@@ -18,6 +18,11 @@ struct FuelingView: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
+                Section {
+                    ActiveSessionBanner()
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                }
                 Section("fueling.add") {
                     TextField("fueling.label_field", text: $label)
                     TextField("fueling.carbs_field", text: $carbsText)

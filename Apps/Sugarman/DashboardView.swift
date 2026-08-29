@@ -55,6 +55,7 @@ struct DashboardView: View {
         return ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 NoDosingBanner()
+                ActiveSessionBanner()
                 if model.isSyntheticDemo {
                     SyntheticDemoBanner()
                 }

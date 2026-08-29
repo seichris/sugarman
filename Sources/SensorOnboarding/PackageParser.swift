@@ -46,7 +46,9 @@ public protocol PackageParsing: Sendable {
 /// offset-based upstream parsers. Unknown formats fail closed.
 ///
 /// Default limit is 4 KiB. Truncated, oversized, empty, NUL, and unknown
-/// payloads are rejected.
+/// payloads are rejected. Independently observed GS1/UDI-like strings
+/// (`(01)GTIN(21)serial` or concatenated AI 01/17/10/21) are accepted as
+/// synthetic identity, not hardware proof.
 public struct BoundedPackageParser: PackageParsing {
     public static let defaultMaximumUTF8Bytes = 4096
     public var maximumUTF8Bytes: Int
@@ -73,8 +75,35 @@ public struct BoundedPackageParser: PackageParsing {
         if trimmed.hasPrefix("SUGARMAN-SYNTHETIC") && !trimmed.hasPrefix("SUGARMAN-SYNTHETIC-NDEF") {
             return try parseSynthetic(trimmed)
         }
+        if let gs1 = GS1ElementString.parse(trimmed) {
+            return parseGS1(gs1)
+        }
+        if looksLikeTruncatedGS1(trimmed) {
+            throw OnboardingError.unsupportedFormat(reason: "truncated GS1/UDI payload")
+        }
         throw OnboardingError.unsupportedFormat(
             reason: "no supported Data Matrix profile; hardware fixtures are required"
+        )
+    }
+
+    private func looksLikeTruncatedGS1(_ trimmed: String) -> Bool {
+        if trimmed.hasPrefix("(01)") { return true }
+        if trimmed.hasPrefix("01"), trimmed.count < 18 { return true }
+        if trimmed.contains("(21)") && !trimmed.contains("(01)") { return true }
+        return false
+    }
+
+    private func parseGS1(_ gs1: GS1ElementString) -> PackageParseResult {
+        PackageParseResult(
+            productName: "GS1 UDI (synthetic parse)",
+            gtin: gs1.gtin,
+            sku: nil,
+            redactedSerial: SerialRedaction.redact(gs1.serial),
+            regionHypothesis: "Independently observed GS1/UDI layout; synthetic parse, not hardware proof",
+            protocolHypothesis: .unknown,
+            confidence: .low,
+            formatName: "gs1-udi-synthetic",
+            isSynthetic: true
         )
     }
 

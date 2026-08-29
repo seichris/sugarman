@@ -14,7 +14,9 @@
       "pinned_commit": "11d016eb3aeffe77e86d9522f5192e83790b5a21",
       "source_path": "Common/src/main/cpp/sensoren.hpp",
       "source_blob_sha256": "not-copied-source-not-ingested",
-      "copyright_holders": ["Juggluco contributors"],
+      "copyright_holders": [
+        "Juggluco contributors"
+      ],
       "history_reviewed": false,
       "file_header_licence": "GPL-3.0-or-later",
       "repository_licence": "GPL-3.0",
@@ -28,6 +30,30 @@
       "reviewer": "chris",
       "legal_review_status": "lean-local",
       "notes": "Independently authored synthetic fixtures only. Parser confidence stays unsupported/unknown."
+    },
+    {
+      "id": "prov-20260829-gs1-udi-synthetic-parser",
+      "upstream_project": "none",
+      "upstream_url": "https://www.gs1.org/standards/barcodes/application-identifiers",
+      "pinned_commit": "not-applicable",
+      "source_path": "GS1 Application Identifiers 01 (GTIN), 17 (expiry), 10 (lot), 21 (serial)",
+      "source_blob_sha256": "not-copied-source-not-ingested",
+      "copyright_holders": [
+        "GS1 AISBL"
+      ],
+      "history_reviewed": false,
+      "file_header_licence": "not-applicable",
+      "repository_licence": "not-applicable",
+      "purpose_and_behavior_taken": "Independently implemented bounded parser for synthetic GS1/UDI-like element strings using published AI lengths. Unknown layouts fail closed. Not copied from Juggluco PhotoScan or any upstream scanner. Not hardware proof.",
+      "reuse_mode": "independently observed",
+      "sugarman_destination_path": "Sources/SensorOnboarding/GS1ElementString.swift",
+      "modification_date": "2026-08-29",
+      "author": "chris",
+      "fixtures_origin": "synthetic",
+      "fixtures_capture_sha256": "synthetic",
+      "reviewer": "chris",
+      "legal_review_status": "lean-local",
+      "notes": "Vision wrapper uses Apple Vision only. Do not copy Juggluco PhotoScan."
     }
   ]
 }

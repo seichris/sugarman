@@ -220,4 +220,30 @@ struct IntegrationsTests {
         let records = RFC4180CSV.records(in: csv)
         #expect(records[1][0] == "2")
     }
+
+    @Test func privacyExportWritesUTF8FilesWithStableNames() async throws {
+        let writer = PrivacyExportFileWriter()
+        #expect(PrivacyExportFileWriter.jsonFilename == "sugarman-export-utc.json")
+        #expect(PrivacyExportFileWriter.csvFilename == "sugarman-export-utc.csv")
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "sugarman-export-\(UUID().uuidString)",
+            isDirectory: true
+        )
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let samples = [sample(index: 4, mgdl: 99)]
+        let json = try exporter.exportJSON(samples: samples, timeZone: zone)
+        let csv = try exporter.exportCSV(samples: samples, timeZone: zone)
+        let jsonURL = try writer.writeJSON(json, to: directory)
+        let csvURL = try writer.writeCSV(csv, to: directory)
+        #expect(jsonURL.lastPathComponent == "sugarman-export-utc.json")
+        #expect(csvURL.lastPathComponent == "sugarman-export-utc.csv")
+        let jsonText = String(decoding: try Data(contentsOf: jsonURL), as: UTF8.self)
+        let csvText = String(decoding: try Data(contentsOf: csvURL), as: UTF8.self)
+        #expect(jsonText.contains("schemaVersion"))
+        #expect(csvText.contains("sensorIndex"))
+        for needle in ["ownerAccount", "accountID", "serial", "packet", "RC4"] {
+            #expect(!jsonText.contains(needle))
+            #expect(!csvText.contains(needle))
+        }
+    }
 }

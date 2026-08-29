@@ -51,6 +51,7 @@ public enum TransportEffect: Sendable, Equatable {
 
 public enum TransportError: Error, Sendable, Equatable, CustomStringConvertible {
     case bluetoothUnavailable
+    case permissionDenied
     case commandInFlight
     case mutatingOperationRefused
     case authenticationUnimplemented
@@ -63,6 +64,8 @@ public enum TransportError: Error, Sendable, Equatable, CustomStringConvertible 
         switch self {
         case .bluetoothUnavailable:
             return "Bluetooth is unavailable."
+        case .permissionDenied:
+            return "Bluetooth permission was denied."
         case .commandInFlight:
             return "Only one in-flight command is allowed."
         case .mutatingOperationRefused:

@@ -224,6 +224,23 @@ public actor SwiftDataSugarmanStore: SugarmanStoring {
         return container
     }
 
+    nonisolated public static func makeContainer(url: URL) throws -> ModelContainer {
+        let schema = Schema([
+            GlucoseSampleRecord.self,
+            SensorSessionRecord.self,
+            FuelingEventRecord.self,
+            WorkoutContextRecord.self,
+            SensorIdentityRecord.self,
+        ])
+        let configuration = ModelConfiguration(
+            "Sugarman",
+            schema: schema,
+            url: url,
+            cloudKitDatabase: .none
+        )
+        return try ModelContainer(for: schema, configurations: [configuration])
+    }
+
     nonisolated private static func persistentStoreURL() throws -> URL {
         let base = try FileManager.default.url(
             for: .applicationSupportDirectory,
