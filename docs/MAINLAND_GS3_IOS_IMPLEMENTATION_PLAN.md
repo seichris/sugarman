@@ -1,6 +1,6 @@
 # Mainland China SiBionics GS3 support for Sugarman
 
-- Status: approved implementation plan; implementation has not started
+- Status: implementation has started; M0, simulator product, no-device slice, and P0/P1 lab software are on `main`. M2+ protocol work stays gated on physical P1/P2. If P1/P2 fail, no protocol implementation.
 - Date: 2026-08-28
 - Product: Sugarman — glucose monitoring and fueling insight for endurance athletes
 

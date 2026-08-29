@@ -81,4 +81,14 @@ struct SugarmanDiagnosticsTests {
         #expect(!ProbeDisplayCharacteristic.all.contains(DocumentedReadableCharacteristic.serialNumber))
         #expect(ProbeDisplayCharacteristic.all.contains(DocumentedReadableCharacteristic.firmwareRevision))
     }
+
+    @Test func redactedGATTMapOmitsValuesAndStaysUnknownCipher() {
+        let probe = ReadOnlyDiagnosticProbe(isEnabled: true, runtime: RecordingBluetoothRuntime())
+        let map = probe.redactedGATTMap(peripheralID: UUID(), localName: "SyntheticLab")
+        #expect(map.cipherHypothesis == .unknownUntilCapture)
+        #expect(map.sixByteAddressSource == .notFound)
+        let described = String(describing: map)
+        #expect(!described.contains("RC4"))
+        #expect(!described.contains("AES"))
+    }
 }

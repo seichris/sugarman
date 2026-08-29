@@ -1,6 +1,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Sugarman contributors
 name: Sugarman
+configFiles:
+  Debug: Config/DevelopmentTeam.xcconfig
+  Release: Config/DevelopmentTeam.xcconfig
 options:
   bundleIdPrefix: app.sugarman
   deploymentTarget:

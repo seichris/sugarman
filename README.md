@@ -61,7 +61,7 @@ dependencies. See [docs/UPSTREAMS.md](docs/UPSTREAMS.md).
 | `Sources/SugarmanStore` | Repository protocols, in-memory store, optional SwiftData |
 | `Sources/SafetyEngine` | Stale/disconnected/warm-up/error/expiry evaluator |
 | `Sources/Integrations` | HealthKit/export interfaces; HealthKit writes disabled |
-| `Sources/SugarmanDiagnostics` | Read-only GATT probe, disabled by default |
+| `Sources/SugarmanDiagnostics` | Read-only GATT probe, redacted GATT export, BTSnoop analyzer |
 | `Apps/Sugarman` | SwiftUI iOS application shell |
 | `upstream/` | Pinned research references — not build inputs |
 
@@ -90,6 +90,12 @@ P0/P1 evidence lab (private captures stay gitignored):
 - [docs/P0_INVENTORY.template.md](docs/P0_INVENTORY.template.md)
 - [docs/P1_CAPTURE_RUNBOOK.md](docs/P1_CAPTURE_RUNBOOK.md)
 - [docs/EVIDENCE_STORAGE.md](docs/EVIDENCE_STORAGE.md)
+
+Redacting HCI analyzer (synthetic fixtures in tests; private dumps stay gitignored):
+
+```sh
+python3 Scripts/analyze_btsnoop.py private-evidence/hci/btsnoop_hci.log
+```
 
 Governance check (also run in CI):
 

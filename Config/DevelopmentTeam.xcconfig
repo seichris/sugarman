@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Sugarman contributors
+//
+// Leave DEVELOPMENT_TEAM empty in Git. Fill it locally in Xcode or in a
+// gitignored local.xcconfig / Secrets.xcconfig. Do not invent a team ID.
+
+DEVELOPMENT_TEAM =

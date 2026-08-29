@@ -61,6 +61,39 @@ If V3: **stop** the RC4 implementation milestone. Do not ship an Android
 `.so`. Inspect the owned APK only under the legal/provenance rules; do not
 commit it.
 
+
+## Analyze a capture (software, no live GS3)
+
+After the HCI log is in gitignored `private-evidence/hci/` (or
+`~/Documents/sugarman-private-evidence/hci/`), summarize it with the redacting
+analyzer. Do **not** commit the dump.
+
+Swift (preferred; covered by tests with a synthetic fixture):
+
+`BTSnoopAnalyzer.summarize(fileURL:)` in `Sources/SugarmanDiagnostics`.
+
+CLI:
+
+```sh
+python3 Scripts/analyze_btsnoop.py private-evidence/hci/btsnoop_hci.log
+python3 Scripts/analyze_btsnoop.py --json private-evidence/hci/btsnoop_hci.log
+```
+
+The analyzer reports counts, lengths, advertised names that do not look unique,
+and GATT UUID allowlists. It never prints a full MAC, full serial, or
+auth-looking frame payload, and it will not decode application payloads as
+glucose. `CipherHypothesis` is always `unknownUntilCapture` — do not treat the
+summary as an RC4 or AES identification.
+
+P1 address-source enum: `package | nfc | advertisement | deviceInformation |
+otherReadable | notFound`. The HCI peer-address field is Android-only and does
+**not** count as `advertisement`; that case requires the six bytes in AD/scan
+response *payload*.
+
+On iOS, the Privacy probe writes a shareable redacted GATT map JSON (UUIDs,
+properties, value byte counts; no raw serial/value bytes). Simulator stays
+disabled.
+
 ## Android — official app, HCI snoop, bugreport
 
 Prerequisite: P0 inventory for an **already-active** owned sensor. Force-stop

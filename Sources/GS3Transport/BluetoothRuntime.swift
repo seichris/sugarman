@@ -10,11 +10,41 @@ public protocol BluetoothRuntime: Sendable {
     func perform(_ effect: TransportEffect) async throws
     var discoveredAdvertisements: [AdvertisementSnapshot] { get }
     func documentedReadableText(for uuid: UUID) -> String?
+    var discoveredGATTServices: [GATTServiceSnapshot] { get }
+    /// Byte count of the DIS serial characteristic if it was read. The serial
+    /// string itself must never be stored or returned.
+    var serialNumberByteCount: Int? { get }
 }
 
 extension BluetoothRuntime {
     public var discoveredAdvertisements: [AdvertisementSnapshot] { [] }
     public func documentedReadableText(for uuid: UUID) -> String? { nil }
+    public var discoveredGATTServices: [GATTServiceSnapshot] { [] }
+    public var serialNumberByteCount: Int? { nil }
+}
+
+/// Discovered GATT service. Values are never included — UUIDs, property names,
+/// and optional value byte counts only.
+public struct GATTServiceSnapshot: Sendable, Equatable {
+    public var uuid: UUID
+    public var characteristics: [GATTCharacteristicSnapshot]
+
+    public init(uuid: UUID, characteristics: [GATTCharacteristicSnapshot] = []) {
+        self.uuid = uuid
+        self.characteristics = characteristics
+    }
+}
+
+public struct GATTCharacteristicSnapshot: Sendable, Equatable {
+    public var uuid: UUID
+    public var properties: [String]
+    public var valueByteCount: Int?
+
+    public init(uuid: UUID, properties: [String] = [], valueByteCount: Int? = nil) {
+        self.uuid = uuid
+        self.properties = properties
+        self.valueByteCount = valueByteCount
+    }
 }
 
 /// Device Information strings that are safe to show in the read-only probe.

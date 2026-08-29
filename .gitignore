@@ -46,3 +46,8 @@ libcxm_protocol*
 btsnoop_hci.log
 bugreport*.zip
 bugreport*.txt
+
+# Extra HCI dump names
+*.btsnoop
+*.btsnoop.log
+hci_snoop*.log

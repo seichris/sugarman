@@ -9,6 +9,14 @@ public enum IntegrationError: Error, Sendable, Equatable {
     case exportEmpty
 }
 
+
+/// Compile-time product guard. Glucose HealthKit writes stay off until
+/// physical decoder parity. Do not flip this without P1/P2 and live-read
+/// evidence.
+public enum HealthKitWritePolicy: Sendable {
+    public static let glucoseWritesEnabled = false
+}
+
 public protocol HealthKitGlucoseWriting: Sendable {
     /// Must not persist HealthKit samples until the decoder passes physical
     /// parity gates. The M0 adapter always throws.
@@ -25,6 +33,9 @@ public struct DisabledHealthKitWriter: HealthKitGlucoseWriting {
 
     public func persistValidatedGlucose(_ samples: [GlucoseSample]) async throws {
         _ = samples
+        guard HealthKitWritePolicy.glucoseWritesEnabled else {
+            throw IntegrationError.healthKitWritesDisabledUntilParity
+        }
         throw IntegrationError.healthKitWritesDisabledUntilParity
     }
 }

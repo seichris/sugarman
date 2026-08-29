@@ -86,6 +86,7 @@ public struct ReadOnlyDiagnosticProbe: Sendable {
         for uuid in ProbeDisplayCharacteristic.all {
             try await readDocumentedCharacteristic(uuid)
         }
+        try? await recordSerialByteCount()
         return DeviceInformationSnapshot.omittingSerial(from: documentedTexts())
     }
 
@@ -109,6 +110,31 @@ public struct ReadOnlyDiagnosticProbe: Sendable {
             }
         }
         return texts
+    }
+
+    /// Reads DIS serial for byte count only. The serial string is never kept.
+    public func recordSerialByteCount() async throws {
+        try requireEnabled()
+        try await session.readDocumentedCharacteristic(DocumentedReadableCharacteristic.serialNumber)
+        try await session.handle(
+            .readComplete(
+                characteristic: DocumentedReadableCharacteristic.serialNumber,
+                byteCount: runtime.serialNumberByteCount ?? 0
+            )
+        )
+    }
+
+    public func redactedGATTMap(peripheralID: UUID, localName: String?) -> RedactedGATTMap {
+        let disPresent = runtime.discoveredGATTServices.contains {
+            $0.uuid == DocumentedReadableCharacteristic.deviceInformationService
+        }
+        return RedactedGATTMapBuilder.make(
+            peripheralID: peripheralID,
+            localName: localName,
+            services: runtime.discoveredGATTServices,
+            serialByteCount: runtime.serialNumberByteCount,
+            deviceInformationPresent: disPresent
+        )
     }
 
     private func requireEnabled() throws {

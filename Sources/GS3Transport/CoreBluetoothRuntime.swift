@@ -42,6 +42,9 @@ public enum BluetoothAuthorizationMapping: Sendable {
 /// bind, or activate. Does not call `writeValue`. Simulator has no BLE
 /// peripheral; this type must not be required to talk to live hardware in tests.
 public final class CoreBluetoothRuntime: NSObject, BluetoothRuntime, @unchecked Sendable {
+    /// Stable CoreBluetooth state-restoration identifier. Identity only —
+    /// this adapter does not reconnect to a live sensor or resume
+    /// authentication after `willRestoreState`.
     public static let restorationIdentifier = "app.sugarman.ios.gs3.transport"
     public static let queueLabel = "app.sugarman.ios.gs3.transport"
 
@@ -55,6 +58,9 @@ public final class CoreBluetoothRuntime: NSObject, BluetoothRuntime, @unchecked 
     private var backoffAttempt = 0
     private var advertisements: [UUID: AdvertisementSnapshot] = [:]
     private var documentedTexts: [UUID: String] = [:]
+    private var gattServices: [GATTServiceSnapshot] = []
+    private var serialByteCount: Int?
+    private var remainingCharacteristicDiscoveries = 0
     public var onDiscover: (@Sendable (AdvertisementSnapshot) -> Void)?
 
     public var discoveredAdvertisements: [AdvertisementSnapshot] {
@@ -68,6 +74,14 @@ public final class CoreBluetoothRuntime: NSObject, BluetoothRuntime, @unchecked 
             return nil
         }
         return queue.sync { documentedTexts[uuid] }
+    }
+
+    public var discoveredGATTServices: [GATTServiceSnapshot] {
+        queue.sync { gattServices }
+    }
+
+    public var serialNumberByteCount: Int? {
+        queue.sync { serialByteCount }
     }
 
     public func deviceInformationSnapshot() -> DeviceInformationSnapshot {
@@ -187,8 +201,8 @@ public final class CoreBluetoothRuntime: NSObject, BluetoothRuntime, @unchecked 
             guard let peripheral = runtime.connected else {
                 throw TransportError.invalidTransition(from: .connecting)
             }
-            let dis = CBUUID(nsuuid: DocumentedReadableCharacteristic.deviceInformationService)
-            peripheral.discoverServices([dis])
+            // P1 GATT map needs every service. Reads stay allowlisted below.
+            peripheral.discoverServices(nil)
         }
     }
 
@@ -197,13 +211,14 @@ public final class CoreBluetoothRuntime: NSObject, BluetoothRuntime, @unchecked 
             guard let peripheral = runtime.connected else {
                 throw TransportError.invalidTransition(from: .discovering)
             }
-            let allowlisted = DocumentedReadableCharacteristic.all.map { CBUUID(nsuuid: $0) }
             let services = peripheral.services ?? []
             guard !services.isEmpty else {
                 throw TransportError.timeout
             }
+            runtime.gattServices = []
+            runtime.remainingCharacteristicDiscoveries = services.count
             for service in services {
-                peripheral.discoverCharacteristics(allowlisted, for: service)
+                peripheral.discoverCharacteristics(nil, for: service)
             }
         }
     }
@@ -348,30 +363,79 @@ extension CoreBluetoothRuntime: CBPeripheralDelegate {
 
     public func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
         if let error {
+            remainingCharacteristicDiscoveries = 0
             resumePending(error: error)
             return
         }
+        var mapped: [GATTCharacteristicSnapshot] = []
         for characteristic in service.characteristics ?? [] {
-            if let uuid = sugarmanUUID(from: characteristic.uuid),
-               DocumentedReadableCharacteristic.isAllowlisted(uuid) {
+            let uuid = sugarmanUUID(from: characteristic.uuid)
+            if let uuid, DocumentedReadableCharacteristic.isAllowlisted(uuid) {
                 characteristics[uuid] = characteristic
             }
+            if let uuid {
+                mapped.append(
+                    GATTCharacteristicSnapshot(
+                        uuid: uuid,
+                        properties: Self.propertyNames(characteristic.properties),
+                        valueByteCount: characteristic.value?.count
+                    )
+                )
+            }
         }
-        resumePending(error: nil)
+        if let serviceUUID = sugarmanUUID(from: service.uuid) {
+            gattServices.append(GATTServiceSnapshot(uuid: serviceUUID, characteristics: mapped))
+        }
+        remainingCharacteristicDiscoveries = max(0, remainingCharacteristicDiscoveries - 1)
+        if remainingCharacteristicDiscoveries == 0 {
+            resumePending(error: nil)
+        }
+        _ = peripheral
+    }
+
+    private static func propertyNames(_ properties: CBCharacteristicProperties) -> [String] {
+        var names: [String] = []
+        if properties.contains(.broadcast) { names.append("broadcast") }
+        if properties.contains(.read) { names.append("read") }
+        if properties.contains(.writeWithoutResponse) { names.append("writeWithoutResponse") }
+        if properties.contains(.write) { names.append("write") }
+        if properties.contains(.notify) { names.append("notify") }
+        if properties.contains(.indicate) { names.append("indicate") }
+        if properties.contains(.authenticatedSignedWrites) { names.append("authenticatedSignedWrites") }
+        if properties.contains(.extendedProperties) { names.append("extendedProperties") }
+        if properties.contains(.notifyEncryptionRequired) { names.append("notifyEncryptionRequired") }
+        if properties.contains(.indicateEncryptionRequired) { names.append("indicateEncryptionRequired") }
+        return names
     }
 
     public func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
         _ = peripheral
-        _ = characteristic.value?.count
-        if error == nil,
-           let uuid = sugarmanUUID(from: characteristic.uuid),
-           DocumentedReadableCharacteristic.isAllowlisted(uuid),
-           uuid != DocumentedReadableCharacteristic.serialNumber,
-           let data = characteristic.value,
-           let text = String(data: data, encoding: .utf8) {
-            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !trimmed.isEmpty {
-                documentedTexts[uuid] = trimmed
+        if error == nil, let uuid = sugarmanUUID(from: characteristic.uuid) {
+            let count = characteristic.value?.count
+            if uuid == DocumentedReadableCharacteristic.serialNumber {
+                serialByteCount = count
+                // Never store serial text.
+            } else if DocumentedReadableCharacteristic.isAllowlisted(uuid),
+                      let data = characteristic.value,
+                      let text = String(data: data, encoding: .utf8) {
+                let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty {
+                    documentedTexts[uuid] = trimmed
+                }
+            }
+            if let index = gattServices.firstIndex(where: { service in
+                service.characteristics.contains(where: { $0.uuid == uuid })
+            }) {
+                var service = gattServices[index]
+                service.characteristics = service.characteristics.map { item in
+                    guard item.uuid == uuid else { return item }
+                    return GATTCharacteristicSnapshot(
+                        uuid: item.uuid,
+                        properties: item.properties,
+                        valueByteCount: count ?? item.valueByteCount
+                    )
+                }
+                gattServices[index] = service
             }
         }
         resumePending(error: error)

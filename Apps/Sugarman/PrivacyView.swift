@@ -138,6 +138,15 @@ struct PrivacyView: View {
                             LabeledContent("privacy.probe_firmware", value: dis.firmwareRevision ?? "—")
                             LabeledContent("privacy.probe_software", value: dis.softwareRevision ?? "—")
                         }
+                        if let gattMapFileURL = model.probeSession.gattMapFileURL {
+                            ShareLink(item: gattMapFileURL) {
+                                Label("privacy.probe_share_gatt", systemImage: "square.and.arrow.up")
+                            }
+                            .accessibilityHint(Text("privacy.probe_share_gatt_hint"))
+                            Text("privacy.probe_gatt_body")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
                 Section("privacy.deletion") {

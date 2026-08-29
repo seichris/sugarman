@@ -37,3 +37,13 @@ not paste it into `project.yml` until that is an intentional, reviewed change.
 
 NFC and HealthKit entitlements are rejected at install time without a team.
 That is expected for unsigned CI simulator builds.
+
+## Core Bluetooth restoration identifier
+
+`CoreBluetoothRuntime` registers `CBCentralManagerOptionRestoreIdentifierKey`
+as `app.sugarman.ios.gs3.transport`, matching Info.plist `bluetooth-central`.
+That identifier is restoration identity only. This build does **not** reconnect
+to a live sensor or resume authentication after `willRestoreState`.
+
+`DEVELOPMENT_TEAM` is empty in Git (`Config/DevelopmentTeam.xcconfig` and
+`project.yml`). Fill it locally; do not invent or commit a team ID.
