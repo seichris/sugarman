@@ -12,6 +12,9 @@ import CoreTransferable
 #if canImport(PhotosUI)
 import PhotosUI
 #endif
+#if canImport(CoreNFC)
+import CoreNFC
+#endif
 
 struct SensorOnboardingView: View {
     @Environment(AppModel.self) private var model
@@ -25,8 +28,14 @@ struct SensorOnboardingView: View {
     @State private var ownerStatus = String(localized: "onboarding.owner_idle")
     @State private var confirmStore = false
     @State private var showFileImporter = false
+#if os(iOS) && canImport(AVFoundation) && canImport(UIKit) && canImport(Vision) && !targetEnvironment(simulator)
+    @State private var showCamera = false
+#endif
 #if canImport(PhotosUI)
     @State private var pickerItem: PhotosPickerItem?
+#endif
+#if canImport(CoreNFC)
+    @State private var ndefReader = CoreNFCNDEFReader()
 #endif
 
     private let packageParser = BoundedPackageParser()
@@ -41,8 +50,32 @@ struct SensorOnboardingView: View {
         NavigationStack {
             Form {
                 Section("sensor.hardware") {
+#if os(iOS) && canImport(AVFoundation) && canImport(UIKit) && canImport(Vision) && !targetEnvironment(simulator)
+                    Button {
+                        showCamera = true
+                    } label: {
+                        Label("sensor.camera_scan", systemImage: "camera.viewfinder")
+                    }
+                    .accessibilityLabel(Text("sensor.camera_scan"))
+                    .accessibilityHint(Text("sensor.camera_scan_hint"))
+#else
                     Text("sensor.camera_unavailable")
+#endif
+#if canImport(CoreNFC)
+                    if NFCNDEFReaderSession.readingAvailable {
+                        Button {
+                            Task { await scanNDEF() }
+                        } label: {
+                            Label("sensor.nfc_scan", systemImage: "wave.3.right")
+                        }
+                        .accessibilityLabel(Text("sensor.nfc_scan"))
+                        .accessibilityHint(Text("sensor.nfc_scan_hint"))
+                    } else {
+                        Text("sensor.nfc_unavailable")
+                    }
+#else
                     Text("sensor.nfc_unavailable")
+#endif
 #if canImport(PhotosUI)
                     PhotosPicker(selection: $pickerItem, matching: .images) {
                         Label("sensor.import_image", systemImage: "photo")
@@ -157,12 +190,40 @@ struct SensorOnboardingView: View {
                 Task { await importPickerItem(item) }
             }
 #endif
+#if os(iOS) && canImport(AVFoundation) && canImport(UIKit) && canImport(Vision) && !targetEnvironment(simulator)
+            .fullScreenCover(isPresented: $showCamera) {
+                DataMatrixCameraView(
+                    onPayload: { payload in
+                        showCamera = false
+                        packageText = payload
+                        applyParsedPackage(payload, ndef: ndefText)
+                    },
+                    onCancel: {
+                        showCamera = false
+                    }
+                )
+                .ignoresSafeArea()
+            }
+#endif
         }
     }
 
     private func parsePayloads() {
         applyParsedPackage(packageText, ndef: ndefText)
     }
+
+#if canImport(CoreNFC)
+    private func scanNDEF() async {
+        do {
+            let records = try await ndefReader.readTextRecords()
+            let joined = records.joined(separator: "\n")
+            ndefText = joined
+            applyParsedPackage(packageText, ndef: joined)
+        } catch {
+            parseMessage = error.localizedDescription
+        }
+    }
+#endif
 
     private func applyParsedPackage(_ package: String, ndef: String) {
         parsedIdentity = nil
@@ -276,4 +337,3 @@ private struct PickedImageData: Transferable {
         }
     }
 }
-

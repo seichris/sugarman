@@ -197,4 +197,22 @@ struct SensorOnboardingTests {
         }
     }
 #endif
+
+    @Test func ndefAndLiveCaptureAvailabilityTypesCompile() {
+        _ = NDEFTagReadingAvailability.coreNFCCompiled
+        _ = NDEFTagReadingAvailability.readingAvailable
+        _ = LiveBarcodeCaptureAvailability.liveCaptureCompiled
+#if os(iOS) && canImport(AVFoundation) && canImport(Vision)
+        #expect(LiveBarcodeCaptureAvailability.liveCaptureCompiled)
+        #expect(!BarcodeSymbologyPolicy.liveCapture.isEmpty)
+#else
+        #expect(!LiveBarcodeCaptureAvailability.liveCaptureCompiled)
+#endif
+#if canImport(CoreNFC)
+        #expect(NDEFTagReadingAvailability.coreNFCCompiled)
+#else
+        #expect(!NDEFTagReadingAvailability.coreNFCCompiled)
+        #expect(!NDEFTagReadingAvailability.readingAvailable)
+#endif
+    }
 }

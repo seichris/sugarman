@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/seichris/sugarman/docs/p0-inventory.schema.json",
+  "title": "Sugarman P0 private inventory (local only)",
+  "description": "Filled instances stay in gitignored private-evidence/. Do not commit APKs, tokens, full serials, or keys.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "inventory_id",
+    "package_photos_path_local_only",
+    "udi",
+    "gtin",
+    "sku",
+    "lot",
+    "expiry",
+    "redacted_serial",
+    "data_matrix_text_sanitized",
+    "ndef_summary",
+    "sensor_state",
+    "official_app_package",
+    "official_app_version",
+    "official_app_signer_local_only",
+    "official_app_hash_local_only",
+    "account_region",
+    "android_model_os",
+    "ios_model_os",
+    "visible_firmware"
+  ],
+  "properties": {
+    "inventory_id": { "type": "string", "minLength": 1 },
+    "package_photos_path_local_only": {
+      "type": "string",
+      "description": "Absolute local path to package photographs. Never a Git path."
+    },
+    "udi": { "type": "string", "description": "Full UDI is local-only." },
+    "gtin": { "type": "string" },
+    "sku": { "type": "string" },
+    "lot": { "type": "string" },
+    "expiry": { "type": "string" },
+    "redacted_serial": {
+      "type": "string",
+      "description": "Redacted form only if this object is ever summarized in Git."
+    },
+    "data_matrix_text_sanitized": { "type": "string" },
+    "ndef_summary": { "type": "string" },
+    "sensor_state": {
+      "type": "string",
+      "enum": ["unopened", "active", "expired", "bound"]
+    },
+    "official_app_package": { "type": "string" },
+    "official_app_version": { "type": "string" },
+    "official_app_signer_local_only": {
+      "type": "string",
+      "description": "Signer fingerprint recorded locally. Do not commit the APK."
+    },
+    "official_app_hash_local_only": {
+      "type": "string",
+      "description": "APK SHA-256 recorded locally. Do not commit the APK."
+    },
+    "account_region": {
+      "type": "string",
+      "description": "Owner-visible region only. No credentials."
+    },
+    "android_model_os": { "type": "string" },
+    "ios_model_os": { "type": "string" },
+    "visible_firmware": { "type": "string" },
+    "notes": { "type": "string" }
+  }
+}

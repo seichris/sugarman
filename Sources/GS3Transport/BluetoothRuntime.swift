@@ -8,6 +8,49 @@ import Foundation
 /// characteristic operation.
 public protocol BluetoothRuntime: Sendable {
     func perform(_ effect: TransportEffect) async throws
+    var discoveredAdvertisements: [AdvertisementSnapshot] { get }
+    func documentedReadableText(for uuid: UUID) -> String?
+}
+
+extension BluetoothRuntime {
+    public var discoveredAdvertisements: [AdvertisementSnapshot] { [] }
+    public func documentedReadableText(for uuid: UUID) -> String? { nil }
+}
+
+/// Device Information strings that are safe to show in the read-only probe.
+/// Serial number is intentionally omitted and must never be logged.
+public struct DeviceInformationSnapshot: Sendable, Equatable {
+    public var manufacturerName: String?
+    public var modelNumber: String?
+    public var hardwareRevision: String?
+    public var firmwareRevision: String?
+    public var softwareRevision: String?
+
+    public init(
+        manufacturerName: String? = nil,
+        modelNumber: String? = nil,
+        hardwareRevision: String? = nil,
+        firmwareRevision: String? = nil,
+        softwareRevision: String? = nil
+    ) {
+        self.manufacturerName = manufacturerName
+        self.modelNumber = modelNumber
+        self.hardwareRevision = hardwareRevision
+        self.firmwareRevision = firmwareRevision
+        self.softwareRevision = softwareRevision
+    }
+
+    public static func omittingSerial(from texts: [UUID: String]) -> DeviceInformationSnapshot {
+        var copy = texts
+        copy[DocumentedReadableCharacteristic.serialNumber] = nil
+        return DeviceInformationSnapshot(
+            manufacturerName: copy[DocumentedReadableCharacteristic.manufacturerName],
+            modelNumber: copy[DocumentedReadableCharacteristic.modelNumber],
+            hardwareRevision: copy[DocumentedReadableCharacteristic.hardwareRevision],
+            firmwareRevision: copy[DocumentedReadableCharacteristic.firmwareRevision],
+            softwareRevision: copy[DocumentedReadableCharacteristic.softwareRevision]
+        )
+    }
 }
 
 public struct AdvertisementSnapshot: Sendable, Equatable {

@@ -40,6 +40,7 @@ final class AppModel {
         }
     }
     var probeEnabled: Bool
+    var probeSession: DiagnosticProbeSession
     var isSyntheticDemo: Bool
     var demoScenario: SyntheticDemoScenario?
     var demoSessionID: UUID?
@@ -79,6 +80,7 @@ final class AppModel {
                 .flatMap(GlucoseUnit.init(rawValue:))
             ?? .milligramsPerDeciliter
         self.probeEnabled = probeEnabled
+        self.probeSession = DiagnosticProbeSession()
         self.isSyntheticDemo = false
         self.demoScenario = nil
         self.demoSessionID = nil

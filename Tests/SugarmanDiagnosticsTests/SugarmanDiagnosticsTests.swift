@@ -35,6 +35,15 @@ struct SugarmanDiagnosticsTests {
         try await probe.readDocumentedCharacteristic(DocumentedReadableCharacteristic.manufacturerName)
         #expect(runtime.log.effects.contains(.startScan))
         #expect(runtime.log.effects.contains(.read(DocumentedReadableCharacteristic.manufacturerName)))
+        let writes = runtime.log.effects.contains { effect in
+            switch effect {
+            case .read, .startScan, .stopScan, .connect, .cancelConnection,
+                 .discoverServices, .discoverCharacteristics, .subscribe,
+                 .waitBackoff, .fail:
+                return false
+            }
+        }
+        #expect(!writes)
     }
 
     @Test func refusesNonDocumentedCharacteristic() async {
@@ -43,5 +52,33 @@ struct SugarmanDiagnosticsTests {
         await #expect(throws: TransportError.mutatingOperationRefused) {
             try await probe.readDocumentedCharacteristic(UUID())
         }
+    }
+
+    @Test func refusesSerialCharacteristic() async {
+        let runtime = RecordingBluetoothRuntime()
+        let probe = ReadOnlyDiagnosticProbe(isEnabled: true, runtime: runtime)
+        await #expect(throws: TransportError.mutatingOperationRefused) {
+            try await probe.readDocumentedCharacteristic(DocumentedReadableCharacteristic.serialNumber)
+        }
+        #expect(runtime.log.effects.isEmpty)
+    }
+
+    @Test func deviceInformationOmitsSerial() {
+        let serial = DocumentedReadableCharacteristic.serialNumber
+        let manufacturer = DocumentedReadableCharacteristic.manufacturerName
+        let snapshot = DeviceInformationSnapshot.omittingSerial(from: [
+            serial: "FULLSERIAL9999",
+            manufacturer: "Acme",
+        ])
+        #expect(snapshot.manufacturerName == "Acme")
+        #expect(snapshot.modelNumber == nil)
+        #expect(snapshot.firmwareRevision == nil)
+        let described = String(describing: snapshot)
+        #expect(!described.contains("FULLSERIAL9999"))
+    }
+
+    @Test func displayCharacteristicsExcludeSerial() {
+        #expect(!ProbeDisplayCharacteristic.all.contains(DocumentedReadableCharacteristic.serialNumber))
+        #expect(ProbeDisplayCharacteristic.all.contains(DocumentedReadableCharacteristic.firmwareRevision))
     }
 }

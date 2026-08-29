@@ -42,11 +42,16 @@ targets:
         NSBluetoothAlwaysUsageDescription: Sugarman uses Bluetooth to connect to an owned glucose sensor you have already set up. It does not send sensor commands until hardware evidence gates pass.
         NSBluetoothPeripheralUsageDescription: Sugarman uses Bluetooth to connect to an owned glucose sensor you have already set up.
         NFCReaderUsageDescription: Sugarman can read an owned sensor package or tag to identify the sensor. Scanning does not activate or bind the sensor.
+        com.apple.developer.nfc.readersession.formats:
+          - NDEF
         NSCameraUsageDescription: Sugarman can scan a package Data Matrix to identify an owned sensor. Scanning does not send sensor commands.
         NSHealthShareUsageDescription: Sugarman can read workouts you choose to share so you can overlay them with glucose. HealthKit glucose writes are disabled until validation gates pass.
         NSHealthUpdateUsageDescription: Sugarman may later write validated glucose to Apple Health. HealthKit glucose writes are disabled in this build.
     entitlements:
       path: Apps/Sugarman/Sugarman.entitlements
+      properties:
+        com.apple.developer.nfc.readersession.formats:
+          - NDEF
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.sugarman.ios

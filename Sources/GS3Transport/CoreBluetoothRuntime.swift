@@ -53,6 +53,26 @@ public final class CoreBluetoothRuntime: NSObject, BluetoothRuntime, @unchecked 
     private var pending: CheckedContinuation<Void, Error>?
     private var startScanAfterPoweredOn = false
     private var backoffAttempt = 0
+    private var advertisements: [UUID: AdvertisementSnapshot] = [:]
+    private var documentedTexts: [UUID: String] = [:]
+    public var onDiscover: (@Sendable (AdvertisementSnapshot) -> Void)?
+
+    public var discoveredAdvertisements: [AdvertisementSnapshot] {
+        queue.sync {
+            advertisements.values.sorted { $0.peripheralID.uuidString < $1.peripheralID.uuidString }
+        }
+    }
+
+    public func documentedReadableText(for uuid: UUID) -> String? {
+        if uuid == DocumentedReadableCharacteristic.serialNumber {
+            return nil
+        }
+        return queue.sync { documentedTexts[uuid] }
+    }
+
+    public func deviceInformationSnapshot() -> DeviceInformationSnapshot {
+        DeviceInformationSnapshot.omittingSerial(from: queue.sync { documentedTexts })
+    }
 
     public init(queue: DispatchQueue = DispatchQueue(label: CoreBluetoothRuntime.queueLabel)) {
         self.queue = queue
@@ -100,6 +120,7 @@ public final class CoreBluetoothRuntime: NSObject, BluetoothRuntime, @unchecked 
                         throw error
                     }
                     self.backoffAttempt = 0
+                    self.advertisements = [:]
                     switch self.central?.state {
                     case .poweredOn:
                         self.central?.scanForPeripherals(withServices: nil, options: nil)
@@ -279,10 +300,20 @@ extension CoreBluetoothRuntime: CBCentralManagerDelegate {
         advertisementData: [String: Any],
         rssi RSSI: NSNumber
     ) {
-        _ = advertisementData
-        _ = RSSI
         peripheral.delegate = self
         peripherals[peripheral.identifier] = peripheral
+        let localName = peripheral.name
+            ?? advertisementData[CBAdvertisementDataLocalNameKey] as? String
+        let services = (advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID] ?? [])
+            .compactMap { self.sugarmanUUID(from: $0) }
+        let snapshot = AdvertisementSnapshot(
+            peripheralID: peripheral.identifier,
+            name: localName,
+            serviceUUIDs: services,
+            rssi: RSSI.intValue
+        )
+        advertisements[peripheral.identifier] = snapshot
+        onDiscover?(snapshot)
     }
 
     public func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
@@ -332,6 +363,17 @@ extension CoreBluetoothRuntime: CBPeripheralDelegate {
     public func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
         _ = peripheral
         _ = characteristic.value?.count
+        if error == nil,
+           let uuid = sugarmanUUID(from: characteristic.uuid),
+           DocumentedReadableCharacteristic.isAllowlisted(uuid),
+           uuid != DocumentedReadableCharacteristic.serialNumber,
+           let data = characteristic.value,
+           let text = String(data: data, encoding: .utf8) {
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty {
+                documentedTexts[uuid] = trimmed
+            }
+        }
         resumePending(error: error)
     }
 }

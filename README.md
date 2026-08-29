@@ -81,8 +81,15 @@ xcodebuild -scheme Sugarman -destination 'generic/platform=iOS Simulator' -confi
 ```
 
 Or open `Sugarman.xcodeproj` in Xcode and run the `Sugarman` scheme on an iOS 26
-simulator. Device builds need an Apple Developer team; the bundle identifier
-placeholder is `app.sugarman.ios`.
+simulator. Device builds need an Apple Developer team selected locally; the
+bundle identifier is `app.sugarman.ios`. Do not invent a team ID. See
+[docs/LOCAL_SIGNING.md](docs/LOCAL_SIGNING.md).
+
+P0/P1 evidence lab (private captures stay gitignored):
+
+- [docs/P0_INVENTORY.template.md](docs/P0_INVENTORY.template.md)
+- [docs/P1_CAPTURE_RUNBOOK.md](docs/P1_CAPTURE_RUNBOOK.md)
+- [docs/EVIDENCE_STORAGE.md](docs/EVIDENCE_STORAGE.md)
 
 Governance check (also run in CI):
 

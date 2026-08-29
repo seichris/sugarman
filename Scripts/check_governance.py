@@ -222,11 +222,62 @@ def check_no_write_api() -> None:
             error("ProtocolVariant must not include v3AES until a source map exists")
 
 
+
+def check_private_evidence_gitignore() -> None:
+    gi = ROOT / ".gitignore"
+    if not gi.is_file():
+        error("missing .gitignore")
+        return
+    text = gi.read_text(encoding="utf-8", errors="replace")
+    for pattern in ("private-evidence/", "*.apk", "*.so", "*.aar"):
+        if pattern not in text:
+            error(f".gitignore must exclude {pattern}")
+    template = ROOT / "docs/P0_INVENTORY.template.md"
+    if not template.is_file():
+        error("missing docs/P0_INVENTORY.template.md")
+    runbook = ROOT / "docs/P1_CAPTURE_RUNBOOK.md"
+    if not runbook.is_file():
+        error("missing docs/P1_CAPTURE_RUNBOOK.md")
+
+    import subprocess
+
+    listed = subprocess.run(
+        ["git", "ls-files", "-z"],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+    )
+    if listed.returncode == 0 and listed.stdout:
+        blocked_suffixes = (".apk", ".apks", ".aab", ".so", ".aar", ".dex")
+        for raw in listed.stdout.split(b"\0"):
+            if not raw:
+                continue
+            rel = raw.decode("utf-8", errors="replace")
+            lowered = rel.lower()
+            if rel == "private-evidence" or rel.startswith("private-evidence/"):
+                error(f"forbidden private evidence committed: {rel}")
+            elif lowered.endswith(blocked_suffixes):
+                error(f"forbidden private evidence committed: {rel}")
+
+    forbidden_nfc = re.compile(r"\b(writeNDEF|NFCTagReaderSession)\b")
+    for base in (
+        ROOT / "Sources/SensorOnboarding",
+        ROOT / "Apps/Sugarman",
+    ):
+        if not base.exists():
+            continue
+        for path in base.rglob("*.swift"):
+            body = path.read_text(encoding="utf-8", errors="replace")
+            if forbidden_nfc.search(body):
+                error(f"NFC write/tag-command API in {path.relative_to(ROOT).as_posix()}")
+
+
 def main() -> int:
     check_licence()
     check_provenance()
     check_binaries_and_resources()
     check_no_write_api()
+    check_private_evidence_gitignore()
     if ERRORS:
         print("Governance check failed:")
         for item in ERRORS:
