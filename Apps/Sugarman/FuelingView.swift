@@ -9,6 +9,7 @@ struct FuelingView: View {
     @State private var label = ""
     @State private var carbsText = ""
     @State private var timestamp = Date()
+    @State private var actionError: String?
 
     var body: some View {
         NavigationStack {
@@ -35,24 +36,27 @@ struct FuelingView: View {
                     .accessibilityHint(Text("fueling.save_hint"))
                 }
                 Section("fueling.list") {
-                    if model.fuelingEvents.isEmpty {
+                    if let actionError {
+                        Text(actionError).foregroundStyle(.red)
+                    }
+                    if model.visibleFuelingEvents.isEmpty {
                         Text("fueling.empty")
                             .foregroundStyle(.secondary)
                     } else {
-                        ForEach(model.fuelingEvents) { event in
+                        ForEach(model.visibleFuelingEvents) { event in
                             fuelingRow(event)
                                 .accessibilityElement(children: .combine)
                                 .accessibilityLabel(Text(fuelingAccessibilityLabel(event)))
                                 .accessibilityHint(Text("fueling.delete_hint"))
                                 .accessibilityAction(named: Text("fueling.delete")) {
-                                    Task { await model.deleteFueling(event.id) }
+                                    Task { await delete(event.id) }
                                 }
                         }
                         .onDelete { offsets in
-                            let ids = offsets.map { model.fuelingEvents[$0].id }
+                            let ids = offsets.map { model.visibleFuelingEvents[$0].id }
                             Task {
                                 for id in ids {
-                                    await model.deleteFueling(id)
+                                    await delete(id)
                                 }
                             }
                         }
@@ -101,10 +105,34 @@ struct FuelingView: View {
     private func save() async {
         let trimmed = label.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        let carbs = Double(carbsText.replacingOccurrences(of: ",", with: "."))
-        await model.addFueling(label: trimmed, carbohydrateGrams: carbs, timestamp: timestamp)
-        label = ""
-        carbsText = ""
-        timestamp = Date()
+        let normalizedCarbs = carbsText.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: ",", with: ".")
+        let carbs: Double?
+        if normalizedCarbs.isEmpty {
+            carbs = nil
+        } else if let parsed = Double(normalizedCarbs) {
+            carbs = parsed
+        } else {
+            actionError = AppInputError.invalidCarbohydrateAmount.localizedDescription
+            return
+        }
+        do {
+            try await model.addFueling(label: trimmed, carbohydrateGrams: carbs, timestamp: timestamp)
+            actionError = nil
+            label = ""
+            carbsText = ""
+            timestamp = Date()
+        } catch {
+            actionError = error.localizedDescription
+        }
+    }
+
+    private func delete(_ id: UUID) async {
+        do {
+            try await model.deleteFueling(id)
+            actionError = nil
+        } catch {
+            actionError = error.localizedDescription
+        }
     }
 }

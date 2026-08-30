@@ -39,13 +39,17 @@ struct RedactedGATTMapTests {
             serialByteCount: 6,
             deviceInformationPresent: true
         )
-        #expect(map.sixByteAddressSource == .deviceInformation)
+        #expect(map.sixByteAddressSource == .notFound)
+        #expect(map.peripheralID == "redacted-peer")
+        #expect(map.localName == "redacted-name(len:12)")
         #expect(map.cipherHypothesis == .unknownUntilCapture)
         #expect(map.serialByteCount == 6)
         let data = try RedactedGATTMapBuilder.jsonData(from: map)
         let text = String(decoding: data, as: UTF8.self)
         #expect(!text.contains(serial))
         #expect(!text.contains("FULLSERIAL"))
+        #expect(!text.contains("SyntheticLab"))
+        #expect(!text.contains(peripheral.uuidString))
         #expect(text.contains("2A25"))
         #expect(text.contains("serialValueOmitted"))
         #expect(text.contains("FF32") || text.contains("0000FF32"))
@@ -60,6 +64,19 @@ struct RedactedGATTMapTests {
         let roundTrip = String(decoding: try Data(contentsOf: url), as: UTF8.self)
         #expect(!roundTrip.contains(serial))
         #expect(roundTrip.contains("unknownUntilCapture"))
+    }
+
+    @Test func sixByteLengthAloneIsNotAddressEvidence() {
+        let map = RedactedGATTMapBuilder.make(
+            peripheralID: UUID(),
+            localName: "unique-sensor-name",
+            services: [],
+            serialByteCount: 6,
+            deviceInformationPresent: true
+        )
+        #expect(map.sixByteAddressSource == .notFound)
+        #expect(map.localName == "redacted-name(len:18)")
+        #expect(map.notes.contains { $0.contains("not address-source evidence") })
     }
 
     @Test func notFoundWhenSerialIsNotSixBytes() {

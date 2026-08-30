@@ -9,7 +9,7 @@ import GS3Transport
 public protocol CharacteristicMutating: Sendable {}
 
 /// Device Information characteristics the probe may display. Serial number
-/// is allowlisted for the transport read path but is never requested or shown.
+/// is allowlisted only for a byte-count read and is never retained or shown.
 public enum ProbeDisplayCharacteristic: Sendable {
     public static let all: [UUID] = [
         DocumentedReadableCharacteristic.manufacturerName,
@@ -75,7 +75,8 @@ public struct ReadOnlyDiagnosticProbe: Sendable {
         try await session.handle(.readComplete(characteristic: uuid, byteCount: 0))
     }
 
-    /// Scan → connect → DIS discovery → allowlisted reads except serial.
+    /// Scan → connect → discovery → reads of DIS characteristics that are both
+    /// present and readable. Optional DIS fields are skipped.
     public func connectAndReadDeviceInformation(peripheralID: UUID) async throws -> DeviceInformationSnapshot {
         try requireEnabled()
         try await connect(peripheralID: peripheralID)
@@ -83,15 +84,23 @@ public struct ReadOnlyDiagnosticProbe: Sendable {
         try await noteServicesDiscovered()
         try await noteCharacteristicsDiscovered()
         try await noteSubscribed()
-        for uuid in ProbeDisplayCharacteristic.all {
+        let readable = Set(
+            runtime.discoveredGATTServices
+                .flatMap(\.characteristics)
+                .filter { $0.properties.contains("read") }
+                .map(\.uuid)
+        )
+        for uuid in ProbeDisplayCharacteristic.all where readable.contains(uuid) {
             try await readDocumentedCharacteristic(uuid)
         }
-        try? await recordSerialByteCount()
+        if readable.contains(DocumentedReadableCharacteristic.serialNumber) {
+            try await recordSerialByteCount()
+        }
         return DeviceInformationSnapshot.omittingSerial(from: documentedTexts())
     }
 
     public func disconnect() async throws {
-        try await session.handle(.disconnect)
+        try await session.handle(.cancel)
     }
 
     public var state: TransportState {

@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "scope": "Redacted summaries of three timestamped private official-app Android HCI snapshots from one owned, already-active Mainland China GS3. The snapshots may overlap and are not independent sensor or lot replications. Raw payloads and device identifiers are omitted.",
+  "captures": [
+    {
+      "sha256": "8f59200f694c51c533a30ae6e7398c35b46ced2bce3d7a6ec200e8e072302c19",
+      "recordCount": 13773,
+      "connectionEventCount": 36,
+      "attPduCount": 404
+    },
+    {
+      "sha256": "d0a389eaa1b29024daf441ff7816ad2572b61a40a9bf500c37ddd511c6553008",
+      "recordCount": 13680,
+      "connectionEventCount": 31,
+      "attPduCount": 442
+    },
+    {
+      "sha256": "165d697f4126d0fa2a8ea4f6d822b8fe74dd03e5663ba1e0910c9a197882d3e7",
+      "recordCount": 13661,
+      "connectionEventCount": 31,
+      "attPduCount": 449
+    }
+  ],
+  "analysis": {
+    "implementations": [
+      "Sources/SugarmanDiagnostics/BTSnoopAnalyzer.swift",
+      "Scripts/analyze_btsnoop.py"
+    ],
+    "analyzersAgree": true,
+    "hciPeerAddressFieldObserved": true,
+    "sixByteFieldInAdvertisementPayload": false,
+    "sixByteFieldInScanResponsePayload": false,
+    "sixByteFieldInDeviceInformationRead": true,
+    "sixByteFieldInOtherReadable": false,
+    "sixByteAddressSource": "deviceInformation",
+    "addressEvidence": {
+      "characteristicUUID": "2A25",
+      "bluetoothAssignedName": "Serial Number String",
+      "valueByteCount": 17,
+      "readResponseCountPerCapture": 4,
+      "comparison": "Parsed textual six-octet address equalled the connected HCI peer address in normal or reversed byte order on at least one correlated response in every capture.",
+      "rawValueOmitted": true,
+      "confidence": "high for this owned sensor and firmware"
+    },
+    "observedGS3ATTShape": {
+      "notificationCharacteristicUUID": "0000FF31-0000-1000-8000-00805F9B34FB",
+      "notificationHandle": 38,
+      "notificationValueByteCounts": [
+        5,
+        8,
+        10,
+        20,
+        24,
+        29,
+        72
+      ],
+      "cccdWriteHandle": 39,
+      "cccdWriteValueByteCount": 2,
+      "applicationWriteCharacteristicUUID": "0000FF32-0000-1000-8000-00805F9B34FB",
+      "applicationWriteHandle": 41,
+      "applicationWriteValueByteCounts": [
+        4,
+        7,
+        19,
+        38
+      ],
+      "rawPayloadsOmitted": true
+    },
+    "redactingAnalyzerCipherHypothesis": "unknownUntilCapture",
+    "cipherAnalysisScope": "This P1 analyzer deliberately makes no cipher claim. The separate capture-plus-owned-APK P2 report resolves the observed authentication family.",
+    "refusedGlucoseDecode": true
+  }
+}

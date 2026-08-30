@@ -99,7 +99,7 @@ public enum RedactedGATTMapBuilder: Sendable {
     public static let filename = "sugarman-gatt-map.json"
 
     public static func make(
-        peripheralID: UUID,
+        peripheralID _: UUID,
         localName: String?,
         services: [GATTServiceSnapshot],
         serialByteCount: Int?,
@@ -114,35 +114,33 @@ public enum RedactedGATTMapBuilder: Sendable {
                     return RedactedGATTCharacteristic(
                         uuid: characteristic.uuid.uuidString,
                         uuidShort: shortUUID(characteristic.uuid),
-                        properties: characteristic.properties,
+                        properties: characteristic.properties.sorted(),
                         valueByteCount: isSerial ? serialByteCount ?? characteristic.valueByteCount : characteristic.valueByteCount,
                         serialValueOmitted: isSerial
                     )
-                }
+                }.sorted { $0.uuid < $1.uuid }
             )
-        }
-        let source: SixByteAddressSource
-        if serialByteCount == 6 {
-            source = .deviceInformation
-        } else {
-            source = .notFound
-        }
+        }.sorted { $0.uuid < $1.uuid }
         var notes = [
             "Raw characteristic values omitted.",
             "Serial number bytes omitted; byteCount only.",
+            "CoreBluetooth peripheral identifier omitted.",
             "Does not identify a cipher. CipherHypothesis remains unknownUntilCapture.",
             "Simulator probe remains disabled; this map is produced on device only.",
         ]
         if deviceInformationPresent {
             notes.append("Device Information service was observed.")
         }
+        if serialByteCount == 6 {
+            notes.append("A six-byte serial value was observed, but its bytes were not retained or compared; this is not address-source evidence.")
+        }
         return RedactedGATTMap(
             schemaVersion: schemaVersion,
-            peripheralID: peripheralID.uuidString,
-            localName: localName,
+            peripheralID: "redacted-peer",
+            localName: redactedLocalName(localName),
             services: redactedServices,
             serialByteCount: serialByteCount,
-            sixByteAddressSource: source,
+            sixByteAddressSource: .notFound,
             cipherHypothesis: .unknownUntilCapture,
             notes: notes
         )
@@ -161,6 +159,13 @@ public enum RedactedGATTMapBuilder: Sendable {
             return short
         }
         return nil
+    }
+
+    /// Advertising names can contain serial-like identifiers. Preserve only
+    /// their presence and character count in shareable diagnostics.
+    public static func redactedLocalName(_ localName: String?) -> String? {
+        guard let localName else { return nil }
+        return "redacted-name(len:\(localName.count))"
     }
 }
 

@@ -99,32 +99,9 @@ public struct GS1ElementString: Sendable, Equatable {
             if payload[index] == groupSeparator {
                 break
             }
-            if looksLikeNextAI(payload, at: index) {
-                break
-            }
             index = payload.index(after: index)
         }
         return String(payload[start..<index])
-    }
-
-    /// A following 01/17/10/21 AI is recognized only after at least one
-    /// character of the current variable field, and only when the remainder
-    /// is long enough for that AI's value.
-    private static func looksLikeNextAI(_ payload: String, at index: String.Index) -> Bool {
-        guard payload.distance(from: index, to: payload.endIndex) >= 2 else { return false }
-        let aiEnd = payload.index(index, offsetBy: 2)
-        let ai = String(payload[index..<aiEnd])
-        let rest = payload.distance(from: aiEnd, to: payload.endIndex)
-        switch ai {
-        case "01":
-            return rest >= 14
-        case "17":
-            return rest >= 6
-        case "10", "21":
-            return rest >= 1
-        default:
-            return false
-        }
     }
 
     private static func make(fields: [String: String]) -> GS1ElementString? {

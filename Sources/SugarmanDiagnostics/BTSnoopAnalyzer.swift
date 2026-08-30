@@ -63,6 +63,7 @@ public struct ATTOperationSummary: Sendable, Equatable, Codable {
 public enum BTSnoopError: Error, Sendable, Equatable {
     case invalidMagic
     case truncated
+    case unsupportedVersion(UInt32)
     case unsupportedDatalink(UInt32)
 }
 
@@ -83,8 +84,9 @@ public enum BTSnoopAnalyzer: Sendable {
         let magic = data.prefix(8)
         guard magic == Data("btsnoop\0".utf8) else { throw BTSnoopError.invalidMagic }
         let version = readUInt32BE(data, 8)
-        _ = version
+        guard version == 1 else { throw BTSnoopError.unsupportedVersion(version) }
         let datalink = readUInt32BE(data, 12)
+        guard datalink == 1002 else { throw BTSnoopError.unsupportedDatalink(datalink) }
         var offset = 16
         var recordCount = 0
         var advCount = 0
@@ -96,25 +98,28 @@ public enum BTSnoopAnalyzer: Sendable {
         var mfgLengths: [Int] = []
         var attOps: [ATTOperationSummary] = []
         var hciPeer = false
-        var sixInAdv = false
-        var sixInScan = false
+        var advertisementMatches: [Data: AddressPayloadMatch] = [:]
         var sixInDIS = false
         var sixInOther = false
         var notes: [String] = [
             "Payloads, full MACs, and serials omitted.",
             "Does not identify a cipher. CipherHypothesis remains unknownUntilCapture.",
         ]
-        var aclReassembly: [UInt16: Data] = [:]
-        var knownPeerAddress: [UInt8]?
+        var aclReassembly: [UInt32: Data] = [:]
+        var peerAddressesByConnection: [UInt16: [UInt8]] = [:]
+        var allConnectedPeers: Set<Data> = []
+        var characteristicUUIDsByConnection: [UInt16: [UInt16: String]] = [:]
+        var pendingReadHandleByConnection: [UInt16: UInt16] = [:]
+        var pendingReadByTypeUUIDByConnection: [UInt16: String] = [:]
 
         while offset + 24 <= data.count {
             let originalLength = Int(readUInt32BE(data, offset))
             let includedLength = Int(readUInt32BE(data, offset + 4))
-            _ = readUInt32BE(data, offset + 8) // flags
+            let packetFlags = readUInt32BE(data, offset + 8)
             _ = readUInt32BE(data, offset + 12) // drops
             _ = readUInt64BE(data, offset + 16)
             offset += 24
-            guard includedLength >= 0, offset + includedLength <= data.count else {
+            guard includedLength <= originalLength, offset + includedLength <= data.count else {
                 throw BTSnoopError.truncated
             }
             let packet = data.subdata(in: offset..<(offset + includedLength))
@@ -122,17 +127,7 @@ public enum BTSnoopAnalyzer: Sendable {
             recordCount += 1
             _ = originalLength
 
-            let payload: Data
-            switch datalink {
-            case 1001, 1002, 1003, 1004:
-                payload = packet
-            default:
-                // Common Android value is 1002 (H4). Accept other HCI encapsulations
-                // that still start with an H4 packet-type byte.
-                payload = packet
-            }
-
-            guard let (kind, body) = splitH4(payload) else { continue }
+            guard let (kind, body) = splitH4(packet) else { continue }
             switch kind {
             case .event:
                 parseEvent(
@@ -144,26 +139,42 @@ public enum BTSnoopAnalyzer: Sendable {
                     serviceUUIDs: &serviceUUIDs,
                     mfgLengths: &mfgLengths,
                     hciPeer: &hciPeer,
-                    sixInAdv: &sixInAdv,
-                    sixInScan: &sixInScan,
-                    knownPeerAddress: &knownPeerAddress
+                    advertisementMatches: &advertisementMatches,
+                    peerAddressesByConnection: &peerAddressesByConnection,
+                    allConnectedPeers: &allConnectedPeers,
+                    reassembly: &aclReassembly,
+                    characteristicUUIDsByConnection: &characteristicUUIDsByConnection,
+                    pendingReadHandleByConnection: &pendingReadHandleByConnection,
+                    pendingReadByTypeUUIDByConnection: &pendingReadByTypeUUIDByConnection
                 )
             case .acl:
                 parseACL(
                     body,
+                    direction: UInt8(packetFlags & 0x1),
                     reassembly: &aclReassembly,
                     attCount: &attCount,
                     attOps: &attOps,
                     serviceUUIDs: &serviceUUIDs,
                     sixInDIS: &sixInDIS,
                     sixInOther: &sixInOther,
-                    knownPeerAddress: knownPeerAddress,
+                    peerAddressesByConnection: peerAddressesByConnection,
+                    characteristicUUIDsByConnection: &characteristicUUIDsByConnection,
+                    pendingReadHandleByConnection: &pendingReadHandleByConnection,
+                    pendingReadByTypeUUIDByConnection: &pendingReadByTypeUUIDByConnection,
                     notes: &notes
                 )
             case .command, .sco, .iso:
                 continue
             }
         }
+
+        guard offset == data.count else { throw BTSnoopError.truncated }
+
+        let connectedAdvertisementMatches = advertisementMatches.filter {
+            allConnectedPeers.contains($0.key)
+        }
+        let sixInAdv = connectedAdvertisementMatches.contains { $0.value.advertisement }
+        let sixInScan = connectedAdvertisementMatches.contains { $0.value.scanResponse }
 
         let source = resolveAddressSource(
             sixInAdv: sixInAdv,
@@ -213,6 +224,11 @@ public enum BTSnoopAnalyzer: Sendable {
         case command, acl, sco, event, iso
     }
 
+    private struct AddressPayloadMatch {
+        var advertisement = false
+        var scanResponse = false
+    }
+
     private static func splitH4(_ packet: Data) -> (H4Kind, Data)? {
         guard packet.count >= 1 else { return nil }
         let type = byte(packet, 0)
@@ -225,7 +241,7 @@ public enum BTSnoopAnalyzer: Sendable {
         case 0x05: return (.iso, body)
         default:
             // Unencapsulated HCI event: event code is first byte.
-            if type == 0x3E || type == 0x0E || type == 0x13 {
+            if type == 0x05 || type == 0x3E || type == 0x0E || type == 0x13 {
                 return (.event, packet)
             }
             return nil
@@ -241,27 +257,54 @@ public enum BTSnoopAnalyzer: Sendable {
         serviceUUIDs: inout Set<String>,
         mfgLengths: inout [Int],
         hciPeer: inout Bool,
-        sixInAdv: inout Bool,
-        sixInScan: inout Bool,
-        knownPeerAddress: inout [UInt8]?
+        advertisementMatches: inout [Data: AddressPayloadMatch],
+        peerAddressesByConnection: inout [UInt16: [UInt8]],
+        allConnectedPeers: inout Set<Data>,
+        reassembly: inout [UInt32: Data],
+        characteristicUUIDsByConnection: inout [UInt16: [UInt16: String]],
+        pendingReadHandleByConnection: inout [UInt16: UInt16],
+        pendingReadByTypeUUIDByConnection: inout [UInt16: String]
     ) {
         guard body.count >= 2 else { return }
         guard let eventCode = byte(body, 0), let paramLenByte = byte(body, 1) else { return }
         let paramLen = Int(paramLenByte)
         guard body.count >= 2 + paramLen else { return }
         guard let params = slice(body, 2, paramLen) else { return }
+        if eventCode == 0x05, params.count >= 4,
+           let rawHandle = readUInt16LE(params, 1) {
+            clearConnectionState(
+                rawHandle & 0x0FFF,
+                peerAddressesByConnection: &peerAddressesByConnection,
+                reassembly: &reassembly,
+                characteristicUUIDsByConnection: &characteristicUUIDsByConnection,
+                pendingReadHandleByConnection: &pendingReadHandleByConnection,
+                pendingReadByTypeUUIDByConnection: &pendingReadByTypeUUIDByConnection
+            )
+            return
+        }
         guard eventCode == 0x3E, params.count >= 1, let sub = byte(params, 0) else { return }
         let rest = slice(params, 1, params.count - 1) ?? Data()
         switch sub {
         case 0x01, 0x0A: // Connection Complete / Enhanced Connection Complete
             connectionCount += 1
-            if rest.count >= 8 {
+            if rest.count >= 11, byte(rest, 0) == 0 {
                 // Enhanced: status(1)+handle(2)+role(1)+peerType(1)+addr(6)
                 // Legacy:    status(1)+handle(2)+role(1)+peerType(1)+addr(6)
                 let addrOffset = 5
-                if rest.count >= addrOffset + 6, let addrData = slice(rest, addrOffset, 6) {
+                if let connectionHandle = readUInt16LE(rest, 1),
+                   let addrData = slice(rest, addrOffset, 6) {
+                    let handle = connectionHandle & 0x0FFF
+                    clearConnectionState(
+                        handle,
+                        peerAddressesByConnection: &peerAddressesByConnection,
+                        reassembly: &reassembly,
+                        characteristicUUIDsByConnection: &characteristicUUIDsByConnection,
+                        pendingReadHandleByConnection: &pendingReadHandleByConnection,
+                        pendingReadByTypeUUIDByConnection: &pendingReadByTypeUUIDByConnection
+                    )
                     hciPeer = true
-                    knownPeerAddress = Array(addrData)
+                    peerAddressesByConnection[handle] = Array(addrData)
+                    allConnectedPeers.insert(addrData)
                 }
             }
         case 0x02: // LE Advertising Report
@@ -273,9 +316,7 @@ public enum BTSnoopAnalyzer: Sendable {
                 serviceUUIDs: &serviceUUIDs,
                 mfgLengths: &mfgLengths,
                 hciPeer: &hciPeer,
-                sixInAdv: &sixInAdv,
-                sixInScan: &sixInScan,
-                knownPeerAddress: &knownPeerAddress
+                advertisementMatches: &advertisementMatches
             )
         case 0x0D: // LE Extended Advertising Report
             parseExtendedAdvReport(
@@ -286,9 +327,7 @@ public enum BTSnoopAnalyzer: Sendable {
                 serviceUUIDs: &serviceUUIDs,
                 mfgLengths: &mfgLengths,
                 hciPeer: &hciPeer,
-                sixInAdv: &sixInAdv,
-                sixInScan: &sixInScan,
-                knownPeerAddress: &knownPeerAddress
+                advertisementMatches: &advertisementMatches
             )
         default:
             break
@@ -303,9 +342,7 @@ public enum BTSnoopAnalyzer: Sendable {
         serviceUUIDs: inout Set<String>,
         mfgLengths: inout [Int],
         hciPeer: inout Bool,
-        sixInAdv: inout Bool,
-        sixInScan: inout Bool,
-        knownPeerAddress: inout [UInt8]?
+        advertisementMatches: inout [Data: AddressPayloadMatch]
     ) {
         guard data.count >= 1, let numByte = byte(data, 0) else { return }
         var offset = 1
@@ -319,7 +356,6 @@ public enum BTSnoopAnalyzer: Sendable {
             let addr = Array(addrData)
             offset += 6
             hciPeer = true
-            if knownPeerAddress == nil { knownPeerAddress = addr }
             guard offset < data.count, let dataLenByte = byte(data, offset) else { return }
             let dataLen = Int(dataLenByte)
             offset += 1
@@ -339,8 +375,7 @@ public enum BTSnoopAnalyzer: Sendable {
                 serviceUUIDs: &serviceUUIDs,
                 mfgLengths: &mfgLengths,
                 isScanResponse: isScan,
-                sixInAdv: &sixInAdv,
-                sixInScan: &sixInScan
+                advertisementMatches: &advertisementMatches
             )
         }
     }
@@ -353,9 +388,7 @@ public enum BTSnoopAnalyzer: Sendable {
         serviceUUIDs: inout Set<String>,
         mfgLengths: inout [Int],
         hciPeer: inout Bool,
-        sixInAdv: inout Bool,
-        sixInScan: inout Bool,
-        knownPeerAddress: inout [UInt8]?
+        advertisementMatches: inout [Data: AddressPayloadMatch]
     ) {
         guard data.count >= 1, let numByte = byte(data, 0) else { return }
         var offset = 1
@@ -370,7 +403,6 @@ public enum BTSnoopAnalyzer: Sendable {
             let addr = Array(addrData)
             offset += 6
             hciPeer = true
-            if knownPeerAddress == nil { knownPeerAddress = addr }
             offset += 1 + 1 + 1 + 1 + 1 + 2 + 1
             offset += 6 // direct addr
             guard let dataLenByte = byte(data, offset) else { return }
@@ -391,8 +423,7 @@ public enum BTSnoopAnalyzer: Sendable {
                 serviceUUIDs: &serviceUUIDs,
                 mfgLengths: &mfgLengths,
                 isScanResponse: isScan,
-                sixInAdv: &sixInAdv,
-                sixInScan: &sixInScan
+                advertisementMatches: &advertisementMatches
             )
         }
     }
@@ -404,8 +435,7 @@ public enum BTSnoopAnalyzer: Sendable {
         serviceUUIDs: inout Set<String>,
         mfgLengths: inout [Int],
         isScanResponse: Bool,
-        sixInAdv: inout Bool,
-        sixInScan: inout Bool
+        advertisementMatches: inout [Data: AddressPayloadMatch]
     ) {
         var offset = 0
         while offset < ad.count {
@@ -438,33 +468,35 @@ public enum BTSnoopAnalyzer: Sendable {
                 }
             case 0xFF:
                 mfgLengths.append(payload.count)
-                if payloadLooksLikeAddress(payload, peer: peer) {
-                    if isScanResponse { sixInScan = true } else { sixInAdv = true }
-                }
-            case 0x16, 0x20, 0x21:
-                if payloadLooksLikeAddress(payload, peer: peer) {
-                    if isScanResponse { sixInScan = true } else { sixInAdv = true }
-                }
             default:
-                if payloadLooksLikeAddress(payload, peer: peer) {
-                    if isScanResponse { sixInScan = true } else { sixInAdv = true }
-                }
+                break
             }
-            if payload.count == 6, payloadLooksLikeAddress(payload, peer: peer) {
-                if isScanResponse { sixInScan = true } else { sixInAdv = true }
+            if payloadLooksLikeAddress(payload, peer: peer) {
+                let key = Data(peer)
+                var match = advertisementMatches[key] ?? AddressPayloadMatch()
+                if isScanResponse {
+                    match.scanResponse = true
+                } else {
+                    match.advertisement = true
+                }
+                advertisementMatches[key] = match
             }
         }
     }
 
     private static func parseACL(
         _ body: Data,
-        reassembly: inout [UInt16: Data],
+        direction: UInt8,
+        reassembly: inout [UInt32: Data],
         attCount: inout Int,
         attOps: inout [ATTOperationSummary],
         serviceUUIDs: inout Set<String>,
         sixInDIS: inout Bool,
         sixInOther: inout Bool,
-        knownPeerAddress: [UInt8]?,
+        peerAddressesByConnection: [UInt16: [UInt8]],
+        characteristicUUIDsByConnection: inout [UInt16: [UInt16: String]],
+        pendingReadHandleByConnection: inout [UInt16: UInt16],
+        pendingReadByTypeUUIDByConnection: inout [UInt16: String],
         notes: inout [String]
     ) {
         guard body.count >= 4,
@@ -472,21 +504,22 @@ public enum BTSnoopAnalyzer: Sendable {
               let aclLen = readUInt16LE(body, 2) else { return }
         let handle = handleFlags & 0x0FFF
         let pb = (handleFlags >> 12) & 0x3
+        let key = reassemblyKey(handle: handle, direction: direction)
         let dataLength = Int(aclLen)
         guard let chunk = slice(body, 4, dataLength) else { return }
         if pb == 0x01 {
-            var existing = reassembly[handle] ?? Data()
+            var existing = reassembly[key] ?? Data()
             existing.append(chunk)
-            reassembly[handle] = existing
+            reassembly[key] = existing
         } else {
-            reassembly[handle] = chunk
+            reassembly[key] = chunk
         }
-        guard let l2cap = reassembly[handle], l2cap.count >= 4,
+        guard let l2cap = reassembly[key], l2cap.count >= 4,
               let l2capLen16 = readUInt16LE(l2cap, 0),
               let cid = readUInt16LE(l2cap, 2) else { return }
         let l2capLen = Int(l2capLen16)
         guard let att = slice(l2cap, 4, l2capLen) else { return }
-        reassembly[handle] = nil
+        reassembly[key] = nil
         guard cid == 0x0004 else { return } // ATT
         parseATT(
             att,
@@ -495,7 +528,11 @@ public enum BTSnoopAnalyzer: Sendable {
             serviceUUIDs: &serviceUUIDs,
             sixInDIS: &sixInDIS,
             sixInOther: &sixInOther,
-            knownPeerAddress: knownPeerAddress,
+            connectionHandle: handle,
+            knownPeerAddress: peerAddressesByConnection[handle],
+            characteristicUUIDsByConnection: &characteristicUUIDsByConnection,
+            pendingReadHandleByConnection: &pendingReadHandleByConnection,
+            pendingReadByTypeUUIDByConnection: &pendingReadByTypeUUIDByConnection,
             notes: &notes
         )
     }
@@ -507,7 +544,11 @@ public enum BTSnoopAnalyzer: Sendable {
         serviceUUIDs: inout Set<String>,
         sixInDIS: inout Bool,
         sixInOther: inout Bool,
+        connectionHandle: UInt16,
         knownPeerAddress: [UInt8]?,
+        characteristicUUIDsByConnection: inout [UInt16: [UInt16: String]],
+        pendingReadHandleByConnection: inout [UInt16: UInt16],
+        pendingReadByTypeUUIDByConnection: inout [UInt16: String],
         notes: inout [String]
     ) {
         guard att.count >= 1, let opcode = byte(att, 0) else { return }
@@ -518,11 +559,19 @@ public enum BTSnoopAnalyzer: Sendable {
         var valueByteCount: Int?
 
         switch opcode {
-        case 0x01: // Error Response
-            if att.count >= 5 { handle = readUInt16LE(att, 1) }
-        case 0x04, 0x06, 0x08, 0x10: // find/read-by-type/group requests
+        case 0x01: // Error Response: request opcode + attribute handle + error code
+            if att.count >= 5 { handle = readUInt16LE(att, 2) }
+            if byte(att, 1) == 0x08 {
+                pendingReadByTypeUUIDByConnection[connectionHandle] = nil
+            }
+            pendingReadHandleByConnection[connectionHandle] = nil
+        case 0x04, 0x06, 0x10: // find/read-by-group requests
             if att.count >= 5 { handle = readUInt16LE(att, 1) }
             uuid = uuidFromTail(att, start: 5)
+        case 0x08: // Read By Type Request
+            if att.count >= 5 { handle = readUInt16LE(att, 1) }
+            uuid = uuidFromTail(att, start: 5)
+            pendingReadByTypeUUIDByConnection[connectionHandle] = uuid
         case 0x05: // Find Information Response
             if att.count >= 2, let format = byte(att, 1) {
                 let uuidLen = format == 0x01 ? 2 : 16
@@ -532,11 +581,18 @@ public enum BTSnoopAnalyzer: Sendable {
                     uuid = format == 0x01
                         ? hexUUID16(att, i + 2)
                         : formatUUID128(att, i + 2)
-                    if let uuid { serviceUUIDs.insert(uuid) }
+                    if let handle, let uuid {
+                        characteristicUUIDsByConnection[connectionHandle, default: [:]][handle] = uuid
+                        serviceUUIDs.insert(uuid)
+                    }
                     i += 2 + uuidLen
                 }
             }
         case 0x09, 0x11: // Read By Type / Group Type Response
+            let requestedType = opcode == 0x09
+                ? pendingReadByTypeUUIDByConnection.removeValue(forKey: connectionHandle)
+                : nil
+            let isCharacteristicDeclaration = requestedType?.uppercased() == "2803"
             if att.count >= 2, let pairLenByte = byte(att, 1) {
                 let pairLen = Int(pairLenByte)
                 var i = 2
@@ -548,11 +604,7 @@ public enum BTSnoopAnalyzer: Sendable {
                         uuid = hexUUID16(value, 2)
                     } else if opcode == 0x11, value.count == 18 {
                         uuid = formatUUID128(value, 2)
-                    } else if value.count == 2 {
-                        uuid = hexUUID16(value, 0)
-                    } else if value.count == 16 {
-                        uuid = formatUUID128(value, 0)
-                    } else if value.count >= 3, opcode == 0x09, pairLen >= 5 {
+                    } else if value.count >= 3, isCharacteristicDeclaration, pairLen >= 5 {
                         // Characteristic declaration: props(1)+valueHandle(2)+uuid
                         if let charUUID = slice(value, 3, value.count - 3) {
                             if charUUID.count == 2 {
@@ -561,32 +613,53 @@ public enum BTSnoopAnalyzer: Sendable {
                                 uuid = formatUUID128(charUUID, 0)
                             }
                         }
+                        if let valueHandle = readUInt16LE(value, 1), let uuid {
+                            characteristicUUIDsByConnection[connectionHandle, default: [:]][valueHandle] = uuid
+                        }
+                    } else if opcode == 0x09 {
+                        uuid = requestedType
                     }
                     if let uuid { serviceUUIDs.insert(uuid) }
                     i += pairLen
                 }
             }
         case 0x0A, 0x0C: // Read / Read Blob Request
-            if att.count >= 3 { handle = readUInt16LE(att, 1) }
+            if att.count >= 3, let readHandle = readUInt16LE(att, 1) {
+                handle = readHandle
+                pendingReadHandleByConnection[connectionHandle] = readHandle
+                uuid = characteristicUUIDsByConnection[connectionHandle]?[readHandle]
+            }
         case 0x0B, 0x0D: // Read / Read Blob Response
             valueByteCount = att.count - 1
+            let readHandle = pendingReadHandleByConnection.removeValue(forKey: connectionHandle)
+            handle = readHandle
+            uuid = readHandle.flatMap { characteristicUUIDsByConnection[connectionHandle]?[$0] }
             inspectReadValue(
                 slice(att, 1, att.count - 1) ?? Data(),
-                uuid: lastUUID(attOps),
+                uuid: uuid,
                 sixInDIS: &sixInDIS,
                 sixInOther: &sixInOther,
                 knownPeerAddress: knownPeerAddress
             )
-        case 0x12, 0x16, 0x52: // Write Request / Prepare Write / Write Command
+        case 0x12, 0x52: // Write Request / Write Command
             if att.count >= 3 {
                 handle = readUInt16LE(att, 1)
                 valueByteCount = att.count - 3
+                uuid = handle.flatMap { characteristicUUIDsByConnection[connectionHandle]?[$0] }
             }
-            notes.append("Write/prepare ATT PDU omitted (possible auth); length only.")
+            notes.append("Write ATT PDU omitted (possible auth); length only.")
+        case 0x16, 0x17: // Prepare Write Request / Response: handle + offset + value
+            if att.count >= 5 {
+                handle = readUInt16LE(att, 1)
+                valueByteCount = att.count - 5
+                uuid = handle.flatMap { characteristicUUIDsByConnection[connectionHandle]?[$0] }
+            }
+            notes.append("Prepare-write ATT PDU omitted (possible auth); length only.")
         case 0x1B, 0x1D: // Notification / Indication
             if att.count >= 3 {
                 handle = readUInt16LE(att, 1)
                 valueByteCount = att.count - 3
+                uuid = handle.flatMap { characteristicUUIDsByConnection[connectionHandle]?[$0] }
             }
         default:
             if att.count >= 3 { handle = readUInt16LE(att, 1) }
@@ -612,17 +685,54 @@ public enum BTSnoopAnalyzer: Sendable {
         knownPeerAddress: [UInt8]?
     ) {
         let matchesPeer = payloadLooksLikeAddress(value, peer: knownPeerAddress)
-        let macString = looksLikeMACString(value)
-        let dis = isDeviceInformationUUID(uuid) || (uuid.map(isSerialUUID) ?? false)
-        if dis, value.count == 6 || macString || matchesPeer {
+        let textualMatchesPeer = textualAddress(value).map { candidate in
+            guard let knownPeerAddress else { return false }
+            return candidate == knownPeerAddress || candidate == Array(knownPeerAddress.reversed())
+        } ?? false
+        guard let uuid, matchesPeer || textualMatchesPeer else { return }
+        let dis = isDeviceInformationUUID(uuid) || isSerialUUID(uuid)
+        if dis {
             sixInDIS = true
-        } else if matchesPeer || macString {
+        } else {
             sixInOther = true
         }
     }
 
-    private static func lastUUID(_ ops: [ATTOperationSummary]) -> String? {
-        ops.reversed().first(where: { $0.uuid != nil })?.uuid
+    private static func reassemblyKey(handle: UInt16, direction: UInt8) -> UInt32 {
+        (UInt32(direction & 0x1) << 16) | UInt32(handle)
+    }
+
+    private static func clearConnectionState(
+        _ handle: UInt16,
+        peerAddressesByConnection: inout [UInt16: [UInt8]],
+        reassembly: inout [UInt32: Data],
+        characteristicUUIDsByConnection: inout [UInt16: [UInt16: String]],
+        pendingReadHandleByConnection: inout [UInt16: UInt16],
+        pendingReadByTypeUUIDByConnection: inout [UInt16: String]
+    ) {
+        peerAddressesByConnection[handle] = nil
+        characteristicUUIDsByConnection[handle] = nil
+        pendingReadHandleByConnection[handle] = nil
+        pendingReadByTypeUUIDByConnection[handle] = nil
+        reassembly[reassemblyKey(handle: handle, direction: 0)] = nil
+        reassembly[reassemblyKey(handle: handle, direction: 1)] = nil
+    }
+
+    private static func textualAddress(_ value: Data) -> [UInt8]? {
+        guard let text = String(data: value, encoding: .utf8) else { return nil }
+        let compact = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: ":", with: "")
+            .replacingOccurrences(of: "-", with: "")
+        guard compact.count == 12, compact.allSatisfy(\.isHexDigit) else { return nil }
+        var bytes: [UInt8] = []
+        var index = compact.startIndex
+        for _ in 0..<6 {
+            let next = compact.index(index, offsetBy: 2)
+            guard let parsed = UInt8(compact[index..<next], radix: 16) else { return nil }
+            bytes.append(parsed)
+            index = next
+        }
+        return bytes
     }
 
     private static func isDeviceInformationUUID(_ uuid: String?) -> Bool {
@@ -680,18 +790,7 @@ public enum BTSnoopAnalyzer: Sendable {
 
     private static func redactName(_ name: String) -> String {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty { return "redacted-name(len: 0)" }
-        if looksLikeMACString(Data(trimmed.utf8)) {
-            return "redacted-name(len: \(trimmed.count))"
-        }
-        let hexOnly = trimmed.filter { $0.isHexDigit || $0 == ":" }
-        if hexOnly.count >= 12, hexOnly.count >= trimmed.count - 1 {
-            return "redacted-name(len: \(trimmed.count))"
-        }
-        if trimmed.count > 24 {
-            return "redacted-name(len: \(trimmed.count))"
-        }
-        return trimmed
+        return "redacted-name(len:\(trimmed.count))"
     }
 
     private static func attOpcodeName(_ opcode: UInt8) -> String {

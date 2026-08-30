@@ -151,6 +151,10 @@ struct SensorOnboardingTests {
         let withGS = try defaultParser.parse("010123456789012310LOT42" + gs + "21SER99ZZ")
         #expect(withGS.gtin == "01234567890123")
         #expect(withGS.redactedSerial == "…99ZZ")
+
+        let serialContainingAIs = try defaultParser.parse("010123456789012321ABC17DEF21XYZ")
+        #expect(serialContainingAIs.redactedSerial == "…1XYZ")
+        #expect(GS1ElementString.parse("010123456789012310LOT21SERIAL") == nil)
     }
 
     @Test func gs1UnknownTruncatedEmptyNULStillFailClosed() {
@@ -194,6 +198,11 @@ struct SensorOnboardingTests {
         #expect(payloads.isEmpty)
         await #expect(throws: OnboardingError.invalidEncoding) {
             try await scanner.payloads(fromImageData: Data([0x00, 0x01, 0x02]))
+        }
+        await #expect(throws: OnboardingError.payloadTooLarge) {
+            try await scanner.payloads(
+                fromImageData: Data(count: VisionDataMatrixScanner.maximumEncodedImageBytes + 1)
+            )
         }
     }
 #endif

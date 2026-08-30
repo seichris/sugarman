@@ -30,6 +30,7 @@ final class AppModel {
     static let preferredUnitDefaultsKey = "app.sugarman.preferredUnit"
 
     var store: any SugarmanStoring
+    private var primaryStore: any SugarmanStoring
     var safety: SafetyEngine
     var connection: ConnectionState
     var lifecycle: SensorLifecycleState
@@ -54,10 +55,11 @@ final class AppModel {
     var exporter: VersionedDataExporter
     var exportFileWriter: PrivacyExportFileWriter
     var demoLoadError: String?
+    var storeErrorMessage: String?
 
     static func bootstrapped() -> AppModel {
         let result = SugarmanStoreFactory.makePersistent()
-        return AppModel(store: result.store, demoLoadError: result.loadError)
+        return AppModel(store: result.store, initialStoreError: result.loadError)
     }
 
     init(
@@ -68,9 +70,10 @@ final class AppModel {
         latestSample: GlucoseSample? = nil,
         preferredUnit: GlucoseUnit? = nil,
         probeEnabled: Bool = false,
-        demoLoadError: String? = nil
+        initialStoreError: String? = nil
     ) {
         self.store = store
+        self.primaryStore = store
         self.safety = safety
         self.connection = connection
         self.lifecycle = lifecycle
@@ -93,14 +96,15 @@ final class AppModel {
         self.ownerAccountID = nil
         self.exporter = VersionedDataExporter()
         self.exportFileWriter = PrivacyExportFileWriter()
-        self.demoLoadError = demoLoadError
+        self.demoLoadError = nil
+        self.storeErrorMessage = initialStoreError
     }
 
     func assessment(at now: Date = Date()) -> SafetyAssessment {
         safety.evaluate(
             now: now,
-            connection: connection,
-            lifecycle: lifecycle,
+            connection: activeConnection,
+            lifecycle: activeLifecycle,
             latestSample: latestSample
         )
     }
@@ -117,44 +121,49 @@ final class AppModel {
         )
     }
 
+    var activeSession: SensorSession? {
+        guard let activeSessionID else { return nil }
+        return sessions.first { $0.id == activeSessionID }
+    }
+
+    var activeConnection: ConnectionState { activeSession?.connection ?? connection }
+    var activeLifecycle: SensorLifecycleState { activeSession?.lifecycle ?? lifecycle }
+
+    var activeSamples: [GlucoseSample] {
+        ActiveSessionSelection.samples(samples, for: activeSessionID)
+    }
+
+    var visibleFuelingEvents: [FuelingEvent] {
+        ActiveSessionSelection.fuelingEvents(fuelingEvents, for: activeSessionID)
+    }
+
+    var visibleWorkouts: [WorkoutContext] {
+        ActiveSessionSelection.workouts(workouts, for: activeSessionID)
+    }
+
     func refresh() async {
-        samples = (try? await store.allSamples()) ?? []
-        sessions = (try? await store.allSessions()) ?? []
-        fuelingEvents = (try? await store.fuelingEvents()) ?? []
-        workouts = (try? await store.workouts()) ?? []
-        identities = (try? await store.identities()) ?? []
-        if samples.contains(where: { $0.decoderRevision == SyntheticDemoCatalog.decoderRevision }) {
-            isSyntheticDemo = true
-        }
-        let resolved = ActiveSessionSelection.resolve(
-            sessions: sessions,
-            demoSessionID: demoSessionID,
-            selectedSessionID: selectedSessionID
-        )
-        selectedSessionID = resolved
-        if let resolved {
-            latestSample = try? await store.latestSample(sessionID: resolved)
-        } else {
-            latestSample = nil
+        do {
+            try await refreshFromStore()
+        } catch {
+            // `refreshFromStore` preserves the last complete snapshot and
+            // exposes the error through `storeErrorMessage`.
         }
     }
 
     func loadDemo(_ scenario: SyntheticDemoScenario) async throws {
         demoLoadError = nil
         do {
-            try await store.deleteAll()
-            clearLivePresentation()
+            let demoStore = InMemorySugarmanStore()
             let fixture = SyntheticDemoCatalog.make(scenario)
-            try await store.insertSession(fixture.session)
-            try await store.insertIdentity(fixture.identity)
+            try await demoStore.insertSession(fixture.session)
+            try await demoStore.insertIdentity(fixture.identity)
             for sample in fixture.samples {
-                try await store.insertSample(sample)
+                try await demoStore.insertSample(sample)
             }
             for workout in fixture.workouts {
-                try await store.insertWorkout(workout)
+                try await demoStore.insertWorkout(workout)
             }
-            connection = fixture.connection
-            lifecycle = fixture.lifecycle
+            store = demoStore
             isSyntheticDemo = true
             demoScenario = scenario
             demoSessionID = fixture.session.id
@@ -163,30 +172,49 @@ final class AppModel {
                 sessions: [fixture.session],
                 currentSelection: nil
             )
-            await refresh()
+            try await refreshFromStore()
         } catch {
-            try? await store.deleteAll()
-            clearLivePresentation()
+            store = primaryStore
+            isSyntheticDemo = false
+            demoScenario = nil
+            demoSessionID = nil
             await refresh()
             demoLoadError = error.localizedDescription
             throw error
         }
     }
 
-    func addFueling(label: String, carbohydrateGrams: Double?, timestamp: Date) async {
-        let event = FuelingEvent(
-            timestamp: timestamp,
-            carbohydrateGrams: carbohydrateGrams,
-            label: label,
-            sessionID: activeSessionID
-        )
-        try? await store.insertFueling(event)
+    func exitDemo() async {
+        guard isSyntheticDemo else { return }
+        store = primaryStore
+        isSyntheticDemo = false
+        demoScenario = nil
+        demoSessionID = nil
+        demoLoadError = nil
+        selectedSessionID = nil
         await refresh()
     }
 
-    func deleteFueling(_ id: UUID) async {
-        try? await store.deleteFueling(id: id)
-        await refresh()
+    func addFueling(label: String, carbohydrateGrams: Double?, timestamp: Date) async throws {
+        let trimmed = label.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed.count <= 100 else { throw AppInputError.invalidFuelingLabel }
+        if let carbohydrateGrams,
+           !carbohydrateGrams.isFinite || !(0...1000).contains(carbohydrateGrams) {
+            throw AppInputError.invalidCarbohydrateAmount
+        }
+        let event = FuelingEvent(
+            timestamp: timestamp,
+            carbohydrateGrams: carbohydrateGrams,
+            label: trimmed,
+            sessionID: activeSessionID
+        )
+        try await store.insertFueling(event)
+        try await refreshFromStore()
+    }
+
+    func deleteFueling(_ id: UUID) async throws {
+        try await store.deleteFueling(id: id)
+        try await refreshFromStore()
     }
 
     func chooseSession(_ id: UUID) async {
@@ -197,9 +225,9 @@ final class AppModel {
         await refresh()
     }
 
-    func confirmIdentity(_ identity: SensorIdentity) async {
-        try? await store.insertIdentity(identity)
-        await refresh()
+    func confirmIdentity(_ identity: SensorIdentity) async throws {
+        try await store.insertIdentity(identity)
+        try await refreshFromStore()
         if sessions.count == 1, let only = sessions.first {
             selectedSessionID = ActiveSessionSelection.selectionAfterInsert(
                 insertedID: only.id,
@@ -215,33 +243,32 @@ final class AppModel {
         return id
     }
 
-    func deleteSession(_ id: UUID) async {
+    func deleteSession(_ id: UUID) async throws {
         let wasOnlySession = sessions.count <= 1
         let wasDemoSession = demoSessionID == id
         let wasSelected = selectedSessionID == id
-        do {
-            try await store.delete(sessionID: id)
-        } catch {
-            demoLoadError = error.localizedDescription
-            await refresh()
-            return
-        }
+        try await store.delete(sessionID: id)
         if wasOnlySession || wasDemoSession {
+            if wasDemoSession {
+                await exitDemo()
+                return
+            }
             clearLivePresentation()
         } else if wasSelected {
             selectedSessionID = nil
         }
-        await refresh()
+        try await refreshFromStore()
         if sessions.isEmpty {
             clearLivePresentation()
         }
     }
 
-    func deleteAllLocalData() async {
-        try? await store.deleteAll()
+    func deleteAllLocalData() async throws {
+        try await primaryStore.deleteAll()
+        store = primaryStore
         clearLivePresentation()
         ownerAccountID = nil
-        await refresh()
+        try await refreshFromStore()
     }
 
     func exportJSON() async throws -> Data {
@@ -258,10 +285,43 @@ final class AppModel {
     func samples(overlapping workout: WorkoutContext) -> [GlucoseSample] {
         let start = workout.start
         let end = workout.end ?? Date()
-        return samples.filter { sample in
+        return activeSamples.filter { sample in
             sample.sensorTimestamp >= start && sample.sensorTimestamp <= end
         }
         .sorted { $0.sensorIndex < $1.sensorIndex }
+    }
+
+    private func refreshFromStore() async throws {
+        do {
+            let newSamples = try await store.allSamples()
+            let newSessions = try await store.allSessions()
+            let newFueling = try await store.fuelingEvents()
+            let newWorkouts = try await store.workouts()
+            let newIdentities = try await store.identities()
+            let resolved = ActiveSessionSelection.resolve(
+                sessions: newSessions,
+                demoSessionID: demoSessionID,
+                selectedSessionID: selectedSessionID
+            )
+            let newLatest: GlucoseSample? = if let resolved {
+                try await store.latestSample(sessionID: resolved)
+            } else {
+                nil
+            }
+
+            samples = newSamples
+            sessions = newSessions
+            fuelingEvents = newFueling
+            workouts = newWorkouts
+            identities = newIdentities
+            selectedSessionID = resolved
+            latestSample = newLatest
+            isSyntheticDemo = demoSessionID != nil
+            storeErrorMessage = nil
+        } catch {
+            storeErrorMessage = error.localizedDescription
+            throw error
+        }
     }
 
     private func clearLivePresentation() {
@@ -272,5 +332,19 @@ final class AppModel {
         demoScenario = nil
         demoSessionID = nil
         selectedSessionID = nil
+    }
+}
+
+enum AppInputError: LocalizedError {
+    case invalidFuelingLabel
+    case invalidCarbohydrateAmount
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidFuelingLabel:
+            "Enter a fueling label between 1 and 100 characters."
+        case .invalidCarbohydrateAmount:
+            "Carbohydrate amount must be a finite value between 0 and 1000 grams."
+        }
     }
 }

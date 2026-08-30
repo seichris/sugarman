@@ -43,9 +43,15 @@ import Vision
 /// PhotoScan. Takes `CGImage` or encoded image `Data` and returns payload
 /// strings for the bounded package parser.
 public struct VisionDataMatrixScanner: BarcodeImageScanning, Sendable {
+    public static let maximumEncodedImageBytes = 25 * 1024 * 1024
+    public static let maximumDecodedDimension = 4096
+
     public init() {}
 
     public func payloads(fromImageData data: Data) async throws -> [String] {
+        guard data.count <= Self.maximumEncodedImageBytes else {
+            throw OnboardingError.payloadTooLarge
+        }
         guard let image = makeCGImage(from: data) else {
             throw OnboardingError.invalidEncoding
         }
@@ -66,7 +72,13 @@ public struct VisionDataMatrixScanner: BarcodeImageScanning, Sendable {
         guard let source = CGImageSourceCreateWithData(data as CFData, nil) else {
             return nil
         }
-        return CGImageSourceCreateImageAtIndex(source, 0, nil)
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: Self.maximumDecodedDimension,
+            kCGImageSourceShouldCacheImmediately: false,
+        ]
+        return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
         #else
         _ = data
         return nil
