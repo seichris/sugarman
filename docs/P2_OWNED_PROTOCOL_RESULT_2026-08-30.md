@@ -7,15 +7,21 @@ AES-OFB authentication path**, not the 26-byte V1.20/RC4 path implemented by
 the pinned Juggluco reference. Confidence is **high for this app, sensor, and
 firmware**.
 
-This identifies the protocol family; it is not yet an implementable codec and
-does not authorize a live write. Key/IV provenance, exact frame construction,
-notification decryption, glucose decoding, a second sensor lot, and fresh
-activation remain unverified.
+This identifies the protocol family. A later approved, read-only source-map
+pass verified the authentication-frame construction and produced an isolated
+offline Swift encoder; it does **not** authorize a live write. The legitimate
+runtime-IV/registration-material source, owned-capture parity, notification
+decryption, glucose decoding, a second sensor lot, and fresh activation remain
+unverified. See
+[`V3_AUTH_SOURCE_MAP_2026-08-30.md`](V3_AUTH_SOURCE_MAP_2026-08-30.md).
 
 The payload-free machine-readable evidence is
 [`evidence/owned-mainland-gs3-p2-summary-v1.json`](evidence/owned-mainland-gs3-p2-summary-v1.json).
-All APK, native-library, authentication, address, account, and glucose bytes
-remain private and gitignored.
+All APK/native-library bytes and all owned runtime IV, registration,
+authentication, address, account, and glucose values remain private and
+gitignored. The exact fixed interoperability constant required by the observed
+algorithm is recorded once in the approved GPL Swift implementation with
+file-level provenance.
 
 ## Verified source evidence
 
@@ -94,21 +100,25 @@ wrong authentication generation for this sensor. The official Android APK and
 its `.so` are proprietary/unknown-licence evidence, not reusable build inputs.
 Sugarman must never ship, link, or copy them.
 
-Before implementing V3 details, legal review must approve the interoperability
-research method and the source of every key, IV, frame-layout fact, and AES-OFB
-implementation. A pure Swift implementation under Sugarman's GPL licence still
-needs independently documented provenance; publishing source does not convert
-vendor binary code or constants into GPL-compatible material.
+On 2026-08-30 the owner reported scoped approval for offline interoperability
+analysis and a separately authored GPL Swift implementation. No approval
+document or reviewer identity is asserted in the repository. The approval
+covers publication of the separately authored GPL source, but not vendor-binary
+redistribution, a live sensor write, or App Store/binary distribution.
+Publishing source does not convert the vendor binary into a GPL-compatible or
+redistributable input.
 
 ## Next gate
 
-1. Keep the sensor on the official Android app; no further live probe is
-   needed now.
-2. Obtain the scoped legal/provenance decision for offline V3 analysis.
-3. Produce synthetic or redacted replay vectors that prove a separately
-   authored Swift implementation builds the same 38-byte authentication frame
-   without logging or persisting address/account material.
-4. Only after offline parity, review, and a fresh physical-write confirmation
-   may Sugarman attempt one bounded already-active authentication handover.
+1. Keep the sensor on the official Android app; no live Sugarman write is
+   approved by this report.
+2. Establish a legitimate owner-controlled source for the runtime IV,
+   registered block, and authentication ID without extracting another app's
+   private storage or inventing values.
+3. Reproduce the private official-app 38-byte authentication write with the
+   isolated Swift encoder, including the correct address order.
+4. Only after that parity, independent review, and a fresh physical-write
+   confirmation may Sugarman attempt one bounded already-active authentication
+   handover.
 5. Validate a second lot before generalizing Mainland GS3 support, then test a
    fresh activation as a separate irreversible gate.

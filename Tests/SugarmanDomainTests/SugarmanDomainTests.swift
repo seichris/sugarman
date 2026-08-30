@@ -6,11 +6,14 @@ import Testing
 @testable import SugarmanDomain
 
 struct SugarmanDomainTests {
-    @Test func protocolVariantHasNoV3AES() {
+    @Test func protocolVariantsRemainLiveUnimplemented() {
         let names = ProtocolVariant.allCases.map(\.rawValue)
-        #expect(names == ["unknown", "v120RC4"])
-        #expect(!names.contains("v3AES"))
+        #expect(names == ["unknown", "v120RC4", "v3AES"])
         #expect(ProtocolVariant.allCases.allSatisfy { $0.isImplemented == false })
+        #expect(
+            ProtocolVariant.v3AES.classificationEvidenceRevision
+                == "owned-mainland-gs3-v3-source-map-2026-08-30-offline-only"
+        )
     }
 
     @Test func glucoseSampleKeyIsSessionAndIndex() {

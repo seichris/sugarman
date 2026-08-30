@@ -195,32 +195,60 @@ def check_binaries_and_resources() -> None:
 
 
 def check_no_write_api() -> None:
-    forbidden = re.compile(
-        r"\b(writeValue\s*\(|writeCharacteristic\s*\(|func\s+write[A-Z])"
+    characteristic_write = re.compile(
+        r"\b(writeValue\s*\(|writeCharacteristic\s*\()"
     )
+    protocol_write_function = re.compile(r"\bfunc\s+write[A-Z]")
     live_cmd = re.compile(
         r"\b(activateSensor|resetSensor|writeSecretKey|authWrite|bindAccountOnSensor)\s*\("
     )
-    for base in (
+
+    guarded_protocol_roots = {
         ROOT / "Sources/SugarmanDiagnostics",
         ROOT / "Sources/GS3Transport",
         ROOT / "Sources/GS3Protocol",
-    ):
+    }
+    for base in (ROOT / "Sources", ROOT / "Apps"):
         if not base.is_dir():
             continue
         for path in base.rglob("*.swift"):
             text = path.read_text(encoding="utf-8", errors="replace")
             rel = path.relative_to(ROOT).as_posix()
-            if forbidden.search(text):
+            if characteristic_write.search(text):
                 error(f"forbidden characteristic-write API in {rel}")
             if live_cmd.search(text):
                 error(f"live sensor command API in {rel}")
-    protocol_sources = list((ROOT / "Sources/GS3Protocol").rglob("*.swift"))
-    for path in protocol_sources:
-        text = path.read_text(encoding="utf-8", errors="replace")
-        if re.search(r"\bcase\s+v3AES\b", text):
-            error("ProtocolVariant must not include v3AES until a source map exists")
-
+            if "import CoreBluetooth" in text and not path.is_relative_to(
+                ROOT / "Sources/GS3Transport"
+            ):
+                error(f"CoreBluetooth must remain confined to GS3Transport: {rel}")
+            if any(path.is_relative_to(root) for root in guarded_protocol_roots):
+                if protocol_write_function.search(text):
+                    error(f"forbidden protocol write function in {rel}")
+    variant_path = ROOT / "Sources/SugarmanDomain/ProtocolVariant.swift"
+    variant_text = variant_path.read_text(encoding="utf-8", errors="replace")
+    if re.search(r"\bcase\s+v3AES\b", variant_text):
+        source_map = ROOT / "docs/V3_AUTH_SOURCE_MAP_2026-08-30.md"
+        if not source_map.is_file():
+            error("ProtocolVariant v3AES requires the owned-binary source map")
+        registry = json.loads(
+            (ROOT / "docs/provenance/registry.json").read_text(encoding="utf-8")
+        )
+        record = next(
+            (
+                item
+                for item in registry.get("records", [])
+                if item.get("id") == "prov-20260830-v3-offline-auth-codec"
+            ),
+            None,
+        )
+        if record is None:
+            error("ProtocolVariant v3AES requires an exact provenance record")
+        elif record.get("legal_review_status") not in {
+            "lean-local",
+            "distribution-approved",
+        }:
+            error("ProtocolVariant v3AES requires recorded scoped legal review")
 
 
 def check_private_evidence_gitignore() -> None:

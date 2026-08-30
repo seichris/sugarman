@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/seichris/sugarman/docs/p0-inventory.schema.json",
   "title": "Sugarman P0 private inventory (local only)",
-  "description": "Filled instances stay in gitignored private-evidence/. Do not commit APKs, tokens, full serials, or keys.",
+  "description": "Filled instances stay in gitignored private-evidence/. Do not commit APKs, tokens, full serials, runtime/account keys, IVs, or registration material.",
   "type": "object",
   "additionalProperties": false,
   "required": [

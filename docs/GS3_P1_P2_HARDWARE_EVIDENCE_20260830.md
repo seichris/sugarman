@@ -87,9 +87,13 @@ Independent observations converge:
 4. That 38-byte routine calls `AesFixedIvXorWithKey`, which directly calls
    `AES_OFB_encrypt_buffer` in the same owned APK library.
 
-No key bytes were extracted and no cipher was tried against the live sensor.
-The evidence identifies the protocol and cipher family; it is not yet a
-complete, independently implementable V3 frame specification.
+During this initial P2 classification pass, no key bytes were extracted and no
+cipher was tried against the live sensor. The evidence identified the protocol
+and cipher family but was not yet a complete V3 frame specification. A later,
+separately approved offline source-map pass recorded the fixed protocol constant
+and frame construction; see
+[`V3_AUTH_SOURCE_MAP_2026-08-30.md`](V3_AUTH_SOURCE_MAP_2026-08-30.md). No runtime
+IV, registration material, authentication ID, or live write was obtained.
 
 ## Post-calibration live-frame evidence
 

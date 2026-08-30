@@ -1,6 +1,6 @@
 # Mainland China SiBionics GS3 support for Sugarman
 
-- Status: implementation has started; M0, simulator product, no-device slice, and P0/P1 lab software are on `main`. M2+ protocol work stays gated on physical P1/P2. If P1/P2 fail, no protocol implementation.
+- Status: implementation has started; P1/P2 passed for one owned active sensor on 2026-08-30. The observed family is V3/AES-OFB and the six address bytes are available from Device Information `2A25`. An approved offline-only M2 authentication encoder is present but deliberately disconnected from live transport; owned replay parity and legitimate runtime registration material still gate every live write.
 - Date: 2026-08-28
 - Product: Sugarman — glucose monitoring and fueling insight for endurance athletes
 
@@ -32,8 +32,8 @@ has been expanded enough to cover GPL/App Store compatibility, interoperability,
 vendor terms, cryptography/export declarations, privacy, and medical/wellness
 positioning.
 
-Two technical questions block protocol implementation and must be answered with
-physical evidence first:
+Two technical questions originally blocked protocol implementation and now
+have evidence-backed answers for one owned sensor/app/library combination:
 
 1. Does the available Mainland GS3 use Juggluco's RC4/V1.20 path, the AES-OFB
    "V3" path alleged by the shared LLM conversations, or another firmware
@@ -44,8 +44,11 @@ physical evidence first:
    prove a legitimate source for the required six bytes from the package, NFC,
    advertisement, Device Information service, or another readable field.
 
-No live sensor command should be implemented until both questions have an
-evidence-backed answer.
+See [`P1_OWNED_HARDWARE_RESULT_2026-08-30.md`](P1_OWNED_HARDWARE_RESULT_2026-08-30.md),
+[`P2_OWNED_PROTOCOL_RESULT_2026-08-30.md`](P2_OWNED_PROTOCOL_RESULT_2026-08-30.md),
+and [`V3_AUTH_SOURCE_MAP_2026-08-30.md`](V3_AUTH_SOURCE_MAP_2026-08-30.md).
+These results permit offline work; they do not by themselves authorize a live
+sensor command.
 
 ## Resolved product and project decisions
 
@@ -155,7 +158,9 @@ The public ChatGPT share displayed links to a generated report and evidence
 bundle, but did not expose those artifacts for independent inspection. The
 owned Android app/APK therefore becomes a local research input: hash and inspect
 it under the legal/provenance rules below, without checking the APK, credentials,
-embedded keys, or vendor binaries into Git.
+owner/runtime secrets, or vendor binaries into Git. A later approved source-map
+pass recorded one fixed non-owner protocol constant under the narrower policy in
+[`THIRD_PARTY.md`](../THIRD_PARTY.md).
 
 The conversations also contradict themselves about whether the subtype-specific
 registered block applies to GS3. The pinned code sends subtype-based
@@ -259,7 +264,7 @@ All entries refer to the pinned commits listed above.
 | Data Matrix onboarding | [`PhotoScan.java`](../upstream/Juggluco/Common/src/mobileSi/java/tk/glucodata/PhotoScan.java), lines 199-225 and 270-320; [`sensoren.hpp`](../upstream/Juggluco/Common/src/main/cpp/sensoren.hpp), lines 880-904. | Reimplement camera UI with Vision/VisionKit. Adapt the validated SKU/parser facts under GPL with provenance. |
 | NFC onboarding | [`Sib3Scan.java`](../upstream/Juggluco/Common/src/mobileSi/java/tk/glucodata/Sib3Scan.java), lines 30-94 and 150-231; [`sibionics3/java.cpp`](../upstream/Juggluco/Common/src/main/cpp/sibionics3/java.cpp), lines 109-153. | Android UI is behavioral only. Port only validated parser behavior; use Core NFC NDEF APIs. The existing offset-based parser is brittle and needs bounds checks plus real fixtures. |
 | Sensor classification and state | [`SensorGlucoseData.hpp`](../upstream/Juggluco/Common/src/main/cpp/SensorGlucoseData.hpp), lines 1181-1193 and 1259-1278. | Behavioral/data reference. Do not reuse the packed global-state persistence design. |
-| Initial authentication | [`handleData.cpp`](../upstream/Juggluco/Common/src/main/cpp/sibionics/handleData.cpp), lines 83-110; [`interpret_data.cpp`](../upstream/Juggluco/Common/src/main/cpp/sibionics/interpret_data.cpp), lines 397-459. | GPL protocol adaptation after P1/P2. Address material and subtype-5 registered block must be physically confirmed. Do not expose embedded key material in plans, logs, or diagnostics. |
+| Initial authentication | [`handleData.cpp`](../upstream/Juggluco/Common/src/main/cpp/sibionics/handleData.cpp), lines 83-110; [`interpret_data.cpp`](../upstream/Juggluco/Common/src/main/cpp/sibionics/interpret_data.cpp), lines 397-459. | GPL protocol adaptation after P1/P2. Address material and subtype-5 registered block must be physically confirmed. Do not expose owner/runtime key material in plans, logs, or diagnostics. |
 | Account binding, activation, history | [`interpretgs3.cpp`](../upstream/Juggluco/Common/src/main/cpp/sibionics3/interpretgs3.cpp), lines 51-213. | GPL protocol adaptation into a pure Swift codec after protocol classification. |
 | Decryption and decoding | [`interpretgs3.cpp`](../upstream/Juggluco/Common/src/main/cpp/sibionics3/interpretgs3.cpp), lines 342-420 and 428-725. | GPL adaptation. Preserve checksum, ACK, index, backfill, warm-up, and error semantics; fail closed on unimplemented variants. |
 | Account UI/server behavior | [`GetGS3ID.java`](../upstream/Juggluco/Common/src/mobileSi/java/tk/glucodata/GetGS3ID.java), lines 59-124 and 147-233; [`GS3ID.java`](../upstream/Juggluco/Common/src/mobile/java/tk/glucodata/GS3ID.java), lines 44-170. | Do not reuse. The inspected email/MD5 flow is not verified for Mainland accounts and logs credential-derived data and tokens in debug mode. |
@@ -292,8 +297,10 @@ For every available sensor, record in a private test inventory:
 - Android/iOS model and OS version;
 - visible sensor firmware, hardware, manufacturer, and official app behavior.
 
-Do not put the APK, credentials, full UDI/serials, tokens, or embedded key bytes
-in Git.
+Do not put the APK, credentials, full UDI/serials, tokens, runtime IVs,
+registration material, authentication IDs, or other owner-specific secret bytes
+in Git. The separately governed fixed protocol constant is not a P0 inventory
+value; its publication scope and provenance are recorded in the V3 source map.
 
 Exit evidence: signed-off inventory and sanitized package/NFC fixtures. No BLE
 command has been sent by Sugarman.
@@ -440,9 +447,11 @@ Pure Swift, deterministic protocol implementation:
 - injected validated address/auth/account inputs;
 - no CoreBluetooth, Keychain, persistence, UI, or side-effectful logging.
 
-Use explicit variants such as `.v120RC4` and `.unknown`. Do not add `.v3AES`
-until its primary evidence and source map exist. Unknown firmware must fail
-closed before an authentication or activation write.
+Use explicit variants such as `.v120RC4`, `.v3AES`, and `.unknown`. The `.v3AES`
+classification is present only because its primary evidence and source map now
+exist; it remains live-unimplemented until owned replay parity and the physical
+write gate pass. Unknown firmware must fail closed before an authentication or
+activation write.
 
 #### `GS3Transport`
 
@@ -728,7 +737,8 @@ Deliverables:
 - RC4 versus V3 protocol-identification report;
 - firmware/SKU support matrix.
 
-Exit gate: P1 and P2 pass. If they do not, no protocol implementation begins.
+Exit gate: P1 and P2 pass. This gate passed for one owned active sensor on
+2026-08-30; another lot remains a generalization gate.
 
 ### M2 — offline GS3 protocol library
 
@@ -877,8 +887,9 @@ These are software acceptance criteria, not independent clinical validation.
 
 | Risk | Current assessment | Required response |
 | --- | --- | --- |
-| RC4 versus AES V3 | High impact; unknown until owned-device capture. | P2 before codec work; implement only the proven variant. |
-| Six address bytes unavailable on iOS | High impact; source/platform mismatch verified. | Resolve at P1 from legitimate readable data. If unavailable, seek vendor support and stop. |
+| RC4 versus AES V3 | Resolved as V3/AES-OFB for the owned app/sensor/library hash; other lots unknown. | Keep an explicit variant allowlist and require evidence before generalizing. |
+| Six address bytes unavailable on iOS | Resolved for the owned sensor through readable Device Information `2A25`; other lots unknown. | Verify every supported firmware/lot and fail closed if the field is absent or malformed. |
+| V3 runtime IV/registered block/authentication ID | High impact; native layout verified but legitimate owner-controlled source and replay parity remain open. | Do not scrape app-private storage or guess. Obtain the values through an authorized package/account/vendor route and pass private offline replay before transport work. |
 | Subtype-5 registered block is wrong | High impact; upstream calls it `Guess`. | Prove on already-active handover before fresh activation. |
 | Mainland account binding/API | High impact; official flow not mapped. | Start with a legitimate documented/manual owner ID. Add network login only with reviewed endpoint and terms. |
 | SKU/NFC format drift | Medium/high. | Versioned fixture corpus, bounded parsers, explicit unsupported state. |
