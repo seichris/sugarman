@@ -27,6 +27,12 @@ struct BTSnoopAnalyzerTests {
         #expect(summary.attOperations.contains { $0.opcodeName == "writeRequest" })
         let write = summary.attOperations.first { $0.opcodeName == "writeRequest" }
         #expect(write?.valueByteCount == SyntheticBTSnoop.writePayload.count)
+        #expect(write?.uuid == "FF32")
+        let notification = summary.attOperations.first {
+            $0.opcodeName == "handleValueNotification"
+        }
+        #expect(notification?.uuid == "FF31")
+        #expect(notification?.valueByteCount == 4)
 
         let described = String(describing: summary)
         let json = String(decoding: try BTSnoopAnalyzer.jsonData(from: summary), as: UTF8.self)
@@ -73,6 +79,16 @@ struct BTSnoopAnalyzerTests {
         #expect(summary.notes.contains {
             $0.contains("not an iOS-accessible source")
         })
+    }
+
+    @Test func reusedConnectionHandleCannotInheritCharacteristicIdentity() throws {
+        let summary = try BTSnoopAnalyzer.summarize(
+            data: SyntheticBTSnoop.reusedHandleWithoutRediscovery()
+        )
+        #expect(summary.hciPeerAddressFieldObserved)
+        #expect(!summary.sixByteFieldInDeviceInformationRead)
+        #expect(!summary.sixByteFieldInOtherReadable)
+        #expect(summary.sixByteAddressSource == .notFound)
     }
 
     @Test func refusesGlucoseDecode() {

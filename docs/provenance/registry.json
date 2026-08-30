@@ -100,6 +100,76 @@
       "reviewer": "chris",
       "legal_review_status": "lean-local",
       "notes": "Public fixture contains UUIDs, GATT properties, and byte counts only. Exact sensor name, CoreBluetooth identifier, device serials, account data, screenshots, glucose value, and raw Android HCI payloads remain private. No write, authentication, binding, activation, reset, or firmware-management request was sent."
+    },
+    {
+      "id": "prov-20260830-owned-mainland-gs3-hci-summary",
+      "upstream_project": "none",
+      "upstream_url": "https://www.bluetooth.com/wp-content/uploads/Files/Specification/HTML/DIS_v1.2/out/en/index-en.html",
+      "pinned_commit": "not-applicable",
+      "source_path": "Three timestamped private official-app Android HCI snapshots from one owned active Mainland GS3; Bluetooth SIG Device Information Service and Assigned Numbers",
+      "source_blob_sha256": "private-captures-not-ingested",
+      "copyright_holders": [],
+      "history_reviewed": false,
+      "file_header_licence": "not-applicable",
+      "repository_licence": "not-applicable",
+      "purpose_and_behavior_taken": "Two independently authored redacting analyzers correlated the connected HCI peer address with a 17-byte textual value read from Device Information characteristic 2A25 in every timestamped snapshot. Only hashes, counts, UUID, value length, match booleans, ATT frame lengths, and the resolved source enum are published. The Bluetooth SIG specifications identify 2A25 as Serial Number String; they do not require it to contain a Bluetooth address.",
+      "reuse_mode": "independently observed",
+      "sugarman_destination_path": "docs/evidence/owned-mainland-gs3-hci-summary-v1.json",
+      "modification_date": "2026-08-30",
+      "author": "chris",
+      "fixtures_origin": "One owned active Mainland GS3 using the owner's official Chinese Android app; timestamped HCI snapshots may overlap and remain gitignored",
+      "fixtures_capture_sha256": "8f59200f694c51c533a30ae6e7398c35b46ced2bce3d7a6ec200e8e072302c19,d0a389eaa1b29024daf441ff7816ad2572b61a40a9bf500c37ddd511c6553008,165d697f4126d0fa2a8ea4f6d822b8fe74dd03e5663ba1e0910c9a197882d3e7",
+      "reviewer": "chris",
+      "legal_review_status": "lean-local",
+      "notes": "No raw address, serial string, authentication payload, glucose payload, account data, or device identifier is committed. The evidence passes the P1 source gate for this sensor only; another lot remains a generalization gate. This P1 artifact does not identify a cipher; the separate P2 report records the capture-plus-owned-APK conclusion."
+    },
+    {
+      "id": "prov-20260830-p2-juggluco-v120-rc4-shape",
+      "upstream_project": "Juggluco",
+      "upstream_url": "https://github.com/seichris/Juggluco",
+      "pinned_commit": "11d016eb3aeffe77e86d9522f5192e83790b5a21",
+      "source_path": "Common/src/main/cpp/sibionics/handleData.cpp; Common/src/main/cpp/sibionics/interpret_data.cpp",
+      "source_blob_sha256": "handleData.cpp=36de28f7e9d09c72118e25593ef5e6cbdc426bf8b49557a77371ab9a1636d4a9;interpret_data.cpp=f796c1d1f4407439943f85671e9c29e74cf7abcc6d006889e9b141b689083fb7",
+      "copyright_holders": [
+        "Jaap Korthals Altes"
+      ],
+      "history_reviewed": false,
+      "file_header_licence": "GPL-3.0-or-later",
+      "repository_licence": "GPL-3.0",
+      "purpose_and_behavior_taken": "The pinned reference constructs and returns a 26-byte V1.20 authentication command encrypted with its RC4 routine. Sugarman uses only that exact length/cipher behavior as an offline negative comparison against the owned official-app HCI capture; no implementation or key was copied.",
+      "reuse_mode": "behavioral",
+      "sugarman_destination_path": "docs/evidence/owned-mainland-gs3-p2-summary-v1.json",
+      "modification_date": "2026-08-30",
+      "author": "chris",
+      "fixtures_origin": "Pinned GPL source plus payload-free counts from one owned active Mainland GS3 official-app HCI snapshot",
+      "fixtures_capture_sha256": "8f59200f694c51c533a30ae6e7398c35b46ced2bce3d7a6ec200e8e072302c19",
+      "reviewer": "chris",
+      "legal_review_status": "lean-local",
+      "notes": "Behavioral comparison only. The pinned 26-byte RC4 path does not match the owned app's 38-byte authentication write. Any future adaptation still requires file-level GPL notices and provenance."
+    },
+    {
+      "id": "prov-20260830-p2-owned-vendor-v3-observation",
+      "upstream_project": "SiBionics official Android app owned copy",
+      "upstream_url": "not-applicable-owned-apk",
+      "pinned_commit": "not-applicable",
+      "source_path": "com.sibionics.gstoc 01.10.00.00; lib/arm64-v8a/libcxm_protocol.so",
+      "source_blob_sha256": "apk=0357d558c221a62129dca632fec2c73de70a978862228024f63f45d0b88fc1d7;libcxm_protocol.so=19238019b9aca5f8ffae6a81fad98bb9f6525750b914367378f1ac1bbf765964",
+      "copyright_holders": [
+        "Vendor binary copyright holder not independently verified"
+      ],
+      "history_reviewed": false,
+      "file_header_licence": "proprietary-or-unknown",
+      "repository_licence": "not-applicable",
+      "purpose_and_behavior_taken": "Read-only dynamic-symbol and targeted ARM64 disassembly inspection of the owned app verified a V3 JNI authentication call chain through sdk_authid, AesFixedIvXorWithKey, and AES_OFB_encrypt_buffer. The function encrypts and returns 38 bytes, matching the payload-free HCI frame length. Only symbol names, call edges, byte count, and hashes are recorded; no binary code, constants, keys, IVs, or payloads were copied.",
+      "reuse_mode": "independently observed",
+      "sugarman_destination_path": "docs/evidence/owned-mainland-gs3-p2-summary-v1.json",
+      "modification_date": "2026-08-30",
+      "author": "chris",
+      "fixtures_origin": "Owned official Chinese Android app APK and owned active Mainland GS3 HCI snapshot; all raw inputs remain gitignored",
+      "fixtures_capture_sha256": "8f59200f694c51c533a30ae6e7398c35b46ced2bce3d7a6ec200e8e072302c19",
+      "reviewer": "chris",
+      "legal_review_status": "required-before-implementation",
+      "notes": "The APK and shared library are evidence only and must never be committed, linked, or distributed with Sugarman. Legal review must approve any further interoperability analysis and every source of V3 implementation facts."
     }
   ]
 }
