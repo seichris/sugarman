@@ -54,6 +54,10 @@ dependencies. See [docs/UPSTREAMS.md](docs/UPSTREAMS.md).
   raw-write, background, or HealthKit path. It requires post-install private
   material import and a fresh exact physical-device confirmation; see the
   [probe guide](docs/V3_DEVELOPER_HANDOVER_PROBE.md).
+- The first PR #13 physical run connected and failed closed before a validated
+  iPhone reading; official Android handback passed. Do not retry that artifact.
+  The [physical result](docs/V3_PROBE_PHYSICAL_RESULT_2026-08-30.md) defines the
+  payload-free diagnostic follow-up and its separate confirmation gate.
 
 ## Repository layout
 

@@ -244,6 +244,11 @@ def check_no_write_api() -> None:
             "type: .withResponse",
             'CBUUID(string: "FF31")',
             'CBUUID(string: "FF32")',
+            "private var inFlightWrite: ProbeWriteKind?",
+            "private var queuedTransmission: V3ProbeTransmission?",
+            "authenticationWriteCallCount == 0",
+            "effectiveDataWriteCallCount == 0",
+            "emitDiagnostic(diagnostic.description)",
         ):
             if required not in body:
                 error(f"developer probe adapter missing strict boundary: {required}")
@@ -256,6 +261,21 @@ def check_no_write_api() -> None:
         ):
             if forbidden in body:
                 error(f"developer probe adapter contains forbidden surface: {forbidden}")
+
+    probe_machine = ROOT / "Sources/GS3DeveloperProbe/V3DeveloperHandoverProbe.swift"
+    if not probe_machine.is_file():
+        error("missing typed developer-probe state machine")
+    else:
+        machine_body = probe_machine.read_text(encoding="utf-8", errors="replace")
+        for required in (
+            "V3ProbePacketDiagnostic",
+            "V3ProbeInboundClassification",
+            "LocalizedError",
+            "case unexpectedNotification(V3ProbePacketDiagnostic)",
+            '"RX FF31: \\(classification), \\(byteCount) bytes; "',
+        ):
+            if required not in machine_body:
+                error(f"developer probe missing redacted diagnostic boundary: {required}")
 
     package_text = (ROOT / "Package.swift").read_text(encoding="utf-8", errors="replace")
     project_text = (ROOT / "project.yml").read_text(encoding="utf-8", errors="replace")

@@ -57,6 +57,25 @@ struct ProbeView: View {
                     }
                 }
 
+                if !model.diagnostics.isEmpty {
+                    Section("Redacted diagnostics") {
+                        Text("Kept in memory only. Packet payloads, identifiers, private material, glucose values, and record indexes are omitted.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        ForEach(model.diagnostics) { entry in
+                            Text(entry.displayText)
+                                .font(.caption.monospaced())
+                                .textSelection(.enabled)
+                        }
+                        ShareLink(
+                            item: model.redactedDiagnosticReport,
+                            subject: Text("Sugarman Probe redacted diagnostics")
+                        ) {
+                            Label("Share redacted diagnostics", systemImage: "square.and.arrow.up")
+                        }
+                    }
+                }
+
                 if let reading = model.reading {
                     Section("One-shot result") {
                         LabeledContent(
