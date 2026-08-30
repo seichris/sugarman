@@ -36,6 +36,15 @@ public enum V3ProbeInboundClassification: Sendable, Equatable {
     case effectiveDataAcknowledgement
     case effectiveDataBatch
     case liveNotificationBatch
+    case controlLengthMismatch
+    case controlUnsupportedCommand
+    case controlChecksumMismatch
+    case glucoseFrameTooShort
+    case glucoseDeclaredLengthMismatch
+    case glucoseUnsupportedCommand
+    case glucoseRecordCountInvalid
+    case glucoseRecordLayoutMismatch
+    case glucoseChecksumMismatch
     case malformedOrUnsupported
 }
 
@@ -47,6 +56,15 @@ extension V3ProbeInboundClassification: CustomStringConvertible {
         case .effectiveDataAcknowledgement: "effective-data acknowledgement"
         case .effectiveDataBatch: "effective-data batch"
         case .liveNotificationBatch: "live-notification batch"
+        case .controlLengthMismatch: "control-response length mismatch"
+        case .controlUnsupportedCommand: "unsupported control-response command"
+        case .controlChecksumMismatch: "control-response checksum mismatch"
+        case .glucoseFrameTooShort: "glucose frame shorter than the verified minimum"
+        case .glucoseDeclaredLengthMismatch: "glucose declared-length mismatch"
+        case .glucoseUnsupportedCommand: "unsupported glucose command"
+        case .glucoseRecordCountInvalid: "invalid glucose record count"
+        case .glucoseRecordLayoutMismatch: "glucose record-layout mismatch"
+        case .glucoseChecksumMismatch: "glucose checksum mismatch"
         case .malformedOrUnsupported: "malformed or unsupported notification"
         }
     }
@@ -341,26 +359,74 @@ public struct V3DeveloperHandoverProbe: Sendable {
         controlResponse: V3ControlResponse?,
         glucoseBatch: V3GlucoseBatch?
     ) {
-        if let response = try? material.decodeControl(frame) {
-            let classification: V3ProbeInboundClassification
-            switch response {
-            case .authenticationAccepted:
-                classification = .authenticationAccepted
-            case .authenticationRejected:
-                classification = .authenticationRejected
-            case .effectiveDataAcknowledgement:
-                classification = .effectiveDataAcknowledgement
+        if frame.byteCount == 5 {
+            do {
+                let response = try material.decodeControl(frame)
+                let classification: V3ProbeInboundClassification
+                switch response {
+                case .authenticationAccepted:
+                    classification = .authenticationAccepted
+                case .authenticationRejected:
+                    classification = .authenticationRejected
+                case .effectiveDataAcknowledgement:
+                    classification = .effectiveDataAcknowledgement
+                }
+                return (classification, response, nil)
+            } catch let error as GS3ProtocolError {
+                return (controlFailureClassification(error), nil, nil)
+            } catch {
+                return (.malformedOrUnsupported, nil, nil)
             }
-            return (classification, response, nil)
         }
-        if let batch = try? material.decodeGlucose(frame) {
+
+        do {
+            let batch = try material.decodeGlucose(frame)
             let classification: V3ProbeInboundClassification = switch batch.source {
             case .effectiveData: .effectiveDataBatch
             case .liveNotification: .liveNotificationBatch
             }
             return (classification, nil, batch)
+        } catch let error as GS3ProtocolError {
+            return (glucoseFailureClassification(error), nil, nil)
+        } catch {
+            return (.malformedOrUnsupported, nil, nil)
         }
-        return (.malformedOrUnsupported, nil, nil)
+    }
+
+    private func controlFailureClassification(
+        _ error: GS3ProtocolError
+    ) -> V3ProbeInboundClassification {
+        switch error {
+        case .invalidV3ControlResponseLength:
+            .controlLengthMismatch
+        case .unsupportedV3ControlResponseCommand:
+            .controlUnsupportedCommand
+        case .invalidV3ControlResponseChecksum:
+            .controlChecksumMismatch
+        default:
+            .malformedOrUnsupported
+        }
+    }
+
+    private func glucoseFailureClassification(
+        _ error: GS3ProtocolError
+    ) -> V3ProbeInboundClassification {
+        switch error {
+        case .invalidV3GlucoseNotificationLength:
+            .glucoseFrameTooShort
+        case .invalidV3GlucoseNotificationDeclaredLength:
+            .glucoseDeclaredLengthMismatch
+        case .unsupportedV3NotificationCommand:
+            .glucoseUnsupportedCommand
+        case .invalidV3GlucoseRecordCount:
+            .glucoseRecordCountInvalid
+        case .invalidV3GlucoseRecordLayout:
+            .glucoseRecordLayoutMismatch
+        case .invalidV3GlucoseNotificationChecksum:
+            .glucoseChecksumMismatch
+        default:
+            .malformedOrUnsupported
+        }
     }
 
     private mutating func recordDiagnostic(

@@ -335,6 +335,21 @@ struct GS3ProtocolTests {
             )
         }
 
+        var badDeclaredLengthPlaintext = try decryptSyntheticTransport(valid)
+        badDeclaredLengthPlaintext[0] &-= 1
+        badDeclaredLengthPlaintext[23] = 0
+        badDeclaredLengthPlaintext[23] = UInt8.zero
+            &- badDeclaredLengthPlaintext.dropLast().reduce(0, &+)
+        let badDeclaredLength = try encryptSyntheticTransport(
+            badDeclaredLengthPlaintext
+        )
+        #expect(throws: GS3ProtocolError.invalidV3GlucoseNotificationDeclaredLength) {
+            try V3OfflineGlucoseNotificationDecoder.decode(
+                badDeclaredLength,
+                using: material
+            )
+        }
+
         var badChecksumPlaintext = try decryptSyntheticTransport(valid)
         badChecksumPlaintext[23] &+= 1
         let badChecksum = try encryptSyntheticTransport(badChecksumPlaintext)
@@ -358,6 +373,21 @@ struct GS3ProtocolTests {
         let zeroRecords = try encryptSyntheticTransport(zeroRecordsPlaintext)
         #expect(throws: GS3ProtocolError.invalidV3GlucoseRecordCount(0)) {
             try V3OfflineGlucoseNotificationDecoder.decode(zeroRecords, using: material)
+        }
+
+        var wrongRecordLayoutPlaintext = try decryptSyntheticTransport(valid)
+        wrongRecordLayoutPlaintext[2] = 2
+        wrongRecordLayoutPlaintext[23] = 0
+        wrongRecordLayoutPlaintext[23] = UInt8.zero
+            &- wrongRecordLayoutPlaintext.dropLast().reduce(0, &+)
+        let wrongRecordLayout = try encryptSyntheticTransport(
+            wrongRecordLayoutPlaintext
+        )
+        #expect(throws: GS3ProtocolError.invalidV3GlucoseRecordLayout) {
+            try V3OfflineGlucoseNotificationDecoder.decode(
+                wrongRecordLayout,
+                using: material
+            )
         }
     }
 

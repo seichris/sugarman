@@ -166,7 +166,7 @@ public enum V3OfflineGlucoseNotificationDecoder: Sendable {
         )
 
         guard Int(plaintext[0]) + 1 == plaintext.count else {
-            throw GS3ProtocolError.invalidV3GlucoseNotificationLength(plaintext.count)
+            throw GS3ProtocolError.invalidV3GlucoseNotificationDeclaredLength
         }
         guard let source = V3GlucoseBatchSource(rawValue: plaintext[1]) else {
             throw GS3ProtocolError.unsupportedV3NotificationCommand(plaintext[1])
@@ -184,7 +184,7 @@ public enum V3OfflineGlucoseNotificationDecoder: Sendable {
             + (recordCount * recordByteCount)
             + trailerByteCount
         guard plaintext.count == expectedByteCount else {
-            throw GS3ProtocolError.invalidV3GlucoseNotificationLength(plaintext.count)
+            throw GS3ProtocolError.invalidV3GlucoseRecordLayout
         }
         guard plaintext.reduce(UInt8.zero, &+) == 0 else {
             throw GS3ProtocolError.invalidV3GlucoseNotificationChecksum

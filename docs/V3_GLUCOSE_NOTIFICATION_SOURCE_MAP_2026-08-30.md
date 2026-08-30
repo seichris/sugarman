@@ -138,6 +138,26 @@ initialization time respectively. Static inspection also verifies:
   request containing little-endian start/end indices and an additive checksum;
 - `sdk_get_single_data` at `0x8f4e8` uses the same shape with command `0x30`.
 
+A later payload-free chronological replay verified an additional bounded
+relationship: for all four official `0x39` requests, the request's start index
+equals the first following `0x32` or `0x39` data-batch start. There are three
+distinct start indexes across those four connections. This proves how an
+operator can validate a private probe import against the owned capture; it does
+not establish the official app's broader persistence policy or authorize
+guessing an index.
+
+A post-probe official-app reconnect supplied a second independent ring-buffer
+summary, SHA-256
+`6d6467d9bcde31b23bc8c561e50a549dd5a24e43e231bc8bad40ae40ff4f77ac`.
+It contains 13,527 HCI records, 580 ATT PDUs, five 38-byte `0xE2` writes, and
+five seven-byte `0x39` requests with four distinct starts. All five request
+starts equal their first following valid data-batch starts. The newest request
+differs from the earlier provisional private import, so the next private import
+was regenerated from that newest matched relationship. Only its
+`effectiveDataStartIndex` field changed; the value and import hash remain
+outside Git. The bugreport's separate `.filtered` snoop retained ACL/L2CAP
+headers but no ATT payload and was not used for this conclusion.
+
 A real iOS handover therefore cannot be literally write-free: CoreBluetooth
 must subscribe to notifications through the CCCD, and the observed official
 sequence performs authentication and an initial data request. It does not issue
