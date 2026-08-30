@@ -19,7 +19,7 @@ struct ProbeView: View {
                 Section {
                     Text("Developer-only, owner-controlled handover probe")
                         .font(.headline)
-                    Text("This separate app can subscribe to FF31, transmit one 0xE2 authentication, and—only after the captured 01 00 acceptance—transmit one 0x39 request. It then observes five live readings without another write. It never retries, reconnects, activates, binds, resets, or writes HealthKit.")
+                    Text("This separate app can subscribe to FF31, transmit one 0xE2 authentication, and—only after the captured 01 00 acceptance—transmit one 0x39 request. It then observes five live readings without another write. While that 0x39 write acknowledgement is pending, it may quarantine exactly one checksum-valid 24-byte unsupported command without interpreting it. It never retries, reconnects, activates, binds, resets, or writes HealthKit.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -59,7 +59,7 @@ struct ProbeView: View {
 
                 if !model.diagnostics.isEmpty {
                     Section("Redacted diagnostics") {
-                        Text("Kept in memory only. Packet payloads, identifiers, private material, glucose values, and record indexes are omitted.")
+                        Text("Kept in memory only. Packet bodies are omitted except for an allowlisted protocol command byte; identifiers, private material, glucose values, and record indexes are also omitted.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                         ForEach(model.diagnostics) { entry in
@@ -166,7 +166,7 @@ struct ProbeView: View {
                     pendingPeripheral = nil
                 }
             } message: {
-                Text("First disconnect the official Android app and turn Android Bluetooth off. This writes exactly one authentication and, only after acceptance, one effective-data request, then disconnects after five unique live readings or the seven-minute timeout.")
+                Text("First disconnect the official Android app and turn Android Bluetooth off. This writes exactly one authentication and, only after acceptance, one effective-data request. While that write acknowledgement is pending, it may quarantine one checksum-valid 24-byte unsupported command without interpreting it. It then disconnects after five unique live readings or the seven-minute timeout; any second or later unknown fails closed.")
             }
         }
     }

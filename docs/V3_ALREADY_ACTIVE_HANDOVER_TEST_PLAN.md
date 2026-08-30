@@ -7,13 +7,15 @@ active Mainland GS3. It is designed to prove authentication, one effective-data
 request, live notification decoding, and official Android-app handback while
 excluding activation and every lifecycle mutation.
 
-Two developer-only artifacts were run once each on 2026-08-30. PR #13
+Three developer-only artifacts were run once each on 2026-08-30. PR #13
 connected and failed closed with a generic unclassified error. Merged PR #14
 then proved authentication acceptance, one acknowledged `0xE2` write, one
 `0x39` write call, and a fail-closed rejection of the following 24-byte FF31
-value. Neither run produced a validated iPhone glucose value, and neither exact
-artifact/material combination may be retried. Official Android handback passed
-after both runs. See
+value. Merged PR #15 used the fresh-capture-backed request index and narrowed
+the same 24-byte shape to a declared-length-valid unsupported decrypted
+command. No run produced a validated iPhone glucose value, and none of the
+three exact artifact/material combinations may be retried. Official Android
+handback passed after all three runs. See
 [`V3_PROBE_PHYSICAL_RESULT_2026-08-30.md`](V3_PROBE_PHYSICAL_RESULT_2026-08-30.md).
 The normal `Sugarman` application remains read-only; only the separate
 `SugarmanProbe` target can express the bounded writes below. No follow-up
@@ -35,14 +37,18 @@ The separate `SugarmanProbe` target exposes only these operations:
 7. display redacted state plus the latest value and disconnect after five
    unique live `0x32` indexes or a seven-minute cap.
 
-The reviewed follow-up candidate retains an in-memory payload-free trace of
+The next follow-up candidate retains an in-memory redacted trace of
 state transitions, inbound class/length, CoreBluetooth write calls, and write
 acknowledgements. It separates control
 length/command/checksum and glucose minimum-length/declared-length/command/count/
 layout/checksum failures, and marks an FF31 delivery that occurs while an
-FF32 write acknowledgement is outstanding. It permits only one application
-write in flight and can share the redacted trace manually after the session.
-This does not add a command, retry, reconnect, or background path.
+FF32 write acknowledgement is outstanding. It also checks the checksum before
+reporting an unsupported glucose command, retains only that protocol command
+byte, and may quarantine exactly one checksum-valid 24-byte unsupported command
+only while the sole `0x39` write acknowledgement is pending. It permits only
+one application write in flight and can share the redacted trace manually after
+the session. A second or late unknown still fails closed. This does not add a
+command, retry, reconnect, or background path.
 
 The imported effective-data start index is also an evidence gate. It must be an
 actual official-app `0x39` request start that matches the first following data
@@ -50,13 +56,16 @@ batch. The second-run import met neither condition. A fresh official reconnect
 confirmed the relationship across five requests and showed that its newest
 start also differs from the earlier provisional correction. The replacement
 private import changes only this field to the newest verified request start;
-the value and import hash stay outside Git.
+the value and import hash stay outside Git. Merged PR #15 used that replacement
+and still reached the same 24-byte failure point, disproving the start-index
+mismatch as the cause of the third-run failure.
 
 The target contains no builders or cases for `0x35`, binding, activation,
 reset, secret-key, expiry/lifecycle, firmware, or arbitrary raw writes. The
 transport API must accept only typed allowlisted probe actions, enforce one
-in-flight command, cap the session duration, and fail closed on every unknown
-response.
+in-flight command, and cap the session duration. The only unknown-response
+exception is the single receive-only quarantine above; it neither interprets
+the command nor changes the write boundary.
 
 Owner-specific address, account ID, registered block, and cryptographic inputs
 must be imported only after installation through a developer-only local channel
@@ -72,9 +81,11 @@ packaged or committed.
 Before producing a device artifact:
 
 - all `swift test` and governance checks pass;
-- synthetic tests cover authentication, `0x39`, `0x32`, every payload-free
+- synthetic tests cover authentication, `0x39`, `0x32`, every redacted
   failure-stage classification, timeouts, duplicate notifications, exact
-  five-reading completion, and unknown commands;
+  five-reading completion, command-byte redaction, checksum-before-command
+  validation, the single in-flight quarantine, and failure on every second or
+  late unknown command;
 - an independent reviewer confirms the outbound command enum contains only
   `0xE2` and `0x39` for this target;
 - a build-product string/byte audit finds no forbidden command builder and no
@@ -97,9 +108,11 @@ connect. The final confirmation must cover both if both are intended.
 3. Install and launch only the confirmed iPhone artifact. Import only the
    confirmed replacement private file, select the owned sensor explicitly, and
    do not enable any activation or onboarding action.
-4. Run one bounded probe. Abort automatically if authentication is rejected, an
-   unexpected command would be needed, frame validation fails, or the timeout
-   expires.
+4. Run one bounded probe. It may quarantine only the single checksum-valid,
+   24-byte unsupported command described above while the `0x39` write
+   acknowledgement is pending. Abort automatically if authentication is
+   rejected, a second or late unknown arrives, any other frame validation
+   fails, or the timeout expires.
    If it aborts, share the in-memory redacted diagnostic text before deleting
    private material or terminating the app. Do not retry the artifact or
    private-material combination.
@@ -123,6 +136,9 @@ connect. The final confirmation must cover both if both are intended.
   validation before values enter the domain/store;
 - at least five consecutive decoded values align with official-app values and
   indexes/timestamps without unexplained discrepancy;
+- no command was quarantined. If one was quarantined, the run is useful
+  diagnostic evidence but is not a handover pass until that command is
+  explained;
 - stale/disconnected state is shown whenever a current validated notification
   is absent;
 - Sugarman disconnects within the time cap; and

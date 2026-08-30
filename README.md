@@ -50,19 +50,23 @@ dependencies. See [docs/UPSTREAMS.md](docs/UPSTREAMS.md).
   tightly bounded already-active handover attempt: subscribe to FF31, transmit
   one typed `0xE2` authentication, transmit one typed `0x39` request only after
   exact authentication acceptance, observe five unique live readings, then
-  disconnect. It has no activation, binding, reset, retry, reconnect, arbitrary
-  raw-write, background, or HealthKit path. It requires post-install private
+  disconnect. A follow-up may quarantine one checksum-valid 24-byte unsupported
+  command only while the sole `0x39` write acknowledgement is pending; it
+  retains only that command byte and does not interpret it. It has no
+  activation, binding, reset, retry, reconnect, arbitrary raw-write, background,
+  or HealthKit path. It requires post-install private
   material import and a fresh exact physical-device confirmation; see the
   [probe guide](docs/V3_DEVELOPER_HANDOVER_PROBE.md).
-- Two physical runs failed closed before a validated iPhone reading. PR #13
+- Three physical runs failed closed before a validated iPhone reading. PR #13
   exposed only a generic error; merged PR #14 proved authentication acceptance,
-  one `0x39` write call, and then rejected a 24-byte FF31 value. Do not retry
-  either exact artifact/material combination; official Android handback passed
-  after both runs. The
+  one `0x39` write call, and then rejected a 24-byte FF31 value. Merged PR #15
+  used a fresh-capture-backed request index and narrowed the same 24-byte shape
+  to an unsupported decrypted command, disproving the earlier index hypothesis.
+  Do not retry any of those exact artifact/material combinations; official
+  Android handback passed after all three runs. The
   [physical result](docs/V3_PROBE_PHYSICAL_RESULT_2026-08-30.md) defines the
-  granular payload-free diagnostic and fresh-capture-backed private-index
-  follow-up, with
-  its own confirmation gate.
+  checksum-first, single-quarantine diagnostic follow-up, with its own
+  confirmation gate.
 
 ## Repository layout
 

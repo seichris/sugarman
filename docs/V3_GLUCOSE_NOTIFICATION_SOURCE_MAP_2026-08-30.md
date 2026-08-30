@@ -158,6 +158,14 @@ was regenerated from that newest matched relationship. Only its
 outside Git. The bugreport's separate `.filtered` snoop retained ACL/L2CAP
 headers but no ATT payload and was not used for this conclusion.
 
+A third bounded iPhone run used that replacement, authenticated successfully,
+and invoked one `0x39` write. Its first following 24-byte FF31 value decrypted
+to a matching declared length but an unsupported command before CoreBluetooth
+acknowledged the write. The artifact did not retain the command byte or evaluate
+the checksum after that failure. Official Android handback passed. This
+disproves the earlier start-index mismatch as the cause of the third-run
+failure, but it does not alter the verified canonical `0x32` layout above.
+
 A real iOS handover therefore cannot be literally write-free: CoreBluetooth
 must subscribe to notifications through the CCCD, and the observed official
 sequence performs authentication and an initial data request. It does not issue

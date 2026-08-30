@@ -216,13 +216,24 @@ final class V3ProbeBluetoothRuntime: NSObject, @unchecked Sendable {
                     fail("The probe reached completion without both bounded CoreBluetooth write calls.")
                     return
                 }
-                if probe?.state == .completed {
+                if probe?.completionGatePassed == true {
                     emitDiagnostic(
                         "Completion gate passed with CoreBluetooth write calls E2=1, 0x39=1; disconnecting."
                     )
+                } else if probe?.state == .completed {
+                    emitDiagnostic(
+                        "Five live readings followed one quarantined protocol command; "
+                            + "the diagnostic gate remains inconclusive; disconnecting."
+                    )
+                    emit(
+                        .status(
+                            "Five live readings were validated after one quarantined protocol "
+                                + "command. The diagnostic gate remains inconclusive."
+                        )
+                    )
                 }
                 finishing = true
-                completedSuccessfully = probe?.state == .completed
+                completedSuccessfully = probe?.completionGatePassed == true
                 disconnectAndFinish()
             }
         }
@@ -553,7 +564,8 @@ extension V3ProbeBluetoothRuntime: CBPeripheralDelegate {
         }
         do {
             let effects = try activeProbe.didReceive(
-                EncodedFrame(bytes: [UInt8](data))
+                EncodedFrame(bytes: [UInt8](data)),
+                effectiveDataWriteAcknowledgementPending: inFlightWrite == .effectiveData
             )
             self.probe = activeProbe
             if let diagnostic = activeProbe.lastPacketDiagnostic {
