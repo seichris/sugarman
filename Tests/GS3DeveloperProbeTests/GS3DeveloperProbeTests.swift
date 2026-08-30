@@ -7,6 +7,43 @@ import Testing
 @testable import GS3Protocol
 
 struct GS3DeveloperProbeTests {
+    @Test func disconnectDiagnosticIsPayloadFreeAndDistinguishesRuns() {
+        let diagnostic = V3ProbeDisconnectDiagnostic(
+            sessionOrdinal: 2,
+            elapsedWholeSeconds: 147,
+            state: .awaitingEffectiveData,
+            transportError: .coreBluetooth(code: 6),
+            authenticationWriteCallCount: 1,
+            effectiveDataWriteCallCount: 1,
+            uniqueLiveReadingCount: 1,
+            quarantinedCommandCount: 1
+        )
+
+        #expect(
+            diagnostic.description
+                == "Session #2 disconnected unexpectedly after 147 seconds; "
+                    + "state=awaiting effective data; transport=CoreBluetooth code 6; "
+                    + "CoreBluetooth write calls E2=1, 0x39=1; unique live=1; "
+                    + "quarantined commands=1."
+        )
+        #expect(!diagnostic.description.contains("glucose-secret"))
+        #expect(!diagnostic.description.contains("record-index-secret"))
+        #expect(!diagnostic.description.contains("sensor-identifier"))
+
+        let redactedOther = V3ProbeDisconnectDiagnostic(
+            sessionOrdinal: 3,
+            elapsedWholeSeconds: 1,
+            state: .subscribing,
+            transportError: .redactedOther,
+            authenticationWriteCallCount: 0,
+            effectiveDataWriteCallCount: 0,
+            uniqueLiveReadingCount: 0,
+            quarantinedCommandCount: 0
+        )
+        #expect(redactedOther.description.contains("non-CoreBluetooth error redacted"))
+        #expect(redactedOther.description.contains("Session #3"))
+    }
+
     @Test func privateImportNormalizesAndRedactsEverySensitiveField() throws {
         let json = """
         {

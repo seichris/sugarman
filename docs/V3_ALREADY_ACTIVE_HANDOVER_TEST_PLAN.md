@@ -7,19 +7,20 @@ active Mainland GS3. It is designed to prove authentication, one effective-data
 request, live notification decoding, and official Android-app handback while
 excluding activation and every lifecycle mutation.
 
-Three developer-only artifacts were run once each on 2026-08-30. PR #13
-connected and failed closed with a generic unclassified error. Merged PR #14
-then proved authentication acceptance, one acknowledged `0xE2` write, one
-`0x39` write call, and a fail-closed rejection of the following 24-byte FF31
-value. Merged PR #15 used the fresh-capture-backed request index and narrowed
-the same 24-byte shape to a declared-length-valid unsupported decrypted
-command. No run produced a validated iPhone glucose value, and none of the
-three exact artifact/material combinations may be retried. Official Android
-handback passed after all three runs. See
-[`V3_PROBE_PHYSICAL_RESULT_2026-08-30.md`](V3_PROBE_PHYSICAL_RESULT_2026-08-30.md).
+Merged PR #16 physically produced one validated live iPhone reading after exact
+authentication, one effective-data request, and history delivery. The iPhone's
+`5.3 mmol/L` matched the official Android pre-run control. The connection timed
+out before a second live value, and one checksum-valid `0x36` command was
+quarantined, so the five-reading/no-quarantine handover gate remains incomplete.
+Official Android handback passed with a fresh `5.2 mmol/L` reading. See
+[`V3_FIRST_LIVE_READING_RESULT_2026-08-30.md`](V3_FIRST_LIVE_READING_RESULT_2026-08-30.md)
+and the [earlier physical results](V3_PROBE_PHYSICAL_RESULT_2026-08-30.md).
 The normal `Sugarman` application remains read-only; only the separate
 `SugarmanProbe` target can express the bounded writes below. No follow-up
 artifact is currently authorized for installation or sensor traffic.
+Repeating the one-shot probe solely to chase five readings is not recommended;
+the next implementation gate is a reviewed reconnect/resubscription/backfill
+design that preserves the same typed command and private-material boundaries.
 
 ## Implemented boundary before the physical gate
 
@@ -37,7 +38,7 @@ The separate `SugarmanProbe` target exposes only these operations:
 7. display redacted state plus the latest value and disconnect after five
    unique live `0x32` indexes or a seven-minute cap.
 
-The next follow-up candidate retains an in-memory redacted trace of
+The current developer probe retains an in-memory redacted trace of
 state transitions, inbound class/length, CoreBluetooth write calls, and write
 acknowledgements. It separates control
 length/command/checksum and glucose minimum-length/declared-length/command/count/

@@ -3,16 +3,14 @@
 ## Status and scope
 
 `SugarmanProbe` is a separate, foreground-only iOS developer application for
-one owner-controlled, already-active Mainland GS3. It is implemented and
-host-verified with synthetic data. Three exact physical runs on 2026-08-30 failed
-closed before an iPhone glucose value was validated. PR #13 produced only a
-generic error; merged PR #14 proved authentication acceptance, one acknowledged
-`0xE2` write, one `0x39` write call, and then a rejected 24-byte FF31 value.
-Merged PR #15 used the fresh-capture-backed request index and narrowed that
-value to a declared-length-valid unsupported decrypted command. Official
-Android handback passed after all three runs. The handover gate remains failed
-because no run validated an iPhone glucose value.
-See [`V3_PROBE_PHYSICAL_RESULT_2026-08-30.md`](V3_PROBE_PHYSICAL_RESULT_2026-08-30.md).
+one owner-controlled, already-active Mainland GS3. Merged PR #16 physically
+validated authentication, one effective-data request, history delivery, and one
+live `0x32` iPhone reading. The `5.3 mmol/L` result matched the official Android
+pre-run control. The link then timed out at 1/5 readings, after one diagnostic
+`0x36` quarantine, so the full handover/durability gate remains incomplete.
+Official Android handback passed with a fresh `5.2 mmol/L` value. See
+[`V3_FIRST_LIVE_READING_RESULT_2026-08-30.md`](V3_FIRST_LIVE_READING_RESULT_2026-08-30.md)
+and the [earlier physical results](V3_PROBE_PHYSICAL_RESULT_2026-08-30.md).
 
 The normal `Sugarman` application does not link `GS3DeveloperProbe` and retains
 its empty live-request enum and transport without a write API. The developer
@@ -35,8 +33,8 @@ High confidence for the exact owned app/library/capture hashes:
 
 These are independently recorded interoperability facts from the owned APK,
 native library, and HCI capture. Raw packets, owner identifiers, cryptographic
-material, and non-authorized glucose history remain outside Git. Operational
-iPhone handover confidence is **unproven until the physical gate passes**.
+material, and non-authorized glucose history remain outside Git. One-value iPhone
+interoperability is physically proven; durable same-owner handover is not.
 
 ## Physical-run diagnosis and official-sequence comparison
 
@@ -79,7 +77,7 @@ The third run used that replacement start and reached the same 24-byte point.
 Its granular classification proves that outer decryption produced a matching
 declared length and then an unsupported command, but the exact command and
 checksum result were omitted. This disproves the start-index hypothesis for the
-third-run failure. The next candidate checks the checksum before reporting an
+third-run failure. Merged PR #16 checks the checksum before reporting an
 unsupported command, retains only the allowlisted protocol command byte, and
 may quarantine one such 24-byte command only while CoreBluetooth still awaits
 the sole `0x39` write acknowledgement. It adds no transmission. A second or
@@ -111,17 +109,23 @@ firmware, lifecycle, HealthKit, or notification path. Authentication rejection,
 an unknown notification, malformed crypto/frame data, BLE failure, cancel, or
 timeout disconnects without another application write.
 
-The reviewed follow-up also classifies every inbound FF31 value without
+The merged follow-up also classifies every inbound FF31 value without
 retaining its packet body, records state transitions and byte counts in memory,
 reports CoreBluetooth write calls separately from acknowledgements, and permits
 only one in-flight application write. It separates
 control length/command/checksum failures and glucose minimum length/declared
 length/command/count/layout/checksum failures. It also records whether
-an FF31 value arrived while an FF32 write acknowledgement was outstanding. The
-next candidate additionally exposes an unsupported command byte as protocol
+an FF31 value arrived while an FF32 write acknowledgement was outstanding. It
+additionally exposes an unsupported command byte as protocol
 metadata and checks the checksum before quarantine. The trace can be manually
 shared as text and excludes all other packet bytes, identifiers, private
 material, glucose values, and record indexes.
+
+After the first live run exposed an unexpected transport timeout, the adapter
+also records a per-process session ordinal, monotonic whole-second duration,
+state, bounded write/live/quarantine counters, and either a numeric
+CoreBluetooth error code or a redacted non-CoreBluetooth class. These fields are
+payload-free and add no sensor operation, retry, or reconnect.
 
 `Scripts/check_governance.py` permits exactly one CoreBluetooth write call in
 the repository, in the probe adapter. It requires typed authentication and

@@ -1,5 +1,9 @@
 # GS3 V3 developer-probe physical results — 2026-08-30
 
+> Historical record of the first three runs. Merged PR #16 later produced the
+> first validated live iPhone reading; see
+> [`V3_FIRST_LIVE_READING_RESULT_2026-08-30.md`](V3_FIRST_LIVE_READING_RESULT_2026-08-30.md).
+
 ## Outcome
 
 Three bounded developer-probe runs on one owned, already-active Mainland GS3
@@ -185,7 +189,7 @@ lifecycle, HealthKit, and every other sensor write.
   before authentication, and the current evidence does not justify adding more
   writes.
 
-### Not verified by this run
+### Not verified by these first three runs
 
 - Over-the-air or controller-level write evidence; CoreBluetooth write calls
   are application evidence, not an iPhone HCI capture.

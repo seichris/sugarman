@@ -57,16 +57,14 @@ dependencies. See [docs/UPSTREAMS.md](docs/UPSTREAMS.md).
   or HealthKit path. It requires post-install private
   material import and a fresh exact physical-device confirmation; see the
   [probe guide](docs/V3_DEVELOPER_HANDOVER_PROBE.md).
-- Three physical runs failed closed before a validated iPhone reading. PR #13
-  exposed only a generic error; merged PR #14 proved authentication acceptance,
-  one `0x39` write call, and then rejected a 24-byte FF31 value. Merged PR #15
-  used a fresh-capture-backed request index and narrowed the same 24-byte shape
-  to an unsupported decrypted command, disproving the earlier index hypothesis.
-  Do not retry any of those exact artifact/material combinations; official
-  Android handback passed after all three runs. The
-  [physical result](docs/V3_PROBE_PHYSICAL_RESULT_2026-08-30.md) defines the
-  checksum-first, single-quarantine diagnostic follow-up, with its own
-  confirmation gate.
+- Merged PR #16 physically produced the first validated iPhone live reading:
+  `5.3 mmol/L`, matching the official Android pre-run value, with one typed
+  `0xE2`, one typed `0x39`, history batches, and one live `0x32` batch. The link
+  then timed out at 1/5 readings and the run had quarantined one checksum-valid
+  `0x36`, so the full handover/durability gate remains incomplete. Android
+  handback passed with a fresh `5.2 mmol/L` reading. See the
+  [first-live-reading result](docs/V3_FIRST_LIVE_READING_RESULT_2026-08-30.md)
+  and the [earlier probe results](docs/V3_PROBE_PHYSICAL_RESULT_2026-08-30.md).
 
 ## Repository layout
 

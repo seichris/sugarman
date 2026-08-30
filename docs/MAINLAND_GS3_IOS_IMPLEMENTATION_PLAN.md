@@ -895,7 +895,7 @@ These are software acceptance criteria, not independent clinical validation.
 | Subtype-5 registered block is wrong | High impact; upstream calls it `Guess`. | Prove on already-active handover before fresh activation. |
 | Mainland account binding/API | High impact; official flow not mapped. | Start with a legitimate documented/manual owner ID. Add network login only with reviewed endpoint and terms. |
 | SKU/NFC format drift | Medium/high. | Versioned fixture corpus, bounded parsers, explicit unsupported state. |
-| Official-app concurrency | Medium and physically unknown. | Support controlled handover only until tested. |
+| Official-app/local-process concurrency | Two attempts stopped before FF31 while both Sugarman targets were running; a clean Probe-only run reached live data. Contention is a medium-confidence inference, not a proven cause. | Enforce one local sensor owner, terminate scanning on handoff, and test process/restoration contention explicitly. |
 | Firmware drift | High over time. | Firmware/protocol allowlist, decoder revision on every sample, fail closed on unknown frames. |
 | GPL/App Store compatibility | High distribution risk. | Written legal conclusion before external TestFlight/App Store; seek extra permission or clean room if blocked. |
 | Health/medical claims | High review and user-safety risk. | Athlete insight only; no dosing/diagnosis/prescription; evidence-backed marketing. |

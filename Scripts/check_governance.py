@@ -252,6 +252,9 @@ def check_no_write_api() -> None:
             "RX FF31 delivered while CoreBluetooth awaited FF32",
             "effectiveDataWriteAcknowledgementPending: inFlightWrite == .effectiveData",
             "probe?.completionGatePassed == true",
+            "V3ProbeDisconnectDiagnostic(",
+            "nsError.domain == CBErrorDomain",
+            "runStartedAtUptimeNanoseconds",
         ):
             if required not in body:
                 error(f"developer probe adapter missing strict boundary: {required}")
@@ -287,6 +290,30 @@ def check_no_write_api() -> None:
         ):
             if required not in machine_body:
                 error(f"developer probe missing redacted diagnostic boundary: {required}")
+
+    disconnect_diagnostic = (
+        ROOT / "Sources/GS3DeveloperProbe/V3ProbeDisconnectDiagnostic.swift"
+    )
+    if not disconnect_diagnostic.is_file():
+        error("missing payload-free developer-probe disconnect diagnostic")
+    else:
+        diagnostic_body = disconnect_diagnostic.read_text(
+            encoding="utf-8", errors="replace"
+        )
+        for required in (
+            "case coreBluetooth(code: Int)",
+            "case redactedOther",
+            "elapsedWholeSeconds",
+            "authenticationWriteCallCount",
+            "effectiveDataWriteCallCount",
+            "uniqueLiveReadingCount",
+            "quarantinedCommandCount",
+        ):
+            if required not in diagnostic_body:
+                error(
+                    "developer probe missing disconnect diagnostic boundary: "
+                    + required
+                )
 
     package_text = (ROOT / "Package.swift").read_text(encoding="utf-8", errors="replace")
     project_text = (ROOT / "project.yml").read_text(encoding="utf-8", errors="replace")

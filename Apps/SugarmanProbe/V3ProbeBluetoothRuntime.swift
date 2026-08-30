@@ -70,6 +70,9 @@ final class V3ProbeBluetoothRuntime: NSObject, @unchecked Sendable {
     private var queuedTransmission: V3ProbeTransmission?
     private var authenticationWriteCallCount = 0
     private var effectiveDataWriteCallCount = 0
+    private var sessionOrdinal = 0
+    private var activeSessionOrdinal: Int?
+    private var runStartedAtUptimeNanoseconds: UInt64?
 
     init(eventHandler: @escaping @Sendable (ProbeRuntimeEvent) -> Void) {
         self.eventHandler = eventHandler
@@ -142,11 +145,14 @@ final class V3ProbeBluetoothRuntime: NSObject, @unchecked Sendable {
             self.queuedTransmission = nil
             self.authenticationWriteCallCount = 0
             self.effectiveDataWriteCallCount = 0
+            self.sessionOrdinal += 1
+            self.activeSessionOrdinal = self.sessionOrdinal
+            self.runStartedAtUptimeNanoseconds = DispatchTime.now().uptimeNanoseconds
             let token = UUID()
             self.runToken = token
             peripheral.delegate = self
             self.emitDiagnostic(
-                "Session started for the explicitly selected expected peripheral; no identifier retained."
+                "Session #\(self.sessionOrdinal) started for the explicitly selected expected peripheral; no identifier retained."
             )
             self.emit(.status("Connecting once; there is no automatic reconnect."))
             central.connect(peripheral, options: nil)
@@ -352,6 +358,39 @@ final class V3ProbeBluetoothRuntime: NSObject, @unchecked Sendable {
         queuedTransmission = nil
         authenticationWriteCallCount = 0
         effectiveDataWriteCallCount = 0
+        activeSessionOrdinal = nil
+        runStartedAtUptimeNanoseconds = nil
+    }
+
+    private func disconnectDiagnostic(error: Error?) -> V3ProbeDisconnectDiagnostic {
+        let elapsedWholeSeconds: Int
+        if let started = runStartedAtUptimeNanoseconds {
+            let now = DispatchTime.now().uptimeNanoseconds
+            elapsedWholeSeconds = Int((now &- started) / 1_000_000_000)
+        } else {
+            elapsedWholeSeconds = 0
+        }
+
+        let transportError: V3ProbeTransportErrorClass
+        if let error {
+            let nsError = error as NSError
+            transportError = nsError.domain == CBErrorDomain
+                ? .coreBluetooth(code: nsError.code)
+                : .redactedOther
+        } else {
+            transportError = .noneReported
+        }
+
+        return V3ProbeDisconnectDiagnostic(
+            sessionOrdinal: activeSessionOrdinal ?? sessionOrdinal,
+            elapsedWholeSeconds: elapsedWholeSeconds,
+            state: probe?.state ?? .idle,
+            transportError: transportError,
+            authenticationWriteCallCount: authenticationWriteCallCount,
+            effectiveDataWriteCallCount: effectiveDataWriteCallCount,
+            uniqueLiveReadingCount: probe?.uniqueLiveReadingCount ?? 0,
+            quarantinedCommandCount: probe?.quarantinedGlucoseCommandCount ?? 0
+        )
     }
 }
 
@@ -422,10 +461,13 @@ extension V3ProbeBluetoothRuntime: CBCentralManagerDelegate {
         error: Error?
     ) {
         guard activePeripheral?.identifier == peripheral.identifier else { return }
-        if !finishing, let error {
-            emit(.failed(error.localizedDescription))
-        } else if !finishing {
-            emit(.failed("The sensor disconnected before the bounded probe completed."))
+        if !finishing {
+            emitDiagnostic(disconnectDiagnostic(error: error).description)
+            if let error {
+                emit(.failed(error.localizedDescription))
+            } else {
+                emit(.failed("The sensor disconnected before the bounded probe completed."))
+            }
         }
         let completedSuccessfully = completedSuccessfully
         resetRun()
