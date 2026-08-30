@@ -78,6 +78,28 @@
       "reviewer": "chris",
       "legal_review_status": "lean-local",
       "notes": "UI ordering and candidate label only. The heuristic never auto-connects, authenticates, binds, activates, or establishes device identity. Tests use synthetic names."
+    },
+    {
+      "id": "prov-20260830-owned-mainland-gs3-gatt-map",
+      "upstream_project": "none",
+      "upstream_url": "https://docs.zephyrproject.org/latest/services/device_mgmt/smp_transport.html",
+      "pinned_commit": "not-applicable",
+      "source_path": "Owned Mainland GS3 read-only iOS GATT discovery",
+      "source_blob_sha256": "not-copied-source-not-ingested",
+      "copyright_holders": [],
+      "history_reviewed": false,
+      "file_header_licence": "not-applicable",
+      "repository_licence": "not-applicable",
+      "purpose_and_behavior_taken": "A schema-v1 map records independently observed service and characteristic UUIDs, properties, and allowlisted Device Information byte counts from an owned active Mainland GS3. Identifiers, serial bytes, raw values, authentication material, and glucose data are omitted. Zephyr documentation is used only to identify the observed SMP UUIDs.",
+      "reuse_mode": "independently observed",
+      "sugarman_destination_path": "docs/evidence/owned-mainland-gs3-gatt-map-v1.json",
+      "modification_date": "2026-08-30",
+      "author": "chris",
+      "fixtures_origin": "Owned active Mainland GS3; Sugarman read-only iOS discovery after official Android app release",
+      "fixtures_capture_sha256": "4c5dbfd08cadd094ad507db5bf78e4ff8130e82e7f15d3ad20a61d1b3a24c4fe",
+      "reviewer": "chris",
+      "legal_review_status": "lean-local",
+      "notes": "Public fixture contains UUIDs, GATT properties, and byte counts only. Exact sensor name, CoreBluetooth identifier, device serials, account data, screenshots, glucose value, and raw Android HCI payloads remain private. No write, authentication, binding, activation, reset, or firmware-management request was sent."
     }
   ]
 }
