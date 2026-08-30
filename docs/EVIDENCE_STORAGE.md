@@ -32,6 +32,7 @@ Keep a directory **outside** this Git worktree, for example:
   apk/                  # hash only is recorded in Git
   hci/                  # Android HCI snoop, encrypted at rest if possible
   ios-gatt/             # read-only diagnostic notes
+  probe/                # private import JSON and local run record
   photos/               # package photos
   hashes.sha256
 ```
@@ -56,7 +57,17 @@ One fixed, non-owner-specific V3 protocol constant is present in the GPL source
 under the scoped approval and exact provenance recorded in
 [`V3_AUTH_SOURCE_MAP_2026-08-30.md`](V3_AUTH_SOURCE_MAP_2026-08-30.md). That
 narrow interoperability record does not permit committing runtime material or
-other keys from private evidence.
+other keys from private evidence. In particular, the separately observed fixed
+algorithm-glucose key and IV remain uncommitted pending their own explicit
+legal/provenance decision; the offline decoder accepts them only as redacted
+caller-supplied material.
+
+The developer probe imports a schema-v1 JSON file from Files after installation
+and stores only normalized binary material in a
+`kSecAttrAccessibleWhenUnlockedThisDeviceOnly` Keychain item. Keep the source
+JSON outside the repository and app bundle, do not place it in cloud-synced
+storage, and delete the file from the iPhone Files location after a successful
+import. Deleting material inside the probe removes the Keychain item.
 
 ## Diagnostic captures inside the app
 

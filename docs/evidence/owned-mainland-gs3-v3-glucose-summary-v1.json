@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "scope": "Payload-free offline V3 glucose-notification analysis for one owner-authorized Mainland GS3, official Android app, owned APK, and HCI capture.",
+  "inputs": {
+    "officialApp": {
+      "package": "com.sibionics.gstoc",
+      "version": "01.10.00.00",
+      "apkSHA256": "0357d558c221a62129dca632fec2c73de70a978862228024f63f45d0b88fc1d7"
+    },
+    "nativeLibrary": {
+      "pathInsideAPK": "lib/arm64-v8a/libcxm_protocol.so",
+      "sha256": "19238019b9aca5f8ffae6a81fad98bb9f6525750b914367378f1ac1bbf765964",
+      "committedOrLinked": false
+    },
+    "canonicalHCICapture": {
+      "sha256": "165d697f4126d0fa2a8ea4f6d822b8fe74dd03e5663ba1e0910c9a197882d3e7",
+      "byteCount": 480730,
+      "recorderWallClockRange": "09:33:02-10:43:03"
+    },
+    "pinnedJugglucoCommit": "11d016eb3aeffe77e86d9522f5192e83790b5a21"
+  },
+  "verifiedEvidence": {
+    "transport": {
+      "cipher": "AES-128-OFB",
+      "runtimeIVShape": "six Device Information address bytes in displayed order followed by ten zero bytes",
+      "notificationCommand": 50,
+      "notificationCharacteristicUUID": "0000FF31-0000-1000-8000-00805F9B34FB",
+      "uniqueNotificationCount": 69,
+      "validLengthCommandCountChecksumCount": 69,
+      "oneRecordTwentyFourByteCount": 69,
+      "rawPayloadsOmitted": true
+    },
+    "cadence": {
+      "intervalCount": 68,
+      "intervalsBetween59And61Seconds": 66,
+      "medianSecondsApproximate": 59.95,
+      "intervalsOver90Seconds": 1
+    },
+    "record": {
+      "fixedRecordByteCount": 16,
+      "integerByteOrder": "little-endian",
+      "innerCipher": "AES-128-OFB with a distinct fixed key and IV",
+      "glucoseScale": "unsigned little-endian tenths of mmol/L",
+      "exactOwnerAuthorizedParityPoint": {
+        "captureLocalTime": "10:37",
+        "officialDisplayMillimolesPerLiter": 7.2,
+        "decodedTenthsMillimolesPerLiter": 72,
+        "officialTrend": "straight-right",
+        "decodedTrendCode": 2
+      },
+      "otherGlucoseValuesOmitted": true
+    },
+    "officialConnectionWrites": {
+      "authenticationCommandE2Count": 4,
+      "deviceInfoCommandF0Count": 29,
+      "activationWithoutSensitivityCommand35Count": 1,
+      "singleEffectiveDataCommand39Count": 4
+    },
+    "authenticationCorrection": {
+      "privateOfficialCiphertextReplayExact": true,
+      "addressByteOrderVerified": true,
+      "authenticationIDEncoding": "owned numeric user ID as unsigned big-endian eight bytes followed by four zero bytes",
+      "registeredBlockSHA256": "9b3982b682013c4ef96d9a32faf059fca53789cb712ba25fff1a2ad55e6555d6",
+      "registeredBlockBytesOmitted": true
+    }
+  },
+  "swiftContainment": {
+    "offlineDecoderImplemented": true,
+    "syntheticOnlyFixtures": true,
+    "algorithmKeyAndIVOmitted": true,
+    "liveCodecConnected": false,
+    "normalAppTransportWriteAPIAvailable": false,
+    "separateDeveloperProbeImplemented": true,
+    "vendorBinaryCommittedOrLinked": false
+  },
+  "confidence": {
+    "exactEvidenceHashes": "high",
+    "generalMainlandGS3ProductSupport": "medium-low pending broader physical validation"
+  },
+  "notYetVerified": [
+    "Already-active handover from iPhone",
+    "Official Android handback after an iPhone attempt",
+    "Multiple consecutive iPhone readings and background reconnect",
+    "Non-flat trend and lifecycle-state mappings",
+    "Fresh activation and legitimate config/AppKey/marker acquisition",
+    "A second sensor lot and a full sensor run"
+  ],
+  "decision": "Review the offline decoder and separate developer-only probe. The probe contains only CCCD subscription, one authentication command, and one effective-data request; it omits activation/binding/reset commands, keeps algorithm material in the private post-install import, and requires fresh exact physical-device confirmation."
+}

@@ -1,6 +1,6 @@
 # Mainland China SiBionics GS3 support for Sugarman
 
-- Status: implementation has started; P1/P2 passed for one owned active sensor on 2026-08-30. The observed family is V3/AES-OFB and the six address bytes are available from Device Information `2A25`. An approved offline-only M2 authentication encoder is present but deliberately disconnected from live transport; owned replay parity and legitimate runtime registration material still gate every live write.
+- Status: implementation has started; P1/P2 passed for one owned active sensor on 2026-08-30. The observed family is V3/AES-OFB and the six address bytes are available from Device Information `2A25`. Private replay now verifies the already-active authentication inputs and one 7.2 mmol/L/flat notification point. Offline authentication and glucose codecs remain deliberately disconnected from live transport; review, private-material handling, a fixed-key publication decision, and fresh physical confirmation still gate every live write. Fresh activation remains unresolved.
 - Date: 2026-08-28
 - Product: Sugarman — glucose monitoring and fueling insight for endurance athletes
 
@@ -47,6 +47,8 @@ have evidence-backed answers for one owned sensor/app/library combination:
 See [`P1_OWNED_HARDWARE_RESULT_2026-08-30.md`](P1_OWNED_HARDWARE_RESULT_2026-08-30.md),
 [`P2_OWNED_PROTOCOL_RESULT_2026-08-30.md`](P2_OWNED_PROTOCOL_RESULT_2026-08-30.md),
 and [`V3_AUTH_SOURCE_MAP_2026-08-30.md`](V3_AUTH_SOURCE_MAP_2026-08-30.md).
+The later glucose and authentication correction is in
+[`V3_GLUCOSE_NOTIFICATION_SOURCE_MAP_2026-08-30.md`](V3_GLUCOSE_NOTIFICATION_SOURCE_MAP_2026-08-30.md).
 These results permit offline work; they do not by themselves authorize a live
 sensor command.
 
@@ -889,7 +891,7 @@ These are software acceptance criteria, not independent clinical validation.
 | --- | --- | --- |
 | RC4 versus AES V3 | Resolved as V3/AES-OFB for the owned app/sensor/library hash; other lots unknown. | Keep an explicit variant allowlist and require evidence before generalizing. |
 | Six address bytes unavailable on iOS | Resolved for the owned sensor through readable Device Information `2A25`; other lots unknown. | Verify every supported firmware/lot and fail closed if the field is absent or malformed. |
-| V3 runtime IV/registered block/authentication ID | High impact; native layout verified but legitimate owner-controlled source and replay parity remain open. | Do not scrape app-private storage or guess. Obtain the values through an authorized package/account/vendor route and pass private offline replay before transport work. |
+| V3 runtime IV/registered block/authentication ID | Resolved by exact private replay for this already-active owned sensor/config; no general fresh-registration route exists. | Keep recovered values outside Git/logs, add a reviewed local-material path for the bounded handover only, and separately solve the legitimate fresh config/AppKey/marker route. |
 | Subtype-5 registered block is wrong | High impact; upstream calls it `Guess`. | Prove on already-active handover before fresh activation. |
 | Mainland account binding/API | High impact; official flow not mapped. | Start with a legitimate documented/manual owner ID. Add network login only with reviewed endpoint and terms. |
 | SKU/NFC format drift | Medium/high. | Versioned fixture corpus, bounded parsers, explicit unsupported state. |

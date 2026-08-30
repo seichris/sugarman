@@ -16,6 +16,7 @@ let package = Package(
         .library(name: "SugarmanDomain", targets: ["SugarmanDomain"]),
         .library(name: "GS3Protocol", targets: ["GS3Protocol"]),
         .library(name: "GS3Transport", targets: ["GS3Transport"]),
+        .library(name: "GS3DeveloperProbe", targets: ["GS3DeveloperProbe"]),
         .library(name: "SensorOnboarding", targets: ["SensorOnboarding"]),
         .library(name: "AccountBinding", targets: ["AccountBinding"]),
         .library(name: "SugarmanStore", targets: ["SugarmanStore"]),
@@ -27,6 +28,11 @@ let package = Package(
         .target(name: "SugarmanDomain"),
         .target(name: "GS3Protocol", dependencies: ["SugarmanDomain"]),
         .target(name: "GS3Transport", dependencies: ["SugarmanDomain"]),
+        .target(
+            name: "GS3DeveloperProbe",
+            dependencies: ["GS3Protocol"],
+            linkerSettings: [.linkedFramework("Security")]
+        ),
         .target(name: "SensorOnboarding", dependencies: ["SugarmanDomain"]),
         .target(name: "AccountBinding", dependencies: ["SugarmanDomain"]),
         .target(name: "SugarmanStore", dependencies: ["SugarmanDomain"]),
@@ -39,6 +45,10 @@ let package = Package(
         .testTarget(name: "SugarmanDomainTests", dependencies: ["SugarmanDomain"]),
         .testTarget(name: "GS3ProtocolTests", dependencies: ["GS3Protocol", "SugarmanDomain"]),
         .testTarget(name: "GS3TransportTests", dependencies: ["GS3Transport"]),
+        .testTarget(
+            name: "GS3DeveloperProbeTests",
+            dependencies: ["GS3DeveloperProbe", "GS3Protocol"]
+        ),
         .testTarget(name: "SensorOnboardingTests", dependencies: ["SensorOnboarding"]),
         .testTarget(name: "AccountBindingTests", dependencies: ["AccountBinding"]),
         .testTarget(name: "SugarmanStoreTests", dependencies: ["SugarmanStore", "SugarmanDomain"]),

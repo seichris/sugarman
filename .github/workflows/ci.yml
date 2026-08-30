@@ -39,7 +39,7 @@ jobs:
           submodules: false
       - name: Show toolchain
         run: xcodebuild -version && xcodebuild -showsdks
-      - name: Build iOS app for Simulator
+      - name: Build iOS apps for Simulator
         env:
           CC: ${{ github.workspace }}/Scripts/xcode-clang-wrapper.sh
         run: |
@@ -56,9 +56,11 @@ jobs:
             exit 1
           fi
           xcodebuild -scheme Sugarman -destination 'generic/platform=iOS Simulator' -configuration Debug build CODE_SIGNING_ALLOWED=NO
-      - name: Build iOS app for generic device
+          xcodebuild -scheme SugarmanProbe -destination 'generic/platform=iOS Simulator' -configuration Debug build CODE_SIGNING_ALLOWED=NO
+      - name: Build iOS apps for generic device
         env:
           CC: ${{ github.workspace }}/Scripts/xcode-clang-wrapper.sh
         run: |
           set -euo pipefail
           xcodebuild -scheme Sugarman -destination 'generic/platform=iOS' -configuration Debug build CODE_SIGNING_ALLOWED=NO
+          xcodebuild -scheme SugarmanProbe -destination 'generic/platform=iOS' -configuration Debug build CODE_SIGNING_ALLOWED=NO

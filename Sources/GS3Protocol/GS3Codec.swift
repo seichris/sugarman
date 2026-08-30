@@ -47,7 +47,7 @@ public protocol GS3Codec: Sendable {
 }
 
 /// Placeholder live codec. Even `.v3AES` stays unavailable here: its current
-/// implementation surface is an isolated offline authentication builder only.
+/// implementation surface consists only of isolated offline codecs.
 public struct UnimplementedGS3Codec: GS3Codec {
     public let variant: ProtocolVariant
 

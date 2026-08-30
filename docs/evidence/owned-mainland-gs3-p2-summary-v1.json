@@ -1,5 +1,7 @@
 {
   "schemaVersion": 1,
+  "status": "protocol-identification-valid-later-gates-superseded-in-part",
+  "supersededInPartBy": "docs/evidence/owned-mainland-gs3-v3-glucose-summary-v1.json",
   "scope": "Payload-free P2 comparison for one owned, already-active Mainland China GS3 and an owned copy of its official Android app. No vendor binary, key, IV, device identifier, account data, authentication payload, or glucose payload is included.",
   "inputs": {
     "canonicalHCISnapshotSHA256": "8f59200f694c51c533a30ae6e7398c35b46ced2bce3d7a6ec200e8e072302c19",
@@ -66,16 +68,12 @@
     "confidence": "high for this owned app, sensor, and firmware",
     "pinnedV120RC4Compatible": false,
     "followUpSourceMap": "docs/V3_AUTH_SOURCE_MAP_2026-08-30.md",
-    "offlineEncoderStatus": "implemented but not matched to an owned replay and not live-connected"
+    "offlineEncoderStatus": "implemented; later private owned replay matched exactly; not live-connected"
   },
   "notYetVerified": [
-    "Legitimate owner-controlled runtime IV, registered-block, and authentication-ID source",
-    "Pure Swift 38-byte authentication frame parity against the private official-app write",
-    "Address byte order for authentication",
-    "Notification decryption and glucose decoding",
     "Already-active handover authentication",
     "Fresh-sensor activation",
     "A second sensor lot"
   ],
-  "decision": "Scoped user-reported approval permits the separately authored GPL offline encoder and source map. Do not expose it through the live codec factory or transport, and do not send authentication until runtime-material provenance, private replay parity, independent review, and a fresh physical-write confirmation pass. Never ship or link the Android APK or shared library."
+  "decision": "Later private replay resolves the already-active runtime material, authentication parity, and one glucose-notification point. Keep both codecs offline until independent review, private-material handling, the second fixed-key publication decision, and a fresh exact physical-write confirmation pass. Never ship or link the Android APK or shared library."
 }

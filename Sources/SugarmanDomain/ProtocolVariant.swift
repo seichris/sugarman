@@ -7,7 +7,7 @@ public enum ProtocolVariant: String, Sendable, Codable, CaseIterable, Equatable 
     case unknown
     /// Juggluco's documented V1.20/RC4 family. Unimplemented at M0.
     case v120RC4
-    /// Owned Mainland GS3 38-byte AES-OFB family. Offline auth builder only.
+    /// Owned Mainland GS3 AES-OFB family. Offline auth and glucose codecs only.
     case v3AES
 
     public var isImplemented: Bool { false }

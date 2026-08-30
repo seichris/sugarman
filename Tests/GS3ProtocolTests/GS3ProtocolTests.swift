@@ -261,6 +261,153 @@ struct GS3ProtocolTests {
         #expect(described.contains("authenticationIDByteCount: 9"))
     }
 
+    @Test func v3OfflineGlucoseDecoderParsesSyntheticMultiRecordNotification() throws {
+        let material = try syntheticGlucoseMaterial()
+        let frame = try syntheticGlucoseNotification(
+            startingIndex: 0x1234,
+            endingReindex: 400,
+            records: [
+                SyntheticGlucoseRecord(
+                    rawTemperature: 0x1112,
+                    rawDump: 0x2122,
+                    rawCurrent: 0x3132,
+                    rawDisplayGlucose: 0x3334,
+                    glucoseTenths: 72,
+                    flags: 0xAA,
+                    states: 0x75,
+                    rawCEVoltage: 0x4445,
+                    rawREVoltage: 0x5556
+                ),
+                SyntheticGlucoseRecord(
+                    rawTemperature: 0x6162,
+                    rawDump: 0x7172,
+                    rawCurrent: 0x8182,
+                    rawDisplayGlucose: 0x8384,
+                    glucoseTenths: 98,
+                    flags: 0x35,
+                    states: 0x4E,
+                    rawCEVoltage: 0x9192,
+                    rawREVoltage: 0xA1A2
+                ),
+            ]
+        )
+
+        let decoded = try V3OfflineGlucoseNotificationDecoder.decode(
+            frame,
+            using: material
+        )
+
+        #expect(decoded.count == 2)
+        #expect(decoded[0].index == 0x1234)
+        #expect(decoded[0].reindex == 401)
+        #expect(decoded[0].rawTemperature == 0x1112)
+        #expect(decoded[0].rawDump == 0x2122)
+        #expect(decoded[0].rawCurrent == 0x3132)
+        #expect(decoded[0].rawDisplayGlucose == 0x3334)
+        #expect(decoded[0].glucoseTenthsMillimolesPerLiter == 72)
+        #expect(decoded[0].glucoseMillimolesPerLiter == 7.2)
+        #expect(decoded[0].trendCode == 2)
+        #expect(decoded[0].presentCState)
+        #expect(decoded[0].algorithmCState == 10)
+        #expect(decoded[0].tState == 1)
+        #expect(decoded[0].dState == 5)
+        #expect(decoded[0].algorithmReserved == 3)
+        #expect(decoded[0].rawCEVoltage == 0x4445)
+        #expect(decoded[0].rawREVoltage == 0x5556)
+        #expect(decoded[1].index == 0x1235)
+        #expect(decoded[1].reindex == 400)
+        #expect(decoded[1].glucoseTenthsMillimolesPerLiter == 98)
+        #expect(decoded[1].trendCode == 5)
+    }
+
+    @Test func v3OfflineGlucoseDecoderFailsClosedOnMalformedFrames() throws {
+        let material = try syntheticGlucoseMaterial()
+        let valid = try syntheticGlucoseNotification(
+            startingIndex: 1,
+            endingReindex: 1,
+            records: [.minimal]
+        )
+
+        #expect(throws: GS3ProtocolError.invalidV3GlucoseNotificationLength(23)) {
+            try V3OfflineGlucoseNotificationDecoder.decode(
+                EncodedFrame(bytes: Array(valid.bytes.dropLast())),
+                using: material
+            )
+        }
+
+        var badChecksumPlaintext = try decryptSyntheticTransport(valid)
+        badChecksumPlaintext[23] &+= 1
+        let badChecksum = try encryptSyntheticTransport(badChecksumPlaintext)
+        #expect(throws: GS3ProtocolError.invalidV3GlucoseNotificationChecksum) {
+            try V3OfflineGlucoseNotificationDecoder.decode(badChecksum, using: material)
+        }
+
+        var wrongCommandPlaintext = try decryptSyntheticTransport(valid)
+        wrongCommandPlaintext[1] = 0x31
+        wrongCommandPlaintext[23] = 0
+        wrongCommandPlaintext[23] = UInt8.zero &- wrongCommandPlaintext.dropLast().reduce(0, &+)
+        let wrongCommand = try encryptSyntheticTransport(wrongCommandPlaintext)
+        #expect(throws: GS3ProtocolError.unsupportedV3NotificationCommand(0x31)) {
+            try V3OfflineGlucoseNotificationDecoder.decode(wrongCommand, using: material)
+        }
+
+        var zeroRecordsPlaintext = try decryptSyntheticTransport(valid)
+        zeroRecordsPlaintext[2] = 0
+        zeroRecordsPlaintext[23] = 0
+        zeroRecordsPlaintext[23] = UInt8.zero &- zeroRecordsPlaintext.dropLast().reduce(0, &+)
+        let zeroRecords = try encryptSyntheticTransport(zeroRecordsPlaintext)
+        #expect(throws: GS3ProtocolError.invalidV3GlucoseRecordCount(0)) {
+            try V3OfflineGlucoseNotificationDecoder.decode(zeroRecords, using: material)
+        }
+    }
+
+    @Test func v3GlucoseMaterialAndRecordsRedactSensitiveValues() throws {
+        let material = try syntheticGlucoseMaterial()
+        var materialDump = ""
+        dump(material, to: &materialDump)
+
+        #expect(!String(describing: material).contains("161"))
+        #expect(!materialDump.contains("161"))
+
+        let record = try V3OfflineGlucoseNotificationDecoder.decode(
+            syntheticGlucoseNotification(
+                startingIndex: 1,
+                endingReindex: 1,
+                records: [.minimal]
+            ),
+            using: material
+        )[0]
+        var recordDump = ""
+        dump(record, to: &recordDump)
+        #expect(!String(describing: record).contains("72"))
+        #expect(!recordDump.contains("72"))
+        #expect(recordDump.contains("redacted"))
+    }
+
+    @Test func v3GlucoseMaterialRejectsUnprovenLengths() {
+        #expect(throws: GS3ProtocolError.invalidSensorAddressLength(5)) {
+            try V3GlucoseCryptoMaterial(
+                sensorAddress: [UInt8](repeating: 0, count: 5),
+                algorithmKey: [UInt8](repeating: 0, count: 16),
+                algorithmInitializationVector: [UInt8](repeating: 0, count: 16)
+            )
+        }
+        #expect(throws: GS3ProtocolError.invalidAESKeyLength(15)) {
+            try V3GlucoseCryptoMaterial(
+                sensorAddress: [UInt8](repeating: 0, count: 6),
+                algorithmKey: [UInt8](repeating: 0, count: 15),
+                algorithmInitializationVector: [UInt8](repeating: 0, count: 16)
+            )
+        }
+        #expect(throws: GS3ProtocolError.invalidInitializationVectorLength(15)) {
+            try V3GlucoseCryptoMaterial(
+                sensorAddress: [UInt8](repeating: 0, count: 6),
+                algorithmKey: [UInt8](repeating: 0, count: 16),
+                algorithmInitializationVector: [UInt8](repeating: 0, count: 15)
+            )
+        }
+    }
+
     private func syntheticV3Inputs() throws -> V3AuthenticationInputs {
         try V3AuthenticationInputs(
             deviceType: 0,
@@ -276,6 +423,110 @@ struct GS3ProtocolTests {
             expectedMarker: "owner",
             initializationVector: Array(0xA0...0xAF)
         )
+    }
+
+    private struct SyntheticGlucoseRecord {
+        let rawTemperature: UInt16
+        let rawDump: UInt16
+        let rawCurrent: UInt16
+        let rawDisplayGlucose: UInt16
+        let glucoseTenths: UInt16
+        let flags: UInt8
+        let states: UInt8
+        let rawCEVoltage: UInt16
+        let rawREVoltage: UInt16
+
+        static let minimal = SyntheticGlucoseRecord(
+            rawTemperature: 1,
+            rawDump: 2,
+            rawCurrent: 3,
+            rawDisplayGlucose: 4,
+            glucoseTenths: 72,
+            flags: 2,
+            states: 0,
+            rawCEVoltage: 5,
+            rawREVoltage: 6
+        )
+    }
+
+    private func syntheticGlucoseMaterial() throws -> V3GlucoseCryptoMaterial {
+        try V3GlucoseCryptoMaterial(
+            sensorAddress: Array(1...6),
+            algorithmKey: Array(0x10...0x1F),
+            algorithmInitializationVector: Array(0xA0...0xAF)
+        )
+    }
+
+    private func syntheticGlucoseNotification(
+        startingIndex: UInt16,
+        endingReindex: UInt16,
+        records: [SyntheticGlucoseRecord]
+    ) throws -> EncodedFrame {
+        var plaintext: [UInt8] = [0, 0x32, UInt8(records.count)]
+        appendLittleEndian(startingIndex, to: &plaintext)
+
+        for record in records {
+            appendLittleEndian(record.rawTemperature, to: &plaintext)
+            appendLittleEndian(record.rawDump, to: &plaintext)
+            appendLittleEndian(record.rawCurrent, to: &plaintext)
+            appendLittleEndian(record.rawDisplayGlucose, to: &plaintext)
+            let algorithmPlaintext = [
+                UInt8(truncatingIfNeeded: record.glucoseTenths),
+                UInt8(truncatingIfNeeded: record.glucoseTenths >> 8),
+            ]
+            plaintext.append(
+                contentsOf: try AES128OFB.crypt(
+                    algorithmPlaintext,
+                    key: syntheticAlgorithmKey,
+                    initializationVector: syntheticAlgorithmInitializationVector
+                )
+            )
+            plaintext.append(record.flags)
+            plaintext.append(record.states)
+            appendLittleEndian(record.rawCEVoltage, to: &plaintext)
+            appendLittleEndian(record.rawREVoltage, to: &plaintext)
+        }
+
+        appendLittleEndian(endingReindex, to: &plaintext)
+        plaintext.append(0)
+        plaintext[0] = UInt8(plaintext.count - 1)
+        plaintext[plaintext.count - 1] = UInt8.zero &- plaintext.dropLast().reduce(0, &+)
+        return try encryptSyntheticTransport(plaintext)
+    }
+
+    private func encryptSyntheticTransport(_ plaintext: [UInt8]) throws -> EncodedFrame {
+        EncodedFrame(
+            bytes: try AES128OFB.crypt(
+                plaintext,
+                key: V3ProtocolConstants.fixedKey,
+                initializationVector: syntheticTransportInitializationVector
+            )
+        )
+    }
+
+    private func decryptSyntheticTransport(_ frame: EncodedFrame) throws -> [UInt8] {
+        try AES128OFB.crypt(
+            frame.bytes,
+            key: V3ProtocolConstants.fixedKey,
+            initializationVector: syntheticTransportInitializationVector
+        )
+    }
+
+    private var syntheticTransportInitializationVector: [UInt8] {
+        Array(1...6) + [UInt8](repeating: 0, count: 10)
+    }
+
+    private var syntheticAlgorithmKey: [UInt8] {
+        Array(0x10...0x1F)
+    }
+
+    private var syntheticAlgorithmInitializationVector: [UInt8] {
+        Array(0xA0...0xAF)
+    }
+
+    private func appendLittleEndian(_ value: UInt16, to bytes: inout [UInt8]) {
+        bytes.append(UInt8(truncatingIfNeeded: value))
+        bytes.append(UInt8(truncatingIfNeeded: value >> 8))
     }
 
     private func bytes(_ hex: String) -> [UInt8] {
