@@ -48,8 +48,8 @@
   "verification": {
     "publicFixtures": "synthetic-only",
     "physicalIPhoneRun": true,
-    "physicalIPhoneRunCount": 3,
-    "physicalIPhoneRunOutcome": "all-three-runs-failed-closed-before-a-validated-reading",
+    "physicalIPhoneRunCount": 6,
+    "physicalIPhoneRunOutcome": "one-live-reading-validated-on-clean-run-five-reading-durability-gate-incomplete",
     "physicalRuns": [
       {
         "run": 1,
@@ -133,9 +133,108 @@
           "arrowVisualDirection": "right",
           "nativeTrendMeaningClaimed": false
         }
+      },
+      {
+        "run": 4,
+        "pullRequest": 16,
+        "sourceCommit": "ff6cdb54b3233cb4b8cbef529b7bcc56da83d7a0",
+        "manifestSHA256": "08c7e246f78436e5bb8fd3d0d4863fe367bbac1cd7d9c5c65ffb4fe8e572364e",
+        "redactedDiagnosticSHA256": "a00fc882594be2e561d7bfd45215ce9c770c462275bd0c0505b6e5312c13d36e",
+        "redactedReportIndependentlyDistinguishesAttempt": false,
+        "outcome": "connected-discovered-service-then-transport-timeout-before-subscription-or-write",
+        "authenticationWriteCalls": 0,
+        "effectiveDataWriteCalls": 0,
+        "normalSugarmanAndProbeProcessesRunning": true,
+        "localProcessContentionInferred": true,
+        "localProcessContentionConfidence": "medium",
+        "officialAndroidHandbackVerified": true,
+        "officialAndroidPostRunControl": {
+          "displayedUpdateTime": "23:42",
+          "timeContext": "owner-local Asia/Singapore test context",
+          "glucoseMillimolesPerLiter": 5.3,
+          "arrowVisualDirection": "right",
+          "nativeTrendMeaningClaimed": false
+        }
+      },
+      {
+        "run": 5,
+        "pullRequest": 16,
+        "sourceCommit": "ff6cdb54b3233cb4b8cbef529b7bcc56da83d7a0",
+        "manifestSHA256": "08c7e246f78436e5bb8fd3d0d4863fe367bbac1cd7d9c5c65ffb4fe8e572364e",
+        "redactedDiagnosticSHA256": "a00fc882594be2e561d7bfd45215ce9c770c462275bd0c0505b6e5312c13d36e",
+        "redactedReportIndependentlyDistinguishesAttempt": false,
+        "outcome": "connected-discovered-service-then-transport-timeout-before-subscription-or-write",
+        "authenticationWriteCalls": 0,
+        "effectiveDataWriteCalls": 0,
+        "normalSugarmanAndProbeProcessesRunning": true,
+        "localProcessContentionInferred": true,
+        "localProcessContentionConfidence": "medium",
+        "officialAndroidHandbackVerified": true,
+        "officialAndroidPostRunControl": {
+          "displayedUpdateTime": "23:47",
+          "timeContext": "owner-local Asia/Singapore test context",
+          "glucoseMillimolesPerLiter": 5.3,
+          "arrowVisualDirection": "right",
+          "nativeTrendMeaningClaimed": false
+        }
+      },
+      {
+        "run": 6,
+        "pullRequest": 16,
+        "sourceCommit": "ff6cdb54b3233cb4b8cbef529b7bcc56da83d7a0",
+        "manifestSHA256": "08c7e246f78436e5bb8fd3d0d4863fe367bbac1cd7d9c5c65ffb4fe8e572364e",
+        "redactedDiagnosticSHA256": "b5d86b95c80370ea9cb52ecba2a654f4ccdd174d53f28fc188d9008fb36c2189",
+        "outcome": "first-live-reading-validated-then-unexpected-transport-timeout-at-one-of-five",
+        "normalSugarmanProcessTerminatedBeforeRun": true,
+        "effectiveDataStartCaptureBacked": true,
+        "authenticationWriteCalls": 1,
+        "authenticationWriteAcknowledgements": 1,
+        "authenticationAccepted": true,
+        "effectiveDataWriteCalls": 1,
+        "effectiveDataWriteAcknowledgements": 1,
+        "effectiveDataControlAcknowledgements": 1,
+        "quarantinedCommand": 54,
+        "quarantinedCommandByteCount": 24,
+        "quarantinedCommandChecksumValid": true,
+        "effectiveDataBatchCount": 22,
+        "liveNotificationBatchCount": 1,
+        "validatedLiveReadingCount": 1,
+        "requiredLiveReadingCount": 5,
+        "iPhoneLiveControl": {
+          "glucoseMillimolesPerLiter": 5.3,
+          "nativeTrendCode": 2,
+          "source": "live-0x32",
+          "recordIndexCommittedOrPrinted": false
+        },
+        "officialAndroidPreRunControl": {
+          "displayedUpdateTime": "23:47",
+          "timeContext": "owner-local Asia/Singapore test context",
+          "glucoseMillimolesPerLiter": 5.3,
+          "arrowVisualDirection": "right",
+          "nativeTrendMeaningClaimed": false
+        },
+        "observedTrendMapping": {
+          "nativeTrendCode": 2,
+          "officialArrowVisualDirection": "right",
+          "scope": "single owned sensor observation",
+          "physiologicalMeaningClaimed": false
+        },
+        "protocolInteroperabilityGatePassed": true,
+        "fiveReadingDurabilityGatePassed": false,
+        "noQuarantineGatePassed": false,
+        "officialAndroidHandbackVerified": true,
+        "officialAndroidPostRunControl": {
+          "displayedUpdateTime": "23:57",
+          "timeContext": "owner-local Asia/Singapore test context",
+          "glucoseMillimolesPerLiter": 5.2,
+          "arrowVisualDirection": "right",
+          "nativeTrendMeaningClaimed": false
+        }
       }
     ],
-    "iPhoneGlucoseValidated": false,
+    "iPhoneGlucoseValidated": true,
+    "iPhoneFiveReadingSequenceValidated": false,
+    "sameOwnerHandoverValidated": false,
     "sensorWriteAuthorizedByThisRecord": false,
     "allRunsOfficialAndroidHandbackVerified": true,
     "offlineFollowUp": {
@@ -162,9 +261,9 @@
       "nextCandidateMaximumQuarantinedCommandCount": 1,
       "nextCandidateQuarantineRequires24BytesAndPending0x39WriteAcknowledgement": true,
       "nextCandidateAddsAnyWriteRetryOrReconnect": false,
-      "leadingCauseConfidence": "unsupported-command-or-transport-variant-medium"
+      "leadingCauseConfidence": "unexpected-link-timeout-after-first-live-reading-high-for-observation-root-cause-unknown"
     },
     "followUpPhysicalRunAuthorized": false
   },
-  "decision": "Do not retry the PR 13, merged PR 14, or merged PR 15 artifact/material combinations. Review and host-verify checksum-first command-byte diagnostics plus a single receive-only quarantine while the sole 0x39 acknowledgement is pending, then build a new signed artifact and obtain a fresh exact artifact-device-private-import-action confirmation before installation or sensor traffic."
+  "decision": "One-value iPhone interoperability and Android handback now pass for this owned active sensor. Do not repeat the one-shot probe merely to chase five readings. Next design and review explicit local process ownership plus production reconnect, reauthentication, resubscription, history backfill, deduplication, and stale-state behavior. Any new signed build or sensor run still requires fresh exact authorization."
 }
