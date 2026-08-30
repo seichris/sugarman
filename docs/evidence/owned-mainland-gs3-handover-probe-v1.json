@@ -48,8 +48,8 @@
   "verification": {
     "publicFixtures": "synthetic-only",
     "physicalIPhoneRun": true,
-    "physicalIPhoneRunCount": 2,
-    "physicalIPhoneRunOutcome": "both-runs-failed-closed-before-a-validated-reading",
+    "physicalIPhoneRunCount": 3,
+    "physicalIPhoneRunOutcome": "all-three-runs-failed-closed-before-a-validated-reading",
     "physicalRuns": [
       {
         "run": 1,
@@ -97,6 +97,42 @@
           "arrowVisualDirection": "right",
           "nativeTrendMeaningClaimed": false
         }
+      },
+      {
+        "run": 3,
+        "pullRequest": 15,
+        "sourceCommit": "34668001866eb6ca010b0c34b748e542a26222c7",
+        "manifestSHA256": "e1c314afa40a2c9086f7963e63ae20472f2fea387829691e245c6b2ad96fa7d3",
+        "redactedDiagnosticSHA256": "92b94d973df7ebf9eb34de4a71da558b5e3afba62161a5e39d965b999b33cc9b",
+        "outcome": "capture-backed-index-authentication-accepted-one-effective-data-write-call-then-unsupported-24-byte-command-fail-closed",
+        "effectiveDataStartCaptureBacked": true,
+        "authenticationWriteCalls": 1,
+        "authenticationWriteAcknowledgements": 1,
+        "authenticationAccepted": true,
+        "effectiveDataWriteCalls": 1,
+        "effectiveDataWriteAcknowledgements": 0,
+        "effectiveDataControlAcknowledgements": 0,
+        "unexpectedNotificationByteCount": 24,
+        "unexpectedNotificationDeclaredLengthValid": true,
+        "unexpectedNotificationCommandSupported": false,
+        "unexpectedNotificationCommandRetained": false,
+        "unexpectedNotificationChecksumEvaluated": false,
+        "unexpectedNotificationPayloadRetained": false,
+        "officialAndroidPreRunControl": {
+          "displayedUpdateTime": "22:12",
+          "timeContext": "owner-local Asia/Singapore test context",
+          "glucoseMillimolesPerLiter": 5.0,
+          "arrowVisualDirection": "right",
+          "nativeTrendMeaningClaimed": false
+        },
+        "officialAndroidHandbackVerified": true,
+        "officialAndroidPostRunControl": {
+          "displayedUpdateTime": "22:27",
+          "timeContext": "owner-local Asia/Singapore test context",
+          "glucoseMillimolesPerLiter": 5.2,
+          "arrowVisualDirection": "right",
+          "nativeTrendMeaningClaimed": false
+        }
       }
     ],
     "iPhoneGlucoseValidated": false,
@@ -118,9 +154,17 @@
       "freshReconnectLatestStartDiffersFromPriorProvisional": true,
       "replacementImportChangesOnlyEffectiveDataStartIndex": true,
       "replacementIndexAndImportHashCommittedOrPrinted": false,
-      "leadingCauseConfidence": "medium-not-proven-without-run2-payload"
+      "run3UsedReplacementCaptureBackedStart": true,
+      "startIndexMismatchDisprovedForRun3Failure": true,
+      "run3UnsupportedCommandChecksumKnown": false,
+      "nextCandidateRetainsOnlyUnsupportedProtocolCommandByte": true,
+      "nextCandidateChecksumBeforeUnsupportedCommand": true,
+      "nextCandidateMaximumQuarantinedCommandCount": 1,
+      "nextCandidateQuarantineRequires24BytesAndPending0x39WriteAcknowledgement": true,
+      "nextCandidateAddsAnyWriteRetryOrReconnect": false,
+      "leadingCauseConfidence": "unsupported-command-or-transport-variant-medium"
     },
     "followUpPhysicalRunAuthorized": false
   },
-  "decision": "Do not retry either the PR 13 or merged PR 14 artifact/material combination. Review and host-verify granular payload-free failure diagnostics plus the fresh-reconnect-backed replacement start index, then build a new signed artifact and obtain a fresh exact artifact-device-private-import-action confirmation before installation or sensor traffic."
+  "decision": "Do not retry the PR 13, merged PR 14, or merged PR 15 artifact/material combinations. Review and host-verify checksum-first command-byte diagnostics plus a single receive-only quarantine while the sole 0x39 acknowledgement is pending, then build a new signed artifact and obtain a fresh exact artifact-device-private-import-action confirmation before installation or sensor traffic."
 }

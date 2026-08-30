@@ -26,10 +26,12 @@ extension V3ProbeState: CustomStringConvertible {
     }
 }
 
-/// Payload-free classification of an FF31 notification.
+/// Redacted classification of an FF31 notification.
 ///
 /// This deliberately omits ciphertext, plaintext, identifiers, status-detail
-/// bytes, glucose values, record indexes, and cryptographic material.
+/// bytes, glucose values, record indexes, and cryptographic material. An
+/// unsupported protocol command byte may be retained because it is allowlisted
+/// protocol metadata rather than owner or sensor data.
 public enum V3ProbeInboundClassification: Sendable, Equatable {
     case authenticationAccepted
     case authenticationRejected
@@ -41,7 +43,8 @@ public enum V3ProbeInboundClassification: Sendable, Equatable {
     case controlChecksumMismatch
     case glucoseFrameTooShort
     case glucoseDeclaredLengthMismatch
-    case glucoseUnsupportedCommand
+    case glucoseUnsupportedCommand(UInt8)
+    case quarantinedGlucoseCommand(UInt8)
     case glucoseRecordCountInvalid
     case glucoseRecordLayoutMismatch
     case glucoseChecksumMismatch
@@ -61,12 +64,19 @@ extension V3ProbeInboundClassification: CustomStringConvertible {
         case .controlChecksumMismatch: "control-response checksum mismatch"
         case .glucoseFrameTooShort: "glucose frame shorter than the verified minimum"
         case .glucoseDeclaredLengthMismatch: "glucose declared-length mismatch"
-        case .glucoseUnsupportedCommand: "unsupported glucose command"
+        case .glucoseUnsupportedCommand(let command):
+            "unsupported glucose command \(Self.hex(command))"
+        case .quarantinedGlucoseCommand(let command):
+            "quarantined unsupported glucose command \(Self.hex(command))"
         case .glucoseRecordCountInvalid: "invalid glucose record count"
         case .glucoseRecordLayoutMismatch: "glucose record-layout mismatch"
         case .glucoseChecksumMismatch: "glucose checksum mismatch"
         case .malformedOrUnsupported: "malformed or unsupported notification"
         }
+    }
+
+    private static func hex(_ command: UInt8) -> String {
+        String(format: "0x%02X", command)
     }
 }
 
@@ -201,6 +211,7 @@ public struct V3DeveloperHandoverProbe: Sendable {
     public private(set) var authenticationTransmissionCount = 0
     public private(set) var effectiveDataTransmissionCount = 0
     public private(set) var uniqueLiveReadingCount = 0
+    public private(set) var quarantinedGlucoseCommandCount = 0
     public private(set) var lastPacketDiagnostic: V3ProbePacketDiagnostic?
 
     private let material: V3ProbeMaterial
@@ -232,7 +243,10 @@ public struct V3DeveloperHandoverProbe: Sendable {
         return [.transmit(.authentication(frame))]
     }
 
-    public mutating func didReceive(_ frame: EncodedFrame) throws -> [V3ProbeEffect] {
+    public mutating func didReceive(
+        _ frame: EncodedFrame,
+        effectiveDataWriteAcknowledgementPending: Bool = false
+    ) throws -> [V3ProbeEffect] {
         let stateBefore = state
         let decoded = decode(frame)
 
@@ -269,6 +283,25 @@ public struct V3DeveloperHandoverProbe: Sendable {
             }
 
         case .awaitingEffectiveData:
+            // The third owned-device run observed one declared-length-valid
+            // unsupported 24-byte command before CoreBluetooth acknowledged
+            // the sole 0x39 write. The decoder now also requires the checksum
+            // before this branch can quarantine that receive-only shape once.
+            // This never authorizes a write, retry, reconnect, payload
+            // retention, or command interpretation.
+            if case .glucoseUnsupportedCommand(let command) = decoded.classification,
+               frame.byteCount == 24,
+               effectiveDataWriteAcknowledgementPending,
+               uniqueLiveReadingCount == 0,
+               quarantinedGlucoseCommandCount == 0 {
+                quarantinedGlucoseCommandCount = 1
+                recordDiagnostic(
+                    stateBefore: stateBefore,
+                    classification: .quarantinedGlucoseCommand(command),
+                    byteCount: frame.byteCount
+                )
+                return []
+            }
             if let batch = decoded.glucoseBatch,
                let record = batch.records.last {
                 let reading = V3ProbeReading(
@@ -416,8 +449,8 @@ public struct V3DeveloperHandoverProbe: Sendable {
             .glucoseFrameTooShort
         case .invalidV3GlucoseNotificationDeclaredLength:
             .glucoseDeclaredLengthMismatch
-        case .unsupportedV3NotificationCommand:
-            .glucoseUnsupportedCommand
+        case .unsupportedV3NotificationCommand(let command):
+            .glucoseUnsupportedCommand(command)
         case .invalidV3GlucoseRecordCount:
             .glucoseRecordCountInvalid
         case .invalidV3GlucoseRecordLayout:

@@ -168,6 +168,13 @@ public enum V3OfflineGlucoseNotificationDecoder: Sendable {
         guard Int(plaintext[0]) + 1 == plaintext.count else {
             throw GS3ProtocolError.invalidV3GlucoseNotificationDeclaredLength
         }
+        // The additive checksum is protocol-envelope evidence and does not
+        // depend on the command-specific record interpretation below. Check it
+        // before reporting an unsupported command so the developer probe does
+        // not quarantine a frame that fails this checksum.
+        guard plaintext.reduce(UInt8.zero, &+) == 0 else {
+            throw GS3ProtocolError.invalidV3GlucoseNotificationChecksum
+        }
         guard let source = V3GlucoseBatchSource(rawValue: plaintext[1]) else {
             throw GS3ProtocolError.unsupportedV3NotificationCommand(plaintext[1])
         }
@@ -186,10 +193,6 @@ public enum V3OfflineGlucoseNotificationDecoder: Sendable {
         guard plaintext.count == expectedByteCount else {
             throw GS3ProtocolError.invalidV3GlucoseRecordLayout
         }
-        guard plaintext.reduce(UInt8.zero, &+) == 0 else {
-            throw GS3ProtocolError.invalidV3GlucoseNotificationChecksum
-        }
-
         let startingIndex = littleEndianUInt16(plaintext, at: 3)
         let endingReindex = littleEndianUInt16(plaintext, at: plaintext.count - 3)
         var records: [V3GlucoseRecord] = []

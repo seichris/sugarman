@@ -308,7 +308,7 @@ struct GS3DeveloperProbeTests {
         }
     }
 
-    @Test func diagnosticsClassifyEveryPayloadFreeValidationStage() throws {
+    @Test func diagnosticsClassifyEveryRedactedValidationStage() throws {
         func classification(
             for frame: EncodedFrame
         ) throws -> V3ProbeInboundClassification? {
@@ -368,7 +368,13 @@ struct GS3DeveloperProbeTests {
         replaceChecksum(in: &unsupportedCommandPlaintext)
         #expect(
             try classification(for: encryptTransport(unsupportedCommandPlaintext))
-                == .glucoseUnsupportedCommand
+                == .glucoseUnsupportedCommand(0x31)
+        )
+
+        unsupportedCommandPlaintext[23] &+= 1
+        #expect(
+            try classification(for: encryptTransport(unsupportedCommandPlaintext))
+                == .glucoseChecksumMismatch
         )
 
         var invalidCountPlaintext = glucosePlaintext
@@ -396,6 +402,128 @@ struct GS3DeveloperProbeTests {
         #expect(
             try classification(for: EncodedFrame(bytes: [0xAA, 0xBB, 0xCC]))
                 == .glucoseFrameTooShort
+        )
+    }
+
+    @Test func quarantinesOnlyFirstChecksumValidUnsupportedCommandDuring0x39Write() throws {
+        var probe = V3DeveloperHandoverProbe(
+            material: try syntheticMaterial(),
+            requiredLiveReadingCount: 1
+        )
+        _ = try probe.start()
+        _ = try probe.didSubscribe()
+        _ = try probe.didReceive(
+            encryptedControlResponse(command: 0xE2, code: 1, detail: 0)
+        )
+
+        let unsupported = try encryptedGlucoseBatch(command: 0x31, glucoseTenths: 72)
+        #expect(
+            try probe.didReceive(
+                unsupported,
+                effectiveDataWriteAcknowledgementPending: true
+            ).isEmpty
+        )
+        #expect(probe.state == .awaitingEffectiveData)
+        #expect(probe.quarantinedGlucoseCommandCount == 1)
+        #expect(probe.authenticationTransmissionCount == 1)
+        #expect(probe.effectiveDataTransmissionCount == 1)
+        #expect(
+            probe.lastPacketDiagnostic?.classification
+                == .quarantinedGlucoseCommand(0x31)
+        )
+        #expect(probe.lastPacketDiagnostic?.description.contains("0x31") == true)
+
+        let acknowledgement = try encryptedControlResponse(
+            command: 0x39,
+            code: 1,
+            detail: 0
+        )
+        #expect(
+            try probe.didReceive(
+                acknowledgement,
+                effectiveDataWriteAcknowledgementPending: true
+            ).isEmpty
+        )
+
+        let live = try encryptedGlucoseBatch(command: 0x32, glucoseTenths: 73)
+        let completion = try probe.didReceive(live)
+        #expect(completion.last == .disconnect)
+        #expect(probe.state == .completed)
+        #expect(probe.quarantinedGlucoseCommandCount == 1)
+        #expect(probe.authenticationTransmissionCount == 1)
+        #expect(probe.effectiveDataTransmissionCount == 1)
+
+        let failedUnsupportedDiagnostic = V3ProbePacketDiagnostic(
+            stateBefore: .awaitingEffectiveData,
+            stateAfter: .failed,
+            classification: .glucoseUnsupportedCommand(0x31),
+            byteCount: 24,
+            authenticationTransmissionCount: 1,
+            effectiveDataTransmissionCount: 1,
+            uniqueLiveReadingCount: 0
+        )
+        var lateProbe = V3DeveloperHandoverProbe(material: try syntheticMaterial())
+        _ = try lateProbe.start()
+        _ = try lateProbe.didSubscribe()
+        _ = try lateProbe.didReceive(
+            encryptedControlResponse(command: 0xE2, code: 1, detail: 0)
+        )
+        #expect(throws: V3ProbeError.unexpectedNotification(failedUnsupportedDiagnostic)) {
+            try lateProbe.didReceive(
+                unsupported,
+                effectiveDataWriteAcknowledgementPending: false
+            )
+        }
+        #expect(lateProbe.state == .failed)
+        #expect(lateProbe.quarantinedGlucoseCommandCount == 0)
+
+        var checksumPlaintext = try decryptTransport(unsupported)
+        checksumPlaintext[23] &+= 1
+        let checksumInvalid = try encryptTransport(checksumPlaintext)
+        let checksumDiagnostic = V3ProbePacketDiagnostic(
+            stateBefore: .awaitingEffectiveData,
+            stateAfter: .failed,
+            classification: .glucoseChecksumMismatch,
+            byteCount: 24,
+            authenticationTransmissionCount: 1,
+            effectiveDataTransmissionCount: 1,
+            uniqueLiveReadingCount: 0
+        )
+        var checksumProbe = V3DeveloperHandoverProbe(material: try syntheticMaterial())
+        _ = try checksumProbe.start()
+        _ = try checksumProbe.didSubscribe()
+        _ = try checksumProbe.didReceive(
+            encryptedControlResponse(command: 0xE2, code: 1, detail: 0)
+        )
+        #expect(throws: V3ProbeError.unexpectedNotification(checksumDiagnostic)) {
+            try checksumProbe.didReceive(
+                checksumInvalid,
+                effectiveDataWriteAcknowledgementPending: true
+            )
+        }
+        #expect(checksumProbe.quarantinedGlucoseCommandCount == 0)
+
+        var duplicateProbe = V3DeveloperHandoverProbe(material: try syntheticMaterial())
+        _ = try duplicateProbe.start()
+        _ = try duplicateProbe.didSubscribe()
+        _ = try duplicateProbe.didReceive(
+            encryptedControlResponse(command: 0xE2, code: 1, detail: 0)
+        )
+        _ = try duplicateProbe.didReceive(
+            unsupported,
+            effectiveDataWriteAcknowledgementPending: true
+        )
+        #expect(throws: V3ProbeError.unexpectedNotification(failedUnsupportedDiagnostic)) {
+            try duplicateProbe.didReceive(
+                unsupported,
+                effectiveDataWriteAcknowledgementPending: true
+            )
+        }
+        #expect(duplicateProbe.state == .failed)
+        #expect(duplicateProbe.quarantinedGlucoseCommandCount == 1)
+        #expect(
+            duplicateProbe.lastPacketDiagnostic?.classification
+                == .glucoseUnsupportedCommand(0x31)
         )
     }
 

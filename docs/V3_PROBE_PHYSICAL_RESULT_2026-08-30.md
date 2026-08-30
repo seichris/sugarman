@@ -2,9 +2,9 @@
 
 ## Outcome
 
-Two bounded developer-probe runs on one owned, already-active Mainland GS3
-**failed closed before any iPhone glucose value was validated**. Neither exact
-artifact/material combination may be retried.
+Three bounded developer-probe runs on one owned, already-active Mainland GS3
+**failed closed before any iPhone glucose value was validated**. None of the
+three exact artifact/material combinations may be retried.
 
 The first PR #13 run connected, displayed the generic Swift error
 `GS3DeveloperProbe.V3ProbeError error 4`, and returned to its idle scan state.
@@ -17,6 +17,14 @@ one `0x39` CoreBluetooth write call. The first subsequent FF31 value retained
 only its 24-byte length and was classified by that artifact as malformed or
 unsupported. The probe then disconnected without a retry. The trace does not
 retain enough information to identify the failed validation stage.
+
+The third run used merged PR #15 with the fresh-capture-backed replacement
+start index. Its redacted trace again proves exact authentication acceptance,
+one acknowledged `0xE2` CoreBluetooth write, and one `0x39` CoreBluetooth write
+call. Before the `0x39` write acknowledgement callback, FF31 delivered one
+24-byte value. This artifact narrowed the failure to a declared-length-valid
+but unsupported decrypted command. It did not retain the command byte or check
+the checksum after that command failure, and it disconnected without retrying.
 
 After the first run, the official Chinese Android app reconnected to the same
 active sensor and resumed fresh data. The owner-reported post-run control point
@@ -34,6 +42,12 @@ Before the second run, the owner reported an official-app control point at
 run, the official app reconnected and resumed fresh data at `21:17`,
 `6.2 mmol/L`, again with an arrow visually pointing right. The time context and
 visual-arrow caveat are the same as for the first run.
+
+Before the third run, the owner reported an official-app control point at
+`22:12`, `5.0 mmol/L`, with an arrow visually pointing right. After the third
+run, the official app reconnected and resumed fresh data at `22:27`,
+`5.2 mmol/L`, again with an arrow visually pointing right. No re-binding or
+reactivation was required.
 
 ## Exact authorized artifacts and boundary
 
@@ -56,6 +70,16 @@ visual-arrow caveat are the same as for the first run.
 - Test platform: the same owned iPhone on iOS `26.6.1`
 - Redacted diagnostic attachment: 1,328 bytes, SHA-256
   `c2449c64d444961a56b5f830c72dcfef09552fbaa38486e36fcb5d3ff340f5ef`
+
+### Third run — merged PR #15
+
+- Source commit: `34668001866eb6ca010b0c34b748e542a26222c7`
+- Signed-app manifest SHA-256:
+  `e1c314afa40a2c9086f7963e63ae20472f2fea387829691e245c6b2ad96fa7d3`
+- Bundle ID: `app.sugarman.probe`
+- Test platform: the same owned iPhone on iOS `26.6.1`
+- Redacted diagnostic attachment: 1,398 bytes, SHA-256
+  `92b94d973df7ebf9eb34de4a71da558b5e3afba62161a5e39d965b999b33cc9b`
 
 The stable iPhone serial, signing identity, sensor identity, imported material,
 and import-file hash remain outside Git. Each authorization allowed one
@@ -92,6 +116,25 @@ lifecycle, HealthKit, and every other sensor write.
 - The official Android app subsequently reconnected and displayed the fresh
   `21:17` control point without re-binding or reactivation.
 
+### Third-run redacted trace — high confidence
+
+- The fresh-capture-backed replacement start index was imported successfully.
+  Its value and import-file hash remain outside Git.
+- The expected peripheral connected once and exposed FF30/FF31/FF32.
+- FF31 notification subscription succeeded.
+- CoreBluetooth invoked exactly one 38-byte `0xE2` write and acknowledged it.
+- FF31 delivered the exact five-byte authentication acceptance.
+- CoreBluetooth then invoked exactly one seven-byte `0x39` write.
+- Before the `0x39` write acknowledgement callback, FF31 delivered one 24-byte
+  value. Decryption produced a matching declared length, then failed at the
+  command allowlist as `glucoseUnsupportedCommand`.
+- The exact command byte, checksum result, record fields, and payload were not
+  retained. Zero unique live readings were accepted.
+- The state machine disconnected with application-write counts `E2=1` and
+  `0x39=1`, without retry or reconnect.
+- The official Android app subsequently reconnected and displayed the fresh
+  `22:27` control point without re-binding or reactivation.
+
 ### First-run source evidence — high confidence
 
 - The exact PR source permits no more than one typed `0xE2` effect and one
@@ -122,13 +165,21 @@ lifecycle, HealthKit, and every other sensor write.
 - The replacement private import changes only `effectiveDataStartIndex` from
   the original PR #13 file to that newest verified request start. The selected
   value and import hash remain outside Git.
+- The third run used that replacement and still reached the same 24-byte
+  failure point. The earlier start-index mismatch is therefore not the cause of
+  this failure.
 
 ### Inferences
 
-- **Medium confidence:** the non-evidence-backed effective-data start index is
-  the leading cause of the second failure. Both later capture-backed candidates
-  differ from the value used in that run, but the iPhone trace intentionally
-  did not retain the payload needed to prove causation.
+- **Medium confidence:** the 24-byte value is either a real protocol command
+  outside the current `0x32`/`0x39` allowlist or a differently encrypted frame.
+  Matching declared length alone cannot distinguish those cases because the
+  third artifact checked the command before the checksum.
+- **Medium confidence:** delivery before the `0x39` CoreBluetooth
+  acknowledgement is a narrow reason to quarantine one future checksum-valid
+  24-byte unsupported command and continue listening without another write.
+  This is a diagnostic exception, not evidence that the unknown command is
+  safe to interpret or ignore in the product.
 - **Low confidence:** omission of official-app device-information queries may
   matter. The exact authentication acceptance proves they were not required
   before authentication, and the current evidence does not justify adding more
@@ -138,9 +189,9 @@ lifecycle, HealthKit, and every other sensor write.
 
 - Over-the-air or controller-level write evidence; CoreBluetooth write calls
   are application evidence, not an iPhone HCI capture.
-- Whether the second run's `0x39` write reached or was accepted by the sensor;
+- Whether the second or third run's `0x39` write reached or was accepted by the sensor;
   no write acknowledgement or `0x39` control acknowledgement was retained.
-- The 24-byte value's decrypted command or exact failed validation stage.
+- The third-run 24-byte value's decrypted command or checksum result.
 - Any iPhone glucose decode, cross-app value parity, or five-reading sequence.
 - Background reconnect, another sensor lot, or fresh activation.
 
@@ -170,7 +221,7 @@ difference, but it does **not** prove those queries are required. Adding them
 would widen the application-write surface and is therefore deferred until a
 diagnostic follow-up identifies a concrete need.
 
-The second run narrows that earlier uncertainty: authentication itself works
+The second and third runs narrow that earlier uncertainty: authentication itself works
 without those queries. It does not prove whether any query is needed before a
 valid effective-data response, so the next candidate still does not add one.
 
@@ -193,20 +244,24 @@ index, glucose history, or private-import hash is printed or committed.
 
 ## Follow-up decision
 
-Do not rerun either the PR #13 or merged PR #14 artifact/material combination.
-The reviewed candidate retains the two-command maximum and adds only:
+Do not rerun the PR #13, merged PR #14, or merged PR #15 artifact/material
+combinations. The next reviewed candidate retains the two-command maximum and
+adds only:
 
-- granular payload-free classifications for control length/command/checksum and
-  glucose minimum length/declared length/command/count/layout/checksum;
-- a redacted marker when an FF31 value arrives while an FF32 write
-  acknowledgement is still outstanding; and
-- a replacement private import whose effective-data start index is backed by the
-  newest matched official-app request/data relationship in the fresh reconnect
-  summary.
+- checksum validation before unsupported glucose-command reporting;
+- the unsupported protocol command byte as allowlisted metadata, while still
+  omitting every other payload byte;
+- quarantine of at most one checksum-valid 24-byte unsupported command only
+  while the sole `0x39` CoreBluetooth acknowledgement remains outstanding; and
+- continued receive-only observation after that quarantine. A second or later
+  unknown response still fails closed, and a five-reading result after a
+  quarantine remains diagnostically inconclusive.
 
 It preserves the existing localized errors, state/counter trace, separate
 write-call/acknowledgement evidence, one-in-flight gate, and zero-retention rule
-for packet bytes, identifiers, private material, glucose values, and record
-indexes. Host verification and review do not authorize another physical run. A
-new source commit, signed manifest, revised-private-import hash,
+for all packet bytes except the command metadata, identifiers, private material,
+glucose values, and record indexes. It does not add `0xF0` device-information
+writes or any other command.
+Host verification and review do not authorize another physical run. A new
+source commit, signed manifest, confirmed-private-import hash,
 device/environment record, and fresh owner confirmation are required first.

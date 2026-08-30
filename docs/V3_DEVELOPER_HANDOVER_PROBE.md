@@ -4,12 +4,14 @@
 
 `SugarmanProbe` is a separate, foreground-only iOS developer application for
 one owner-controlled, already-active Mainland GS3. It is implemented and
-host-verified with synthetic data. Two exact physical runs on 2026-08-30 failed
+host-verified with synthetic data. Three exact physical runs on 2026-08-30 failed
 closed before an iPhone glucose value was validated. PR #13 produced only a
 generic error; merged PR #14 proved authentication acceptance, one acknowledged
 `0xE2` write, one `0x39` write call, and then a rejected 24-byte FF31 value.
-Official Android handback passed after both runs. The handover gate remains
-failed because neither run validated an iPhone glucose value.
+Merged PR #15 used the fresh-capture-backed request index and narrowed that
+value to a declared-length-valid unsupported decrypted command. Official
+Android handback passed after all three runs. The handover gate remains failed
+because no run validated an iPhone glucose value.
 See [`V3_PROBE_PHYSICAL_RESULT_2026-08-30.md`](V3_PROBE_PHYSICAL_RESULT_2026-08-30.md).
 
 The normal `Sugarman` application does not link `GS3DeveloperProbe` and retains
@@ -69,9 +71,20 @@ its first following valid data batch. The newest request differs from both the
 second-run value and the earlier provisional correction. The replacement
 private import changes only `effectiveDataStartIndex` from the original PR #13
 file to that newest verified start. The selected value and import hash remain
-outside Git. The mismatch is the leading cause at medium confidence, not proof:
-the second-run FF31 payload was intentionally not retained. The next candidate
-already distinguishes every safe validation stage without retaining the value.
+outside Git. Before the third run, the mismatch was the leading hypothesis at
+medium confidence because the second-run FF31 payload was intentionally not
+retained.
+
+The third run used that replacement start and reached the same 24-byte point.
+Its granular classification proves that outer decryption produced a matching
+declared length and then an unsupported command, but the exact command and
+checksum result were omitted. This disproves the start-index hypothesis for the
+third-run failure. The next candidate checks the checksum before reporting an
+unsupported command, retains only the allowlisted protocol command byte, and
+may quarantine one such 24-byte command only while CoreBluetooth still awaits
+the sole `0x39` write acknowledgement. It adds no transmission. A second or
+later unknown still fails closed, and readings observed after a quarantine do
+not by themselves pass the diagnostic gate.
 
 ## Enforced command boundary
 
@@ -85,8 +98,12 @@ The flow is a typed state machine:
    `.withResponse`;
 5. decrypt and require the exact `0xE2 / 0x01 / 0x00` acceptance;
 6. transmit one typed effective-data frame to FF32 with `.withResponse`;
-7. accept validated `0x39` batches and count unique live `0x32` record indexes;
-8. disconnect after five unique live readings or after seven minutes.
+7. while the sole `0x39` write acknowledgement is pending, optionally
+   quarantine one checksum-valid 24-byte unsupported command without
+   interpreting it or retaining any other payload byte;
+8. accept validated `0x39` batches and count unique live `0x32` record indexes;
+9. disconnect after five unique live readings or after seven minutes. A second
+   or later unknown response fails closed.
 
 There is no retry, reconnect, state restoration, background BLE mode, raw-write
 entry point, `0x35`, `0x30`, `0xF0`, activation, binding, reset, secret-key,
@@ -95,14 +112,16 @@ an unknown notification, malformed crypto/frame data, BLE failure, cancel, or
 timeout disconnects without another application write.
 
 The reviewed follow-up also classifies every inbound FF31 value without
-retaining its payload, records state transitions and byte counts in memory,
+retaining its packet body, records state transitions and byte counts in memory,
 reports CoreBluetooth write calls separately from acknowledgements, and permits
 only one in-flight application write. It separates
 control length/command/checksum failures and glucose minimum length/declared
 length/command/count/layout/checksum failures. It also records whether
 an FF31 value arrived while an FF32 write acknowledgement was outstanding. The
-trace can be manually shared as text and excludes packet bytes, identifiers,
-private material, glucose values, and record indexes.
+next candidate additionally exposes an unsupported command byte as protocol
+metadata and checks the checksum before quarantine. The trace can be manually
+shared as text and excludes all other packet bytes, identifiers, private
+material, glucose values, and record indexes.
 
 `Scripts/check_governance.py` permits exactly one CoreBluetooth write call in
 the repository, in the probe adapter. It requires typed authentication and
@@ -178,9 +197,12 @@ Then follow
 record the official Android baseline, turn Android Bluetooth off without
 unbinding, run only a newly confirmed follow-up artifact and replacement
 private import once, preserve its redacted trace, require five unique live
-readings, disconnect, and prove official Android handback. Do not rerun either
-the PR #13 or merged PR #14 artifact/material combination. Any extra write,
-unexpected response, value mismatch, or failed handback fails the gate.
+readings, disconnect, and prove official Android handback. Do not rerun any of
+the PR #13, merged PR #14, or merged PR #15 artifact/material combinations. Any
+extra write, second or late unknown response, value mismatch, or failed
+handback fails the gate. A reading sequence after one quarantined command
+remains diagnostic evidence rather than a handover pass until that command is
+explained.
 
 Fresh activation is outside this probe and requires a separate implementation,
 legal decision, artifact, confirmation, and irreversible hardware gate.

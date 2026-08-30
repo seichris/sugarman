@@ -23,7 +23,7 @@ final class ProbeAppModel {
         let lines = diagnostics.map(\.displayText)
         return ([
             "Sugarman Probe redacted diagnostics",
-            "Payloads, device identifiers, private material, glucose values, and record indexes omitted.",
+            "Packet bodies are omitted except for an allowlisted protocol command byte; device identifiers, private material, glucose values, and record indexes are also omitted.",
             "Final status: \(status)",
             "",
         ] + lines).joined(separator: "\n")
