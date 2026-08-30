@@ -45,16 +45,28 @@ An owner-controlled copy of the official Mainland Android app and its native
 library were inspected as proprietary-or-unknown-licence evidence. They are not
 linked, copied, bundled, or redistributed with Sugarman. Separately authored
 GPL Swift source records only approved functional interoperability facts,
-public-standard algorithms, and one fixed non-account-specific protocol
-constant required for the offline V3 authentication transform. The exact
+public-standard algorithms, and one approved fixed non-account-specific
+protocol constant required for the offline V3 transport and authentication
+transform. The exact
 evidence hashes, source locations, destination files, and scope limits are in
 [`docs/V3_AUTH_SOURCE_MAP_2026-08-30.md`](docs/V3_AUTH_SOURCE_MAP_2026-08-30.md)
+and
+[`docs/V3_GLUCOSE_NOTIFICATION_SOURCE_MAP_2026-08-30.md`](docs/V3_GLUCOSE_NOTIFICATION_SOURCE_MAP_2026-08-30.md)
 and [`docs/provenance/registry.json`](docs/provenance/registry.json).
 
 This is a provenance record, not a conclusion that vendor code or binaries are
 GPL-compatible and not approval for App Store/binary distribution. Runtime IVs,
-registration material, authentication IDs, account data, and device identifiers
-remain private and are never committed.
+registration material, authentication IDs, account data, device identifiers,
+and the newly observed algorithm-glucose key/IV bytes remain private and are
+never committed under the current approval.
+
+The separately authored `SugarmanProbe` developer target accepts those private
+values only through a post-install file import and stores normalized bytes in a
+device-only Keychain item. No vendor binary or vendor source is used at runtime,
+and no fixed algorithm-glucose key/IV is embedded. The normal `Sugarman` target
+does not link the probe module. This containment does not resolve App Store/GPL,
+vendor-terms, medical-positioning, or export-review questions; those remain
+distribution gates.
 
 ## Apple system frameworks
 

@@ -25,6 +25,7 @@ distribution.
 | Library SHA-256 | `19238019b9aca5f8ffae6a81fad98bb9f6525750b914367378f1ac1bbf765964` |
 | ELF build ID | `7ac080cb4cab9882abeac7beb86fafb2c6ccbdb1` |
 | Owned HCI snapshot | `8f59200f694c51c533a30ae6e7398c35b46ced2bce3d7a6ec200e8e072302c19` |
+| Later canonical glucose/auth HCI capture | `165d697f4126d0fa2a8ea4f6d822b8fe74dd03e5663ba1e0910c9a197882d3e7` |
 
 The APK, ELF, raw HCI capture, addresses, authentication frames, account data,
 and runtime registration material remain under gitignored `private-evidence/`.
@@ -56,7 +57,7 @@ therefore distinguish native facts from semantic inference.
 | ---: | ---: | --- |
 | 0 | 2 | Constant header `25 e2`; verified. |
 | 2 | 1 | Native integer argument narrowed to one byte; `deviceType` is the JNI/log terminology, high confidence. |
-| 3 | 6 | Address byte-array argument; exact length verified. P1 separately proves a legitimate iOS-readable source. Address byte order still needs replay parity. |
+| 3 | 6 | Address byte-array argument; exact length verified. Later private replay verifies Device Information/displayed order. |
 | 9 | 16 | Registered global block populated by `sdk_register_key`; placement and length verified, higher-level meaning unresolved. |
 | 25 | 12 | Authentication-ID argument, copied then zero-padded to 12; layout verified, higher-level owner/account semantics unresolved. |
 | 37 | 1 | Two's-complement additive checksum so the unsigned sum of all 38 plaintext bytes is zero modulo 256; verified. |
@@ -86,13 +87,18 @@ the OFB vectors in
   authentication-input construction is private to its type.
 - `ProtocolVariant.v3AES` identifies the observed family but remains
   `isImplemented == false`.
-- `GS3ProtocolRequest` remains empty, `GS3CodecFactory` still fails closed, and
-  `GS3Transport` has no characteristic-write API. The encoder is therefore
-  reachable only as an explicit offline function.
+- In the normal `Sugarman` target, `GS3ProtocolRequest` remains empty,
+  `GS3CodecFactory` still fails closed, and `GS3Transport` has no
+  characteristic-write API. A separate developer-only module can invoke the
+  explicit encoder from its typed one-shot state machine; it is not linked by
+  the normal target.
 - Tests use NIST vectors and synthetic V3 inputs independently reproduced with
   OpenSSL 3.6.3 during review. No
   owned address, IV, registered block, authentication ID, or HCI payload is in
   the repository.
+- The separate offline notification decoder and its containment are documented
+  in
+  [`V3_GLUCOSE_NOTIFICATION_SOURCE_MAP_2026-08-30.md`](V3_GLUCOSE_NOTIFICATION_SOURCE_MAP_2026-08-30.md).
 
 No source, instruction sequence, table, or compiled object from the vendor ELF
 is linked or copied. The fixed 16-byte interoperability constant and behavioral
@@ -107,6 +113,9 @@ inputs or redistributable artifacts.
 - exact 38-byte layout, checksum, AES-128/OFB path, fixed-key location, runtime
   IV location, registered-block location, and native input length checks;
 - official HCI first-write length is 38 bytes on four captured connections;
+- later private replay verifies the address order, address-plus-ten-zero IV,
+  authentication-ID encoding, recovered registered block, and exact 38-byte
+  ciphertext parity for this owned sensor/config;
 - standard AES/OFB behavior is testable against NIST vectors.
 
 ### Evidence-backed inference — medium confidence
@@ -119,22 +128,23 @@ inputs or redistributable artifacts.
 
 ### Physical/private evidence still required
 
-The bounded owner-readable log/HCI search is documented in
+The bounded owner-readable log/HCI search and its later correction are
+documented in
 [`P2_RUNTIME_MATERIAL_RESULT_2026-08-30.md`](P2_RUNTIME_MATERIAL_RESULT_2026-08-30.md).
-It did not locate the missing registration envelope or runtime IV and does not
-permit a live probe.
+The original search found no named envelope or IV, but the later private replay
+resolved the already-active IV, registered block, and authentication-ID inputs.
 
-1. Establish a legitimate owner-controlled source for the runtime IV,
-   registered block, and authentication ID without reading another app's
-   private storage or inventing values.
-2. Reproduce the official 38-byte ciphertext from a private replay fixture,
-   testing the proven Device Information address in both candidate byte orders.
-3. Obtain a fresh physical-write confirmation naming the exact commit, build,
-   iPhone serial, iOS version, owned sensor, and bounded authentication-only
-   action.
-4. Only then connect the offline encoder to a single transport write and verify
-   official-app handback. Activation, reset, secret-key, lifecycle, and
-   firmware-management commands remain out of scope.
+1. Independently review the private replay and the owner-material handling
+   boundary.
+2. Review the implemented developer-only, non-logging private-material import
+   path; do not commit the recovered block, address, or account value.
+3. Review the bounded already-active sequence documented in the glucose source
+   map, with activation and lifecycle commands absent by construction.
+4. Obtain a fresh physical-write confirmation naming the exact commit/artifact,
+   iPhone serial, iOS version, owned sensor state, and bounded action.
+5. Verify official-app handback immediately after the attempt.
 
-Until items 1 and 2 pass, confidence in the **offline construction** is high,
-but confidence in an **operational handover** is explicitly unproven.
+Confidence in the **private offline construction** is now high for this exact
+sensor/config. Confidence in an **operational iPhone handover** remains
+unproven, and fresh activation still lacks a legitimate config/AppKey/marker
+route.

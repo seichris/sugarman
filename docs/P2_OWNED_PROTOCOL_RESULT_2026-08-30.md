@@ -9,19 +9,22 @@ firmware**.
 
 This identifies the protocol family. A later approved, read-only source-map
 pass verified the authentication-frame construction and produced an isolated
-offline Swift encoder; it does **not** authorize a live write. The legitimate
-runtime-IV/registration-material source, owned-capture parity, notification
-decryption, glucose decoding, a second sensor lot, and fresh activation remain
-unverified. See
-[`V3_AUTH_SOURCE_MAP_2026-08-30.md`](V3_AUTH_SOURCE_MAP_2026-08-30.md).
+offline Swift encoder; it does **not** authorize a live write. Later private
+replay verified the already-active runtime IV, recovered registered block,
+authentication-ID encoding, exact authentication ciphertext, notification
+decryption, and one glucose/trend parity point. An iPhone handover, a second
+sensor lot, and fresh activation remain unverified. See
+[`V3_AUTH_SOURCE_MAP_2026-08-30.md`](V3_AUTH_SOURCE_MAP_2026-08-30.md) and
+[`V3_GLUCOSE_NOTIFICATION_SOURCE_MAP_2026-08-30.md`](V3_GLUCOSE_NOTIFICATION_SOURCE_MAP_2026-08-30.md).
 
 The payload-free machine-readable evidence is
 [`evidence/owned-mainland-gs3-p2-summary-v1.json`](evidence/owned-mainland-gs3-p2-summary-v1.json).
 All APK/native-library bytes and all owned runtime IV, registration,
-authentication, address, account, and glucose values remain private and
-gitignored. The exact fixed interoperability constant required by the observed
+authentication, address, and account values remain private and gitignored. All
+glucose values remain private except the single owner-authorized 7.2 mmol/L
+parity point. The exact fixed interoperability constant required by the outer
 algorithm is recorded once in the approved GPL Swift implementation with
-file-level provenance.
+file-level provenance; the distinct algorithm-glucose key/IV remain private.
 
 ## Verified source evidence
 
@@ -112,15 +115,15 @@ redistributable input.
 
 1. Keep the sensor on the official Android app; no live Sugarman write is
    approved by this report.
-2. Establish a legitimate owner-controlled source for the runtime IV,
-   registered block, and authentication ID without extracting another app's
-   private storage or inventing values. The completed owner-readable search did
-   not locate them; see
+2. Independently review the corrected runtime-material and glucose source maps.
+   Exact private replay parity is now established for the owned sensor/config;
+   see
    [`P2_RUNTIME_MATERIAL_RESULT_2026-08-30.md`](P2_RUNTIME_MATERIAL_RESULT_2026-08-30.md).
-3. Reproduce the private official-app 38-byte authentication write with the
-   isolated Swift encoder, including the correct address order.
-4. Only after that parity, independent review, and a fresh physical-write
-   confirmation may Sugarman attempt one bounded already-active authentication
-   handover.
-5. Validate a second lot before generalizing Mainland GS3 support, then test a
+3. Decide whether the newly observed fixed algorithm-glucose key/IV may be
+   published or must remain local developer inputs.
+4. Prepare a developer-only handover probe that excludes activation and all
+   lifecycle mutations by construction, then obtain fresh exact artifact/device
+   confirmation before installation or execution.
+5. Verify official Android handback immediately after the bounded attempt.
+6. Validate a second lot before generalizing Mainland GS3 support, then test a
    fresh activation as a separate irreversible gate.

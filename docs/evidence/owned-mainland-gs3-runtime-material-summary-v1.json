@@ -1,5 +1,8 @@
 {
   "schemaVersion": 1,
+  "status": "historical-search-result-superseded-in-part",
+  "supersededInPartBy": "docs/evidence/owned-mainland-gs3-v3-glucose-summary-v1.json",
+  "supersessionNote": "Later authorized static analysis and private replay verified the address-plus-zero runtime IV, recovered the registered block privately, verified authentication-ID encoding, and reproduced the official ciphertext. The original owner-readable search still correctly found no named envelope or IV record.",
   "scope": "Payload-free read-only search for legitimate V3 runtime registration inputs using one owner's official app, owner-readable Android logs, and existing owned HCI captures.",
   "inputs": {
     "officialApp": {
@@ -35,7 +38,7 @@
       "officialAuthenticationCiphertextAvailablePrivately": true,
       "officialAuthenticationCiphertextByteCount": 38,
       "registrationEnvelopeAvailable": false,
-      "runtimeIVAvailable": false,
+      "runtimeIVDirectlyVisibleInCapture": false,
       "rawPayloadsOmitted": true
     },
     "ownedAPK": {
@@ -44,7 +47,7 @@
       "vendorBinaryCommittedOrLinked": false
     }
   },
-  "inferences": [
+  "historicalInferencesAtTimeOfSearch": [
     {
       "claim": "The package/NDEF link field may be the native expected registration marker.",
       "confidence": "medium",
@@ -56,12 +59,17 @@
       "acceptedAsImplementationInput": false
     }
   ],
-  "missingRequiredInputs": [
-    "Legitimate encoded registration envelope",
-    "Legitimate 16-byte runtime IV",
-    "Verified authentication-ID semantics"
+  "correctedCurrentState": {
+    "runtimeIVShapeVerified": true,
+    "registeredBlockRecoveredPrivately": true,
+    "authenticationIDEncodingVerified": true,
+    "privateOfficialCiphertextReplayExact": true
+  },
+  "missingFreshActivationInputs": [
+    "Legitimate config/AppKey and encoded registration-envelope route",
+    "Verified expected registration marker"
   ],
-  "offlineOwnedReplayStatus": "blocked by unavailable legitimate inputs",
-  "liveProbeStatus": "not prepared and not authorized",
-  "decision": "Do not guess, scrape app-private storage, use MQTT credentials, bypass transport security, or send a live authentication write. Seek vendor documentation or an official owner-visible export; consider a separately confirmed fresh official-app activation only within the same read-only evidence boundaries."
+  "offlineOwnedReplayStatus": "exact private replay passed for this already-active owned sensor/config",
+  "liveProbeStatus": "separate bounded developer target implemented and host-verified; not installed, physically run, or authorized by this record",
+  "decision": "Keep owner and algorithm material private through post-install import. Review the corrected source map, provenance, and implemented bounded already-active probe, then obtain fresh exact physical confirmation. Fresh activation remains a separate later gate."
 }

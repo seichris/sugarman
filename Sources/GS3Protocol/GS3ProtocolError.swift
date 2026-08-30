@@ -20,6 +20,13 @@ public enum GS3ProtocolError: Error, Sendable, Equatable {
     case invalidRegistrationEnvelopeEncoding
     case invalidRegistrationMarkerEncoding
     case registrationMarkerMismatch
+    case invalidV3GlucoseNotificationLength(Int)
+    case invalidV3GlucoseRecordCount(Int)
+    case unsupportedV3NotificationCommand(UInt8)
+    case invalidV3GlucoseNotificationChecksum
+    case invalidV3ControlResponseLength(Int)
+    case unsupportedV3ControlResponseCommand(UInt8)
+    case invalidV3ControlResponseChecksum
 }
 
 extension GS3ProtocolError: CustomStringConvertible {
@@ -55,6 +62,20 @@ extension GS3ProtocolError: CustomStringConvertible {
             return "V3 registration marker must contain only non-NUL ASCII bytes."
         case .registrationMarkerMismatch:
             return "V3 registration envelope did not match the caller-provided marker."
+        case .invalidV3GlucoseNotificationLength(let count):
+            return "V3 glucose notification has an unsupported length of \(count) bytes."
+        case .invalidV3GlucoseRecordCount(let count):
+            return "V3 glucose notification has an unsupported record count of \(count)."
+        case .unsupportedV3NotificationCommand(let command):
+            return "V3 notification command 0x\(String(command, radix: 16)) is unsupported."
+        case .invalidV3GlucoseNotificationChecksum:
+            return "V3 glucose notification failed its additive checksum."
+        case .invalidV3ControlResponseLength(let count):
+            return "V3 control response must contain 5 bytes; received \(count)."
+        case .unsupportedV3ControlResponseCommand(let command):
+            return "V3 control response command 0x\(String(command, radix: 16)) is unsupported."
+        case .invalidV3ControlResponseChecksum:
+            return "V3 control response failed its additive checksum."
         }
     }
 }

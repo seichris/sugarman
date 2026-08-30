@@ -192,7 +192,7 @@
       "sugarman_destination_path": "Sources/GS3Protocol/AES128.swift; Sources/GS3Protocol/V3Authentication.swift; Sources/GS3Protocol/V3Registration.swift; Sources/SugarmanDomain/ProtocolVariant.swift; Tests/GS3ProtocolTests/GS3ProtocolTests.swift; Scripts/check_governance.py; README.md; THIRD_PARTY.md; docs/V3_AUTH_SOURCE_MAP_2026-08-30.md",
       "modification_date": "2026-08-30",
       "author": "Sugarman contributors",
-      "fixtures_origin": "NIST and IETF published vectors plus independently generated synthetic V3 inputs only; owned replay parity remains pending",
+      "fixtures_origin": "NIST and IETF published vectors plus independently generated synthetic V3 inputs only; the later private owned replay is recorded separately and not committed",
       "fixtures_capture_sha256": "NIST-FIPS-197;NIST-SP-800-38A-F.4.1;IETF-RFC-6229;synthetic-v3-vector",
       "reviewer": "independent repository deep review completed 2026-08-30; human distribution review remains required",
       "legal_review_status": "lean-local",
@@ -244,7 +244,59 @@
       "fixtures_capture_sha256": "c2754841bf877864bd4924998f26dfaa4364718b48a8307b5de6c80865f60922,74894891046cd8e19b32b4425991300ae640150192e7c730f6849d27259ca149,8f59200f694c51c533a30ae6e7398c35b46ced2bce3d7a6ec200e8e072302c19,d0a389eaa1b29024daf441ff7816ad2572b61a40a9bf500c37ddd511c6553008,165d697f4126d0fa2a8ea4f6d822b8fe74dd03e5663ba1e0910c9a197882d3e7",
       "reviewer": "independent repository review 2026-08-30",
       "legal_review_status": "lean-local",
-      "notes": "No raw log line, credential, address, serial, link code, account/user identifier, IV, registered block, registration envelope, authentication payload, or glucose value is committed. No app-private storage, root, TLS interception, protection bypass, or live sensor/NFC command was used."
+      "notes": "Historical bounded-search result, superseded in part by prov-20260830-owned-v3-glucose-notification. The search correctly found no named envelope or IV record; later static analysis and private replay recovered the already-active inputs without committing them. No raw log line, credential, address, serial, link code, account/user identifier, IV, registered block, registration envelope, authentication payload, or glucose value from that original search is committed."
+    },
+    {
+      "id": "prov-20260830-owned-v3-glucose-notification",
+      "upstream_project": "SiBionics official Android app owned copy, owned active Mainland GS3, and NIST AES standards",
+      "upstream_url": "not-applicable-owned-apk; https://csrc.nist.gov/pubs/fips/197/final; https://csrc.nist.gov/pubs/sp/800/38/a/final",
+      "pinned_commit": "not-applicable",
+      "source_path": "com.sibionics.gstoc 01.10.00.00 lib/arm64-v8a/libcxm_protocol.so VMAs 0x8c3b4,0x8fea8,0x8f4e8,0x90068,0x92a80,0x93c6c,0xa93ec and storage 0x5b7bd,0x5b7cd,0x5b910,0x172880; private owned HCI capture",
+      "source_blob_sha256": "apk=0357d558c221a62129dca632fec2c73de70a978862228024f63f45d0b88fc1d7;libcxm_protocol.so=19238019b9aca5f8ffae6a81fad98bb9f6525750b914367378f1ac1bbf765964;hci=165d697f4126d0fa2a8ea4f6d822b8fe74dd03e5663ba1e0910c9a197882d3e7",
+      "copyright_holders": [
+        "Vendor binary copyright holder not independently verified",
+        "NIST publications (United States government works)",
+        "Sugarman contributors"
+      ],
+      "history_reviewed": false,
+      "file_header_licence": "GPL-3.0-or-later",
+      "repository_licence": "GPL-3.0-or-later",
+      "purpose_and_behavior_taken": "Independently authored Swift records the verified V3 0x32 notification length/count/checksum structure, 16-byte record boundaries, bit fields, address-plus-zero outer IV construction, distinct caller-supplied inner AES-OFB material, and little-endian tenths-of-mmol/L result. Private replay matched one owner-authorized 7.2 mmol/L and flat-trend point. No vendor instruction sequence, table, binary, raw frame, address, account identifier, registered block, algorithm key, or algorithm IV was copied into Sugarman.",
+      "reuse_mode": "independently observed",
+      "sugarman_destination_path": "Sources/GS3Protocol/V3GlucoseNotification.swift; Sources/GS3Protocol/GS3ProtocolError.swift; Tests/GS3ProtocolTests/GS3ProtocolTests.swift; docs/V3_GLUCOSE_NOTIFICATION_SOURCE_MAP_2026-08-30.md; docs/V3_ALREADY_ACTIVE_HANDOVER_TEST_PLAN.md; docs/evidence/owned-mainland-gs3-v3-glucose-summary-v1.json; docs/P2_RUNTIME_MATERIAL_RESULT_2026-08-30.md; docs/V3_AUTH_SOURCE_MAP_2026-08-30.md",
+      "modification_date": "2026-08-30",
+      "author": "Sugarman contributors",
+      "fixtures_origin": "One owner-authorized active Mainland GS3 and official Chinese Android app; public tests use independently generated synthetic frames only",
+      "fixtures_capture_sha256": "165d697f4126d0fa2a8ea4f6d822b8fe74dd03e5663ba1e0910c9a197882d3e7;synthetic-v3-glucose-vectors",
+      "reviewer": "pending independent review before any live transport integration",
+      "legal_review_status": "lean-local",
+      "notes": "The user authorized local interoperability analysis and the one visible parity point for this evidence record. The separately observed fixed algorithm key and IV remain uncommitted pending a distinct publication decision. The decoder is offline-only; this record does not approve a live sensor write, fresh activation, App Store distribution, or vendor-binary redistribution."
+    },
+    {
+      "id": "prov-20260830-v3-developer-handover-probe",
+      "upstream_project": "SiBionics official Android app owned copy, owned active Mainland GS3, and NIST AES standards",
+      "upstream_url": "not-applicable-owned-apk; https://csrc.nist.gov/pubs/fips/197/final; https://csrc.nist.gov/pubs/sp/800/38/a/final",
+      "pinned_commit": "not-applicable",
+      "source_path": "Private canonical HCI capture; com.sibionics.gstoc 01.10.00.00 lib/arm64-v8a/libcxm_protocol.so; existing V3 authentication and glucose source maps",
+      "source_blob_sha256": "apk=0357d558c221a62129dca632fec2c73de70a978862228024f63f45d0b88fc1d7;libcxm_protocol.so=19238019b9aca5f8ffae6a81fad98bb9f6525750b914367378f1ac1bbf765964;hci=165d697f4126d0fa2a8ea4f6d822b8fe74dd03e5663ba1e0910c9a197882d3e7",
+      "copyright_holders": [
+        "Vendor binary copyright holder not independently verified",
+        "NIST publications (United States government works)",
+        "Sugarman contributors"
+      ],
+      "history_reviewed": false,
+      "file_header_licence": "GPL-3.0-or-later",
+      "repository_licence": "GPL-3.0-or-later",
+      "purpose_and_behavior_taken": "Independently authored Swift implements a typed one-shot state machine from owner-observed interoperability facts: subscribe to FF31, send one 38-byte 0xE2 authentication to FF32, require the exact five-byte decrypted 0xE2 acceptance with code 0x01 and detail 0x00, send one seven-byte 0x39 effective-data request, validate 0x39 and 0x32 data, then disconnect after five unique live indexes. Private cryptographic and owner material enter only through a post-install file import into a device-only Keychain item. No activation, binding, reset, retry, reconnect, arbitrary write, background mode, vendor binary, or vendor source is included.",
+      "reuse_mode": "independently observed",
+      "sugarman_destination_path": "Sources/GS3DeveloperProbe; Sources/GS3Protocol/V3EffectiveData.swift; Sources/GS3Protocol/V3GlucoseNotification.swift; Apps/SugarmanProbe; Tests/GS3DeveloperProbeTests; project.yml; Package.swift; Scripts/check_governance.py; docs/V3_DEVELOPER_HANDOVER_PROBE.md; docs/evidence/owned-mainland-gs3-handover-probe-v1.json",
+      "modification_date": "2026-08-30",
+      "author": "Sugarman contributors",
+      "fixtures_origin": "Independently generated synthetic material, control responses, requests, and glucose batches only",
+      "fixtures_capture_sha256": "synthetic-v3-developer-probe-vectors",
+      "reviewer": "host tests and governance complete; independent source review and physical validation pending",
+      "legal_review_status": "lean-local",
+      "notes": "The developer target is source-only and has not been installed or run on physical hardware. The algorithm key/IV, address, authentication ID, registered block, exact sensor name, raw frames, and additional glucose values remain private and uncommitted. This record is not approval for a sensor write, fresh activation, TestFlight, App Store distribution, or vendor-binary redistribution."
     }
   ]
 }

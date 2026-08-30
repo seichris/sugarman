@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "scope": "Payload-free implementation record for a developer-only, already-active Mainland GS3 handover probe.",
+  "evidenceInputs": {
+    "officialAppPackage": "com.sibionics.gstoc",
+    "officialAppVersion": "01.10.00.00",
+    "apkSHA256": "0357d558c221a62129dca632fec2c73de70a978862228024f63f45d0b88fc1d7",
+    "nativeLibrarySHA256": "19238019b9aca5f8ffae6a81fad98bb9f6525750b914367378f1ac1bbf765964",
+    "canonicalHCISHA256": "165d697f4126d0fa2a8ea4f6d822b8fe74dd03e5663ba1e0910c9a197882d3e7",
+    "rawPayloadsCommitted": false
+  },
+  "verifiedBehavior": {
+    "serviceUUID": "0000FF30-0000-1000-8000-00805F9B34FB",
+    "notificationUUID": "0000FF31-0000-1000-8000-00805F9B34FB",
+    "acknowledgedWriteUUID": "0000FF32-0000-1000-8000-00805F9B34FB",
+    "authenticationRequestCommand": 226,
+    "authenticationRequestByteCount": 38,
+    "authenticationAcceptedCode": 1,
+    "authenticationAcceptedDetail": 0,
+    "effectiveDataRequestCommand": 57,
+    "effectiveDataRequestByteCount": 7,
+    "liveNotificationCommand": 50,
+    "glucoseRecordByteCount": 16
+  },
+  "implementedBoundary": {
+    "separateAppTarget": "SugarmanProbe",
+    "normalAppLinksProbe": false,
+    "foregroundOnly": true,
+    "coreBluetoothWriteSiteCount": 1,
+    "writeType": "withResponse",
+    "authenticationMaximumCount": 1,
+    "effectiveDataMaximumCount": 1,
+    "requiredUniqueLiveReadingCount": 5,
+    "maximumSessionSeconds": 420,
+    "automaticReconnect": false,
+    "activationAvailable": false,
+    "bindingAvailable": false,
+    "resetAvailable": false,
+    "arbitraryRawWriteAvailable": false
+  },
+  "privateMaterial": {
+    "committedOrBundled": false,
+    "postInstallImport": true,
+    "storedAsSourceJSON": false,
+    "keychainAccessibility": "when-unlocked-this-device-only",
+    "descriptionsRedacted": true
+  },
+  "verification": {
+    "publicFixtures": "synthetic-only",
+    "physicalIPhoneRun": false,
+    "sensorWriteAuthorizedByThisRecord": false,
+    "officialAndroidHandbackVerified": false
+  },
+  "decision": "Review and merge source, then build a signed artifact and obtain a fresh exact artifact-device-action confirmation before installation or sensor traffic."
+}

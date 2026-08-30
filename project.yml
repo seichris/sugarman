@@ -88,3 +88,39 @@ targets:
         product: SugarmanDiagnostics
     scheme:
       testTargets: []
+  SugarmanProbe:
+    type: application
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: Apps/SugarmanProbe
+        excludes:
+          - Info.plist
+    info:
+      path: Apps/SugarmanProbe/Info.plist
+      properties:
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        NSBluetoothAlwaysUsageDescription: Sugarman Probe performs one explicitly confirmed developer handover attempt with an owned, already-active GS3 sensor.
+        NSBluetoothPeripheralUsageDescription: Sugarman Probe performs one explicitly confirmed developer handover attempt with an owned, already-active GS3 sensor.
+        LSSupportsOpeningDocumentsInPlace: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.sugarman.probe
+        PRODUCT_NAME: Sugarman Probe
+        INFOPLIST_FILE: Apps/SugarmanProbe/Info.plist
+        GENERATE_INFOPLIST_FILE: false
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: false
+        SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: false
+        SWIFT_EMIT_LOC_STRINGS: NO
+    dependencies:
+      - package: Sugarman
+        product: GS3DeveloperProbe
+      - package: Sugarman
+        product: GS3Protocol
+    scheme:
+      testTargets: []

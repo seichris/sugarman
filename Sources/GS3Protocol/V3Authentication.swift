@@ -58,6 +58,26 @@ public struct V3AuthenticationInputs:
         )
     }
 
+    /// Builds the already-active handover input from material recovered through
+    /// an owner-controlled official-app capture. This does not register, bind,
+    /// activate, reset, or otherwise mutate sensor lifecycle state.
+    public init(
+        deviceType: UInt8,
+        sensorAddress: [UInt8],
+        authenticationID: [UInt8],
+        recoveredRegisteredBlock: [UInt8]
+    ) throws {
+        try self.init(
+            deviceType: deviceType,
+            sensorAddress: sensorAddress,
+            registeredBlock: recoveredRegisteredBlock,
+            authenticationID: authenticationID,
+            initializationVector: try v3TransportInitializationVector(
+                sensorAddress: sensorAddress
+            )
+        )
+    }
+
     public var description: String {
         "V3AuthenticationInputs(addressByteCount: \(sensorAddress.count), "
             + "registeredBlockByteCount: \(registeredBlock.count), "
@@ -123,4 +143,11 @@ enum V3ProtocolConstants {
         0x01, 0x38, 0x0B, 0x9A, 0x00, 0x5B, 0x02, 0x5D,
         0xCD, 0x9E, 0xC3, 0x99, 0x09, 0x37, 0xAA, 0xE8,
     ]
+}
+
+func v3TransportInitializationVector(sensorAddress: [UInt8]) throws -> [UInt8] {
+    guard sensorAddress.count == 6 else {
+        throw GS3ProtocolError.invalidSensorAddressLength(sensorAddress.count)
+    }
+    return sensorAddress + [UInt8](repeating: 0, count: 10)
 }

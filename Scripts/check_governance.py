@@ -190,8 +190,10 @@ def check_binaries_and_resources() -> None:
         text = plist.read_text(encoding="utf-8", errors="replace")
         if re.search(r"<string>\s*audio\s*</string>", text):
             error(f"{plist.relative_to(ROOT)} enables audio background mode")
-        if "bluetooth-central" not in text:
+        if plist == ROOT / "Apps/Sugarman/Info.plist" and "bluetooth-central" not in text:
             error(f"{plist.relative_to(ROOT)} missing bluetooth-central")
+        if plist == ROOT / "Apps/SugarmanProbe/Info.plist" and "bluetooth-central" in text:
+            error("developer probe must remain foreground-only")
 
 
 def check_no_write_api() -> None:
@@ -207,24 +209,66 @@ def check_no_write_api() -> None:
         ROOT / "Sources/SugarmanDiagnostics",
         ROOT / "Sources/GS3Transport",
         ROOT / "Sources/GS3Protocol",
+        ROOT / "Sources/GS3DeveloperProbe",
     }
+    probe_adapter = ROOT / "Apps/SugarmanProbe/V3ProbeBluetoothRuntime.swift"
     for base in (ROOT / "Sources", ROOT / "Apps"):
         if not base.is_dir():
             continue
         for path in base.rglob("*.swift"):
             text = path.read_text(encoding="utf-8", errors="replace")
             rel = path.relative_to(ROOT).as_posix()
-            if characteristic_write.search(text):
+            if characteristic_write.search(text) and path != probe_adapter:
                 error(f"forbidden characteristic-write API in {rel}")
             if live_cmd.search(text):
                 error(f"live sensor command API in {rel}")
-            if "import CoreBluetooth" in text and not path.is_relative_to(
-                ROOT / "Sources/GS3Transport"
+            if (
+                "import CoreBluetooth" in text
+                and not path.is_relative_to(ROOT / "Sources/GS3Transport")
+                and path != probe_adapter
             ):
                 error(f"CoreBluetooth must remain confined to GS3Transport: {rel}")
             if any(path.is_relative_to(root) for root in guarded_protocol_roots):
                 if protocol_write_function.search(text):
                     error(f"forbidden protocol write function in {rel}")
+
+    if not probe_adapter.is_file():
+        error("missing typed developer-probe CoreBluetooth adapter")
+    else:
+        body = probe_adapter.read_text(encoding="utf-8", errors="replace")
+        if body.count(".writeValue(") != 1:
+            error("developer probe adapter must contain exactly one characteristic write site")
+        for required in (
+            "case .authentication(let typedFrame)",
+            "case .effectiveData(let typedFrame)",
+            "type: .withResponse",
+            'CBUUID(string: "FF31")',
+            'CBUUID(string: "FF32")',
+        ):
+            if required not in body:
+                error(f"developer probe adapter missing strict boundary: {required}")
+        for forbidden in (
+            ".withoutResponse",
+            "0x35",
+            "0x30",
+            "0xF0",
+            "CBCentralManagerOptionRestoreIdentifierKey",
+        ):
+            if forbidden in body:
+                error(f"developer probe adapter contains forbidden surface: {forbidden}")
+
+    package_text = (ROOT / "Package.swift").read_text(encoding="utf-8", errors="replace")
+    project_text = (ROOT / "project.yml").read_text(encoding="utf-8", errors="replace")
+    if '.library(name: "GS3DeveloperProbe"' not in package_text:
+        error("typed developer probe must be a separate Swift package product")
+    if "  SugarmanProbe:\n" not in project_text:
+        error("typed developer probe must be a separate Xcode application target")
+    else:
+        main_target = project_text.split("  Sugarman:\n", 1)[1].split(
+            "  SugarmanProbe:\n", 1
+        )[0]
+        if "GS3DeveloperProbe" in main_target or "Apps/SugarmanProbe" in main_target:
+            error("App Store Sugarman target must not link the developer probe")
     variant_path = ROOT / "Sources/SugarmanDomain/ProtocolVariant.swift"
     variant_text = variant_path.read_text(encoding="utf-8", errors="replace")
     if re.search(r"\bcase\s+v3AES\b", variant_text):

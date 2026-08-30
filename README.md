@@ -43,21 +43,25 @@ dependencies. See [docs/UPSTREAMS.md](docs/UPSTREAMS.md).
 - Offline-first; no cloud backend and no CloudKit in the initial product.
 - First live UI always shows reading age, stale/disconnected state, and the
   no-dosing notice.
-- No live sensor command (authentication write, binding mutation, activation,
-  reset, expiry, secret-key, or other lifecycle write) is currently
-  representable. A live authentication attempt remains gated on legitimate
-  owner-controlled runtime material, private replay parity, independent review,
-  and a fresh exact physical-write confirmation; see the
-  [implementation plan](docs/MAINLAND_GS3_IOS_IMPLEMENTATION_PLAN.md).
-- An isolated offline V3 authentication encoder is present. The live request
-  enum is empty, the codec factory fails closed, and transport has no write API.
+- The normal `Sugarman` target cannot represent a live sensor command: its live
+  request enum is empty, codec factory fails closed, and transport has no write
+  API.
+- A separate, foreground-only `SugarmanProbe` developer target can perform one
+  tightly bounded already-active handover attempt: subscribe to FF31, transmit
+  one typed `0xE2` authentication, transmit one typed `0x39` request only after
+  exact authentication acceptance, observe five unique live readings, then
+  disconnect. It has no activation, binding, reset, retry, reconnect, arbitrary
+  raw-write, background, or HealthKit path. It requires post-install private
+  material import and a fresh exact physical-device confirmation; see the
+  [probe guide](docs/V3_DEVELOPER_HANDOVER_PROBE.md).
 
 ## Repository layout
 
 | Path | Role |
 | --- | --- |
 | `Sources/SugarmanDomain` | Pure domain types and product copy |
-| `Sources/GS3Protocol` | Fail-closed live interfaces plus an isolated offline V3 authentication encoder |
+| `Sources/GS3Protocol` | Fail-closed live interfaces plus isolated offline V3 authentication and glucose codecs |
+| `Sources/GS3DeveloperProbe` | Typed, one-shot already-active V3 probe state machine and device-only private-material store |
 | `Sources/GS3Transport` | BLE state machine and testable central abstraction |
 | `Sources/SensorOnboarding` | Bounded package/NDEF parser interfaces |
 | `Sources/AccountBinding` | Manual legitimate owner ID only |
@@ -66,6 +70,7 @@ dependencies. See [docs/UPSTREAMS.md](docs/UPSTREAMS.md).
 | `Sources/Integrations` | HealthKit/export interfaces; HealthKit writes disabled |
 | `Sources/SugarmanDiagnostics` | Read-only GATT probe, redacted GATT export, BTSnoop analyzer |
 | `Apps/Sugarman` | SwiftUI iOS application shell |
+| `Apps/SugarmanProbe` | Separate foreground-only developer handover application; not linked by `Sugarman` |
 | `upstream/` | Pinned research references — not build inputs |
 
 ## Build and test
@@ -87,6 +92,20 @@ Or open `Sugarman.xcodeproj` in Xcode and run the `Sugarman` scheme on an iOS 26
 simulator. Device builds need an Apple Developer team selected locally; the
 bundle identifier is `app.sugarman.ios`. Do not invent a team ID. See
 [docs/LOCAL_SIGNING.md](docs/LOCAL_SIGNING.md).
+
+The developer probe is a separate scheme and bundle identifier
+`app.sugarman.probe`:
+
+```sh
+xcodegen generate
+CC="$PWD/Scripts/xcode-clang-wrapper.sh" xcodebuild \
+  -scheme SugarmanProbe \
+  -destination 'generic/platform=iOS Simulator' \
+  -configuration Debug build CODE_SIGNING_ALLOWED=NO
+```
+
+Building the probe does not authorize installing it or contacting a sensor.
+Follow [the bounded probe guide](docs/V3_DEVELOPER_HANDOVER_PROBE.md).
 
 P0/P1 evidence lab (private captures stay gitignored):
 

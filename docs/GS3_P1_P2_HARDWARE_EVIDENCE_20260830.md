@@ -92,8 +92,10 @@ cipher was tried against the live sensor. The evidence identified the protocol
 and cipher family but was not yet a complete V3 frame specification. A later,
 separately approved offline source-map pass recorded the fixed protocol constant
 and frame construction; see
-[`V3_AUTH_SOURCE_MAP_2026-08-30.md`](V3_AUTH_SOURCE_MAP_2026-08-30.md). No runtime
-IV, registration material, authentication ID, or live write was obtained.
+[`V3_AUTH_SOURCE_MAP_2026-08-30.md`](V3_AUTH_SOURCE_MAP_2026-08-30.md). A later
+private replay recovered the already-active runtime inputs and is documented in
+[`V3_GLUCOSE_NOTIFICATION_SOURCE_MAP_2026-08-30.md`](V3_GLUCOSE_NOTIFICATION_SOURCE_MAP_2026-08-30.md).
+No live write was sent.
 
 ## Post-calibration live-frame evidence
 
@@ -105,13 +107,15 @@ It is 480,730 bytes with 13,661 HCI records and 449 ATT PDUs.
 The capture contains 69 notifications with 24-byte values, including
 one-minute frames from device-wall time 10:36 through 10:42. The frame at
 10:37:03 Asia/Singapore was correlated with the official app's displayed
-10:37 glucose value and trend. The exact health value remains private. That
-frame's payload SHA-256 is
+10:37 glucose value and trend. The owner later authorized publication of this
+single point as 7.2 mmol/L with a straight-right arrow for decoder parity; all
+other values remain private. That frame's payload SHA-256 is
 `e93199d156de4bed1ac58ef8515f785c3d12988ef8617b2e1e604163c3e94552`.
 
 This proves that a timestamped official value and encrypted live frame were
-captured together. It does not prove how the 24 bytes encode glucose, and one
-ground-truth point is insufficient to validate a decoder.
+captured together. Later static analysis and private replay decode that point
+exactly, but one ground-truth point remains insufficient for general product
+validation.
 
 ## Consequences
 
