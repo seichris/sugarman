@@ -91,6 +91,24 @@ No key bytes were extracted and no cipher was tried against the live sensor.
 The evidence identifies the protocol and cipher family; it is not yet a
 complete, independently implementable V3 frame specification.
 
+## Post-calibration live-frame evidence
+
+After calibration completed, a further bugreport was collected without a
+Bluetooth restart or sensor reconnect. Its private BTSnoop SHA-256 is
+`165d697f4126d0fa2a8ea4f6d822b8fe74dd03e5663ba1e0910c9a197882d3e7`.
+It is 480,730 bytes with 13,661 HCI records and 449 ATT PDUs.
+
+The capture contains 69 notifications with 24-byte values, including
+one-minute frames from device-wall time 10:36 through 10:42. The frame at
+10:37:03 Asia/Singapore was correlated with the official app's displayed
+10:37 glucose value and trend. The exact health value remains private. That
+frame's payload SHA-256 is
+`e93199d156de4bed1ac58ef8515f785c3d12988ef8617b2e1e604163c3e94552`.
+
+This proves that a timestamped official value and encrypted live frame were
+captured together. It does not prove how the 24 bytes encode glucose, and one
+ground-truth point is insufficient to validate a decoder.
+
 ## Consequences
 
 - Stop the planned V1.20/RC4 implementation for this Mainland hardware.
@@ -102,9 +120,8 @@ complete, independently implementable V3 frame specification.
 
 ## Remaining gates
 
-1. Preserve a second private HCI capture after calibration produces the first
-   official glucose reading; the current capture proves authentication but not
-   live-glucose decoding.
+1. Correlate additional private 24-byte frames with official values and state
+   transitions before treating any offline glucose decoder as validated.
 2. Release the official app and run Sugarman's bounded physical-iPhone probe:
    scan, connect, discover, read DIS, export a redacted GATT map, and disconnect.
    Do not authenticate or hand over yet.
