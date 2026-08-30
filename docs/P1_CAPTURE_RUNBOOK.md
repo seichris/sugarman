@@ -28,19 +28,22 @@ Juggluco builds initial authentication from **six bytes derived from the
 Android-visible Bluetooth device address**. CoreBluetooth exposes an opaque
 peer UUID, not that MAC.
 
-Find a **legitimate, readable** source for those six bytes, or **stop**:
+Find a **legitimate, readable** source whose exact six bytes match the connected
+Android HCI peer-address field (allowing only the documented byte-order
+comparison), or **stop**. Length alone is never evidence:
 
 | Candidate | How to check | Result |
 | --- | --- | --- |
 | Package / UDI / Data Matrix | P0 payload, sanitized in Git | |
 | NFC NDEF | Core NFC NDEF read only | |
 | Advertisement | Android HCI snoop of official-app ads | |
-| Device Information (DIS) | iOS read-only probe: manufacturer / model / firmware / hardware / software. Do not log serials or frame bytes. | |
+| Device Information (DIS) | iOS read-only probe: manufacturer / model / firmware / hardware / software; serial byte count only. A six-byte count is a lead, not proof, because the iOS probe deliberately does not retain the value. | |
 | Other documented-readable characteristic | Only if the characteristic is readable without a write | |
 | None | Stop. Seek vendor documentation. Do not guess a transform from the CoreBluetooth UUID. | |
 
-Exit: a redacted advertisement/GATT map plus a reproducible six-byte source,
-**or** an explicit stop.
+Exit: a redacted advertisement/GATT map plus a reproducible exact byte match
+from an authorized source, **or** an explicit stop. If privacy policy prevents
+retaining a candidate's bytes, report it only as an unverified lead.
 
 ## What P2 must answer
 
@@ -87,8 +90,10 @@ summary as an RC4 or AES identification.
 
 P1 address-source enum: `package | nfc | advertisement | deviceInformation |
 otherReadable | notFound`. The HCI peer-address field is Android-only and does
-**not** count as `advertisement`; that case requires the six bytes in AD/scan
-response *payload*.
+**not** count as an iOS-accessible source. `advertisement`, `deviceInformation`,
+or `otherReadable` is reported only when a candidate's exact bytes match the
+connected peer (normal or reversed order) and the ATT response is correlated
+to that connection, read request, value handle, and characteristic UUID.
 
 On iOS, the Privacy probe writes a shareable redacted GATT map JSON (UUIDs,
 properties, value byte counts; no raw serial/value bytes). Simulator stays
@@ -162,8 +167,9 @@ Do this **after** the official app has released the sensor.
 2. Install Sugarman on the owned iPhone.
 3. Privacy → enable **Read-only Bluetooth probe** (default **off**). Simulator
    leaves this disabled.
-4. Scan. Note each peripheral’s **name**, CoreBluetooth **identifier UUID**,
-   and **RSSI**. Do not log advertisement bytes or serials.
+4. Scan. Use transient on-device **name**, CoreBluetooth **identifier UUID**,
+   and **RSSI** only to choose the owned sensor. Do not transcribe or share raw
+   names, identifiers, advertisement bytes, or serials; export the redacted map.
 5. Connect to the owned sensor only. Discover services. Read **Device
    Information** characteristics that are documented as readable
    (manufacturer, model, hardware, firmware, software). Skip serial display.

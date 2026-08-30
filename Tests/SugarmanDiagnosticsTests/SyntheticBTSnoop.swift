@@ -9,20 +9,54 @@ enum SyntheticBTSnoop {
     static let writePayload: [UInt8] = [0xC0, 0xFF, 0xEE, 0x11, 0x22, 0x33]
     static let localName = "SyntheticLab"
 
-    static func labCapture(includePeerInManufacturerData: Bool, includeSixByteSerial: Bool) -> Data {
+    static func labCapture(
+        includePeerInManufacturerData: Bool,
+        includeSixByteSerial: Bool,
+        serialPayload: [UInt8]? = nil
+    ) -> Data {
         var packets: [Data] = []
         packets.append(h4Event(legacyAdvertisement(includePeerInManufacturerData: includePeerInManufacturerData)))
         packets.append(h4Event(connectionComplete()))
         packets.append(h4ACL(att: Data([0x11, 0x06, 0x01, 0x00, 0x10, 0x00, 0x0A, 0x18])))
+        packets.append(h4ACL(att: Data([0x08, 0x01, 0x00, 0xFF, 0xFF, 0x03, 0x28])))
+        // Characteristic declarations: value handle 3 = manufacturer (2A29),
+        // value handle 5 = serial number (2A25), value handle 49 = FF31,
+        // and value handle 50 = FF32.
+        packets.append(h4ACL(att: Data([
+            0x09, 0x07,
+            0x02, 0x00, 0x02, 0x03, 0x00, 0x29, 0x2A,
+            0x04, 0x00, 0x02, 0x05, 0x00, 0x25, 0x2A,
+            0x06, 0x00, 0x10, 0x31, 0x00, 0x31, 0xFF,
+            0x07, 0x00, 0x0C, 0x32, 0x00, 0x32, 0xFF,
+        ])))
         packets.append(h4ACL(att: Data([0x0A, 0x03, 0x00])))
         packets.append(h4ACL(att: Data([0x0B]) + Data("Acme".utf8)))
-        packets.append(h4ACL(att: Data([0x0A, 0x25, 0x00])))
+        packets.append(h4ACL(att: Data([0x0A, 0x05, 0x00])))
         if includeSixByteSerial {
-            packets.append(h4ACL(att: Data([0x0B]) + Data(peer)))
+            packets.append(h4ACL(att: Data([0x0B]) + Data(serialPayload ?? peer)))
         } else {
             packets.append(h4ACL(att: Data([0x0B]) + Data("SN".utf8)))
         }
+        packets.append(h4ACL(att: Data([0x1B, 0x31, 0x00, 0xBA, 0xAD, 0xF0, 0x0D])))
         packets.append(h4ACL(att: Data([0x12, 0x32, 0x00]) + Data(writePayload)))
+        return btsnoop(packets: packets)
+    }
+
+    static func reusedHandleWithoutRediscovery() -> Data {
+        let secondPeer: [UInt8] = [0x10, 0x32, 0x54, 0x76, 0x98, 0xBA]
+        var packets: [Data] = []
+        packets.append(h4Event(connectionComplete()))
+        packets.append(h4ACL(att: Data([0x08, 0x01, 0x00, 0xFF, 0xFF, 0x03, 0x28])))
+        packets.append(h4ACL(att: Data([
+            0x09, 0x07,
+            0x04, 0x00, 0x02, 0x05, 0x00, 0x25, 0x2A,
+        ])))
+        packets.append(h4ACL(att: Data([0x0A, 0x05, 0x00])))
+        packets.append(h4ACL(att: Data([0x0B]) + Data("not-an-address".utf8)))
+        packets.append(h4Event(disconnectionComplete()))
+        packets.append(h4Event(connectionComplete(peer: secondPeer)))
+        packets.append(h4ACL(att: Data([0x0A, 0x05, 0x00])))
+        packets.append(h4ACL(att: Data([0x0B]) + Data(secondPeer)))
         return btsnoop(packets: packets)
     }
 
@@ -69,13 +103,17 @@ enum SyntheticBTSnoop {
         return event
     }
 
-    private static func connectionComplete() -> Data {
+    private static func connectionComplete(peer: [UInt8] = peer) -> Data {
         var params = Data([0x01, 0x00, 0x40, 0x00, 0x00, 0x00])
         params.append(contentsOf: peer)
         params.append(contentsOf: [0x06, 0x00, 0x00, 0x00, 0x48, 0x00, 0x01])
         var event = Data([0x3E, UInt8(params.count)])
         event.append(params)
         return event
+    }
+
+    private static func disconnectionComplete() -> Data {
+        Data([0x05, 0x04, 0x00, 0x40, 0x00, 0x13])
     }
 
     private static func h4ACL(att: Data) -> Data {

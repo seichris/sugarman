@@ -59,6 +59,8 @@ public enum TransportError: Error, Sendable, Equatable, CustomStringConvertible 
     case invalidTransition(from: TransportState)
     case probeDisabled
     case timeout
+    case disconnected
+    case characteristicUnavailable(UUID)
 
     public var description: String {
         switch self {
@@ -80,6 +82,10 @@ public enum TransportError: Error, Sendable, Equatable, CustomStringConvertible 
             return "Read-only diagnostic probe is disabled."
         case .timeout:
             return "Transport timed out."
+        case .disconnected:
+            return "The Bluetooth peripheral disconnected."
+        case .characteristicUnavailable(let uuid):
+            return "Readable characteristic \(uuid.uuidString) is unavailable."
         }
     }
 }

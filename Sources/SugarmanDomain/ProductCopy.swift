@@ -34,6 +34,6 @@ public enum ProductCopy: Sendable {
     public static let athleteInsightOnly =
         "Athlete insight only. Sugarman does not recommend fueling, carbohydrate, medication, or treatment."
 
-    public static let demoReplacesLocalData =
-        "Loading a demo replaces locally stored Sugarman data with synthetic fixtures."
+    public static let demoUsesIsolatedData =
+        "Demo data is isolated and never replaces locally stored Sugarman data."
 }

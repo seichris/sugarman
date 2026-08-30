@@ -27,7 +27,7 @@ struct DashboardView: View {
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
-                        Section("demo.replaces_data") {
+                        Section("demo.isolated_data") {
                             ForEach(SyntheticDemoScenario.allCases) { scenario in
                                 Button(demoTitle(scenario)) {
                                     Task {
@@ -38,6 +38,11 @@ struct DashboardView: View {
                                         }
                                     }
                                 }
+                            }
+                        }
+                        if model.isSyntheticDemo {
+                            Button("demo.exit") {
+                                Task { await model.exitDemo() }
                             }
                         }
                     } label: {
@@ -61,6 +66,11 @@ struct DashboardView: View {
                 }
                 if let demoLoadError = model.demoLoadError {
                     Text(demoLoadError)
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                }
+                if let storeErrorMessage = model.storeErrorMessage {
+                    Text(storeErrorMessage)
                         .font(.footnote)
                         .foregroundStyle(.red)
                 }
@@ -147,7 +157,7 @@ struct DashboardView: View {
     }
 
     private var connectionLabel: String {
-        switch model.connection {
+        switch model.activeConnection {
         case .disconnected, .idle:
             String(localized: "dashboard.disconnected")
         case .scanning:

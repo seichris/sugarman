@@ -379,6 +379,17 @@
         }
       }
     },
+    "privacy.local_storage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local storage"
+          }
+        }
+      }
+    },
     "privacy.probe_disabled": {
       "extractionState": "manual",
       "localizations": {
@@ -677,13 +688,24 @@
         }
       }
     },
-    "demo.replaces_data": {
+    "demo.isolated_data": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Loading a demo replaces locally stored Sugarman data with synthetic fixtures."
+            "value": "Demo data is isolated. Your persistent local data is not changed."
+          }
+        }
+      }
+    },
+    "demo.exit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exit demo and return to local data"
           }
         }
       }
@@ -915,6 +937,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Rising quickly"
+          }
+        }
+      }
+    },
+    "history.source.unknown": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unknown source"
           }
         }
       }
@@ -1860,6 +1893,28 @@
         }
       }
     },
+    "privacy.probe_disconnect": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disconnect"
+          }
+        }
+      }
+    },
+    "privacy.probe_disconnected": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disconnected from the peripheral."
+          }
+        }
+      }
+    },
     "privacy.probe_scan": {
       "extractionState": "manual",
       "localizations": {
@@ -1878,6 +1933,50 @@
           "stringUnit": {
             "state": "translated",
             "value": "Starts a Bluetooth scan. Discovered names, UUIDs, and RSSI are listed. Frame bytes are not logged."
+          }
+        }
+      }
+    },
+    "privacy.probe_search": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search device names"
+          }
+        }
+      }
+    },
+    "privacy.probe_search_hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filters the discovered list by advertised device name."
+          }
+        }
+      }
+    },
+    "privacy.probe_no_matches": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No discovered device names match this search."
+          }
+        }
+      }
+    },
+    "privacy.probe_likely_gs3": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Likely GS3 (name-format match)"
           }
         }
       }

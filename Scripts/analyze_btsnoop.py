@@ -88,16 +88,17 @@ def payload_looks_like_address(payload: bytes, peer: bytes | None) -> bool:
 
 def redact_name(name: str) -> str:
     trimmed = name.strip()
-    if not trimmed:
-        return "redacted-name(len: 0)"
-    if looks_like_mac_string(trimmed.encode("utf-8")):
-        return f"redacted-name(len: {len(trimmed)})"
-    hexish = "".join(c for c in trimmed if c in "0123456789abcdefABCDEF:")
-    if len(hexish) >= 12 and len(hexish) >= len(trimmed) - 1:
-        return f"redacted-name(len: {len(trimmed)})"
-    if len(trimmed) > 24:
-        return f"redacted-name(len: {len(trimmed)})"
-    return trimmed
+    return f"redacted-name(len:{len(trimmed)})"
+
+
+def textual_address(value: bytes) -> bytes | None:
+    try:
+        compact = value.decode("utf-8").strip().replace(":", "").replace("-", "")
+    except UnicodeDecodeError:
+        return None
+    if len(compact) != 12 or not all(c in "0123456789abcdefABCDEF" for c in compact):
+        return None
+    return bytes.fromhex(compact)
 
 
 def inspect_ad(ad: bytes, peer: bytes | None, state: dict, is_scan: bool) -> None:
@@ -128,14 +129,11 @@ def inspect_ad(ad: bytes, peer: bytes | None, state: dict, is_scan: bool) -> Non
                 i += 16
         elif typ == 0xFF:
             state["mfg_lengths"].append(len(payload))
-        flag = payload_looks_like_address(payload, peer) or (
-            len(payload) == 6 and payload_looks_like_address(payload, peer)
-        )
-        if flag:
-            if is_scan:
-                state["six_scan"] = True
-            else:
-                state["six_adv"] = True
+        if payload_looks_like_address(payload, peer) and peer:
+            match = state["advertisement_matches"].setdefault(
+                peer, {"advertisement": False, "scanResponse": False}
+            )
+            match["scanResponse" if is_scan else "advertisement"] = True
 
 
 def parse_legacy_adv(params: bytes, state: dict) -> None:
@@ -152,8 +150,6 @@ def parse_legacy_adv(params: bytes, state: dict) -> None:
         addr = params[offset : offset + 6]
         offset += 6
         state["hci_peer"] = True
-        if state["peer"] is None:
-            state["peer"] = addr
         if offset >= len(params):
             return
         data_len = params[offset]
@@ -180,16 +176,22 @@ def parse_event(body: bytes, state: dict) -> None:
     if len(body) < 2 + param_len:
         return
     params = body[2 : 2 + param_len]
+    if event_code == 0x05 and len(params) >= 4:
+        clear_connection_state(u16le(params, 1) & 0x0FFF, state)
+        return
     if event_code != 0x3E or not params:
         return
     sub = params[0]
     rest = params[1:]
     if sub in (0x01, 0x0A):
         state["connections"] += 1
-        if len(rest) >= 11:
+        if len(rest) >= 11 and rest[0] == 0:
             state["hci_peer"] = True
-            if state["peer"] is None:
-                state["peer"] = rest[5:11]
+            connection_handle = u16le(rest, 1) & 0x0FFF
+            clear_connection_state(connection_handle, state)
+            peer = rest[5:11]
+            state["connection_peers"][connection_handle] = peer
+            state["all_connected_peers"].add(peer)
     elif sub == 0x02:
         parse_legacy_adv(rest, state)
     elif sub == 0x0D and rest:
@@ -204,8 +206,6 @@ def parse_event(body: bytes, state: dict) -> None:
             addr = rest[offset : offset + 6]
             offset += 6
             state["hci_peer"] = True
-            if state["peer"] is None:
-                state["peer"] = addr
             offset += 1 + 1 + 1 + 1 + 1 + 2 + 1 + 6
             data_len = rest[offset]
             offset += 1
@@ -232,7 +232,7 @@ def is_dis(uuid: str | None) -> bool:
     return uuid.upper() in DIS_SHORT or short in DIS_SHORT
 
 
-def parse_att(att: bytes, state: dict) -> None:
+def parse_att(att: bytes, state: dict, connection_handle: int) -> None:
     if not att:
         return
     state["att"] += 1
@@ -241,15 +241,42 @@ def parse_att(att: bytes, state: dict) -> None:
     uuid = None
     value_len = None
     if opcode == 0x01 and len(att) >= 5:
-        handle = u16le(att, 1)
-    elif opcode in (0x04, 0x06, 0x08, 0x10) and len(att) >= 5:
+        handle = u16le(att, 2)
+        if att[1] == 0x08:
+            state["pending_read_by_type"].pop(connection_handle, None)
+        state["pending_reads"].pop(connection_handle, None)
+    elif opcode in (0x04, 0x06, 0x10) and len(att) >= 5:
         handle = u16le(att, 1)
         rem = att[5:]
         if len(rem) == 2:
             uuid = f"{u16le(rem, 0):04X}"
         elif len(rem) == 16:
             uuid = uuid128(rem, 0)
+    elif opcode == 0x08 and len(att) >= 5:
+        handle = u16le(att, 1)
+        rem = att[5:]
+        if len(rem) == 2:
+            uuid = f"{u16le(rem, 0):04X}"
+        elif len(rem) == 16:
+            uuid = uuid128(rem, 0)
+        if uuid:
+            state["pending_read_by_type"][connection_handle] = uuid
+    elif opcode == 0x05 and len(att) >= 2:
+        uuid_len = 2 if att[1] == 0x01 else 16
+        i = 2
+        while i + 2 + uuid_len <= len(att):
+            handle = u16le(att, i)
+            uuid = f"{u16le(att, i + 2):04X}" if uuid_len == 2 else uuid128(att, i + 2)
+            state["characteristic_uuids"].setdefault(connection_handle, {})[handle] = uuid
+            state["service_uuids"].add(uuid)
+            i += 2 + uuid_len
     elif opcode in (0x09, 0x11) and len(att) >= 2:
+        requested_type = (
+            state["pending_read_by_type"].pop(connection_handle, None)
+            if opcode == 0x09
+            else None
+        )
+        is_characteristic_declaration = requested_type == "2803"
         pair_len = att[1]
         i = 2
         while pair_len >= 2 and i + pair_len <= len(att):
@@ -260,43 +287,55 @@ def parse_att(att: bytes, state: dict) -> None:
                 uuid = f"{u16le(value, 2):04X}"
             elif opcode == 0x11 and len(value) == 18:
                 uuid = uuid128(value, 2)
-            elif len(value) == 2:
-                uuid = f"{u16le(value, 0):04X}"
-            elif len(value) == 16:
-                uuid = uuid128(value, 0)
-            elif opcode == 0x09 and len(value) >= 5:
+            elif is_characteristic_declaration and len(value) >= 5:
                 char_uuid = value[3:]
                 if len(char_uuid) == 2:
                     uuid = f"{u16le(char_uuid, 0):04X}"
                 elif len(char_uuid) == 16:
                     uuid = uuid128(char_uuid, 0)
+                if uuid:
+                    value_handle = u16le(value, 1)
+                    state["characteristic_uuids"].setdefault(connection_handle, {})[
+                        value_handle
+                    ] = uuid
+            elif opcode == 0x09:
+                uuid = requested_type
             if uuid:
                 state["service_uuids"].add(uuid)
             i += pair_len
     elif opcode in (0x0A, 0x0C) and len(att) >= 3:
         handle = u16le(att, 1)
+        state["pending_reads"][connection_handle] = handle
+        uuid = state["characteristic_uuids"].get(connection_handle, {}).get(handle)
     elif opcode in (0x0B, 0x0D):
         value = att[1:]
         value_len = len(value)
-        last_uuid = None
-        for op in reversed(state["att_ops"]):
-            if op.get("uuid"):
-                last_uuid = op["uuid"]
-                break
-        matches = payload_looks_like_address(value, state["peer"])
-        mac_str = looks_like_mac_string(value)
-        if is_dis(last_uuid) and (len(value) == 6 or mac_str or matches):
+        handle = state["pending_reads"].pop(connection_handle, None)
+        uuid = state["characteristic_uuids"].get(connection_handle, {}).get(handle)
+        peer = state["connection_peers"].get(connection_handle)
+        matches = payload_looks_like_address(value, peer)
+        parsed_text = textual_address(value)
+        textual_matches = bool(peer and parsed_text in (peer, peer[::-1]))
+        if uuid and is_dis(uuid) and (matches or textual_matches):
             state["six_dis"] = True
-        elif matches or mac_str:
+        elif uuid and (matches or textual_matches):
             state["six_other"] = True
-    elif opcode in (0x12, 0x16, 0x52):
+    elif opcode in (0x12, 0x52):
         if len(att) >= 3:
             handle = u16le(att, 1)
             value_len = len(att) - 3
-        state["notes"].append("Write/prepare ATT PDU omitted (possible auth); length only.")
+            uuid = state["characteristic_uuids"].get(connection_handle, {}).get(handle)
+        state["notes"].append("Write ATT PDU omitted (possible auth); length only.")
+    elif opcode in (0x16, 0x17):
+        if len(att) >= 5:
+            handle = u16le(att, 1)
+            value_len = len(att) - 5
+            uuid = state["characteristic_uuids"].get(connection_handle, {}).get(handle)
+        state["notes"].append("Prepare-write ATT PDU omitted (possible auth); length only.")
     elif opcode in (0x1B, 0x1D) and len(att) >= 3:
         handle = u16le(att, 1)
         value_len = len(att) - 3
+        uuid = state["characteristic_uuids"].get(connection_handle, {}).get(handle)
     else:
         if len(att) >= 3:
             handle = u16le(att, 1)
@@ -314,32 +353,42 @@ def parse_att(att: bytes, state: dict) -> None:
     )
 
 
-def parse_acl(body: bytes, state: dict) -> None:
+def parse_acl(body: bytes, direction: int, state: dict) -> None:
     if len(body) < 4:
         return
     handle_flags = u16le(body, 0)
     handle = handle_flags & 0x0FFF
+    key = (direction & 1, handle)
     pb = (handle_flags >> 12) & 0x3
     data_len = u16le(body, 2)
     if len(body) < 4 + data_len:
         return
     chunk = body[4 : 4 + data_len]
-    buf = state["acl"].get(handle, b"")
+    buf = state["acl"].get(key, b"")
     if pb == 0x01:
         buf = buf + chunk
     else:
         buf = chunk
-    state["acl"][handle] = buf
+    state["acl"][key] = buf
     if len(buf) < 4:
         return
     l2cap_len = u16le(buf, 0)
     cid = u16le(buf, 2)
     if len(buf) < 4 + l2cap_len:
         return
-    state["acl"].pop(handle, None)
+    state["acl"].pop(key, None)
     if cid != 0x0004:
         return
-    parse_att(buf[4 : 4 + l2cap_len], state)
+    parse_att(buf[4 : 4 + l2cap_len], state, handle)
+
+
+def clear_connection_state(handle: int, state: dict) -> None:
+    state["connection_peers"].pop(handle, None)
+    state["characteristic_uuids"].pop(handle, None)
+    state["pending_reads"].pop(handle, None)
+    state["pending_read_by_type"].pop(handle, None)
+    state["acl"].pop((0, handle), None)
+    state["acl"].pop((1, handle), None)
 
 
 def split_h4(packet: bytes) -> tuple[str, bytes] | None:
@@ -348,7 +397,7 @@ def split_h4(packet: bytes) -> tuple[str, bytes] | None:
     kind = {0x01: "command", 0x02: "acl", 0x03: "sco", 0x04: "event", 0x05: "iso"}.get(packet[0])
     if kind:
         return kind, packet[1:]
-    if packet[0] in (0x3E, 0x0E, 0x13):
+    if packet[0] in (0x05, 0x3E, 0x0E, 0x13):
         return "event", packet
     return None
 
@@ -356,7 +405,11 @@ def split_h4(packet: bytes) -> tuple[str, bytes] | None:
 def summarize(data: bytes) -> dict:
     if len(data) < 16 or data[:8] != b"btsnoop\0":
         raise ValueError("invalid BTSnoop magic")
-    _version, _datalink = struct.unpack(">II", data[8:16])
+    version, datalink = struct.unpack(">II", data[8:16])
+    if version != 1:
+        raise ValueError(f"unsupported BTSnoop version: {version}")
+    if datalink != 1002:
+        raise ValueError(f"unsupported BTSnoop datalink: {datalink}")
     offset = 16
     state = {
         "records": 0,
@@ -369,11 +422,14 @@ def summarize(data: bytes) -> dict:
         "mfg_lengths": [],
         "att_ops": [],
         "hci_peer": False,
-        "six_adv": False,
-        "six_scan": False,
         "six_dis": False,
         "six_other": False,
-        "peer": None,
+        "advertisement_matches": {},
+        "connection_peers": {},
+        "all_connected_peers": set(),
+        "characteristic_uuids": {},
+        "pending_reads": {},
+        "pending_read_by_type": {},
         "acl": {},
         "notes": [
             "Payloads, full MACs, and serials omitted.",
@@ -381,9 +437,9 @@ def summarize(data: bytes) -> dict:
         ],
     }
     while offset + 24 <= len(data):
-        original, included, _flags, _drops = struct.unpack(">IIII", data[offset : offset + 16])
+        original, included, flags, _drops = struct.unpack(">IIII", data[offset : offset + 16])
         offset += 24
-        if included < 0 or offset + included > len(data):
+        if included > original or offset + included > len(data):
             raise ValueError("truncated BTSnoop record")
         packet = data[offset : offset + included]
         offset += included
@@ -396,7 +452,16 @@ def summarize(data: bytes) -> dict:
         if kind == "event":
             parse_event(body, state)
         elif kind == "acl":
-            parse_acl(body, state)
+            parse_acl(body, flags & 1, state)
+    if offset != len(data):
+        raise ValueError("truncated BTSnoop record")
+    connected_matches = [
+        match
+        for peer, match in state["advertisement_matches"].items()
+        if peer in state["all_connected_peers"]
+    ]
+    state["six_adv"] = any(match["advertisement"] for match in connected_matches)
+    state["six_scan"] = any(match["scanResponse"] for match in connected_matches)
     if state["six_adv"] or state["six_scan"]:
         source = "advertisement"
     elif state["six_dis"]:
@@ -444,7 +509,12 @@ def assert_redacted(summary: dict, forbidden: list[bytes]) -> None:
         raise AssertionError("cipher hypothesis must stay unknownUntilCapture")
 
 
-def build_synthetic() -> bytes:
+def build_synthetic(
+    *,
+    include_peer_in_advertisement: bool = True,
+    serial_payload: bytes | None = None,
+    include_declaration_request: bool = True,
+) -> bytes:
     """Tiny synthetic capture. Not a real sensor dump."""
     peer = bytes([0x01, 0x23, 0x45, 0x67, 0x89, 0xAB])
     name = b"SyntheticLab"
@@ -455,14 +525,12 @@ def build_synthetic() -> bytes:
     ad += bytes([1 + len(name), 0x09]) + name
     ad += bytes([3, 0x03, 0x0A, 0x18])
     ad += bytes([5, 0xFF, 0x00, 0x00, 0xDE, 0xAD])
-    ad += bytes([1 + 2 + len(peer), 0xFF, 0xFF, 0xFF]) + peer
+    if include_peer_in_advertisement:
+        ad += bytes([1 + 2 + len(peer), 0xFF, 0xFF, 0xFF]) + peer
     params = bytes([0x02, 0x01, 0x00, 0x00]) + peer + bytes([len(ad)]) + bytes(ad) + bytes([0xC8])
     event = bytes([0x3E, len(params)]) + params
     h4_event = bytes([0x04]) + event
 
-    conn_params = bytes(
-        [0x01, 0x00, 0x40, 0x00, 0x00, 0x00]
-    ) + peer + bytes([0x06, 0x00, 0x00, 0x00, 0x48, 0x00, 0x01])
     # subevent 0x01, then status,handle,role,peerType,addr,interval,latency,timeout,accuracy
     conn_body = bytes([0x01]) + bytes([0x00, 0x40, 0x00, 0x00, 0x00]) + peer + bytes(
         [0x06, 0x00, 0x00, 0x00, 0x48, 0x00, 0x01]
@@ -477,20 +545,59 @@ def build_synthetic() -> bytes:
         return bytes([0x02]) + hdr + l2cap
 
     read_group = bytes([0x11, 0x06, 0x01, 0x00, 0x10, 0x00, 0x0A, 0x18])
+    declaration_req = bytes([0x08, 0x01, 0x00, 0xFF, 0xFF, 0x03, 0x28])
+    declarations = bytes(
+        [
+            0x09,
+            0x07,
+            0x02,
+            0x00,
+            0x02,
+            0x03,
+            0x00,
+            0x29,
+            0x2A,
+            0x04,
+            0x00,
+            0x02,
+            0x05,
+            0x00,
+            0x25,
+            0x2A,
+            0x06,
+            0x00,
+            0x10,
+            0x31,
+            0x00,
+            0x31,
+            0xFF,
+            0x07,
+            0x00,
+            0x0C,
+            0x32,
+            0x00,
+            0x32,
+            0xFF,
+        ]
+    )
     read_req = bytes([0x0A, 0x03, 0x00])
     read_resp = bytes([0x0B]) + b"Acme"
     write_req = bytes([0x12, 0x32, 0x00]) + bytes([0xC0, 0xFF, 0xEE, 0x11, 0x22, 0x33])
-    serial_req = bytes([0x0A, 0x25, 0x2A])
-    serial_resp = bytes([0x0B]) + peer
+    notification = bytes([0x1B, 0x31, 0x00]) + bytes([0xBA, 0xAD, 0xF0, 0x0D])
+    serial_req = bytes([0x0A, 0x05, 0x00])
+    serial_resp = bytes([0x0B]) + (serial_payload if serial_payload is not None else peer)
 
     packets = [
         h4_event,
         h4_conn,
         acl_att(read_group),
+        *([acl_att(declaration_req)] if include_declaration_request else []),
+        acl_att(declarations),
         acl_att(read_req),
         acl_att(read_resp),
         acl_att(serial_req),
         acl_att(serial_resp),
+        acl_att(notification),
         acl_att(write_req),
     ]
     out = bytearray(b"btsnoop\0")
@@ -555,7 +662,7 @@ def self_test() -> int:
         return 1
     if summary["cipherHypothesis"] != CIPHER_HYPOTHESIS:
         return 1
-    if summary["advertisedNames"] != ["SyntheticLab"]:
+    if summary["advertisedNames"] != ["redacted-name(len:12)"]:
         print("self-test failed: name", summary["advertisedNames"], file=sys.stderr)
         return 1
     if "180A" not in summary["advertisedServiceUUIDs"]:
@@ -566,6 +673,55 @@ def self_test() -> int:
         return 1
     if summary["sixByteAddressSource"] != "advertisement":
         print("self-test failed: source", summary["sixByteAddressSource"], file=sys.stderr)
+        return 1
+    ff31 = next(
+        (op for op in summary["attOperations"] if op["opcodeName"] == "handleValueNotification"),
+        None,
+    )
+    ff32 = next(
+        (op for op in summary["attOperations"] if op["opcodeName"] == "writeRequest"),
+        None,
+    )
+    if not ff31 or ff31["uuid"] != "FF31" or ff31["valueByteCount"] != 4:
+        print("self-test failed: notification UUID correlation", ff31, file=sys.stderr)
+        return 1
+    if not ff32 or ff32["uuid"] != "FF32" or ff32["valueByteCount"] != 6:
+        print("self-test failed: write UUID correlation", ff32, file=sys.stderr)
+        return 1
+    false_length_summary = summarize(
+        build_synthetic(include_peer_in_advertisement=False, serial_payload=b"ABCDEF")
+    )
+    if false_length_summary["sixByteAddressSource"] != "notFound":
+        print(
+            "self-test failed: arbitrary six-byte value treated as address",
+            false_length_summary["sixByteAddressSource"],
+            file=sys.stderr,
+        )
+        return 1
+    uncorrelated_declaration = summarize(
+        build_synthetic(
+            include_peer_in_advertisement=False,
+            serial_payload=bytes([0x01, 0x23, 0x45, 0x67, 0x89, 0xAB]),
+            include_declaration_request=False,
+        )
+    )
+    if uncorrelated_declaration["sixByteAddressSource"] != "notFound":
+        print(
+            "self-test failed: uncorrelated declaration forged a source",
+            uncorrelated_declaration["sixByteAddressSource"],
+            file=sys.stderr,
+        )
+        return 1
+    unsupported_version = bytearray(data)
+    unsupported_version[8:12] = struct.pack(">I", 2)
+    try:
+        summarize(bytes(unsupported_version))
+    except ValueError as exc:
+        if "unsupported BTSnoop version" not in str(exc):
+            print("self-test failed: wrong version error", exc, file=sys.stderr)
+            return 1
+    else:
+        print("self-test failed: unsupported version accepted", file=sys.stderr)
         return 1
     print("self-test passed")
     return 0

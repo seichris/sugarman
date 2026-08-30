@@ -31,6 +31,7 @@ public enum SampleQuality: String, Sendable, Codable, Equatable, CaseIterable {
 }
 
 public enum SampleSource: String, Sendable, Codable, Equatable, CaseIterable {
+    case unknown
     case live
     case backfill
 }

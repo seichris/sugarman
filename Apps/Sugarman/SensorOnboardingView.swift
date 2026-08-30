@@ -239,6 +239,8 @@ struct SensorOnboardingView: View {
             var serial = "…"
             var region = String(localized: "sensor.unknown_region")
             var confidence = EvidenceConfidence.unsupported
+            var protocolVariant = ProtocolVariant.unknown
+            var evidenceFormats: [String] = []
 
             if !package.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 let parsed = try packageParser.parse(package)
@@ -248,6 +250,8 @@ struct SensorOnboardingView: View {
                 serial = parsed.redactedSerial
                 region = parsed.regionHypothesis
                 confidence = parsed.confidence
+                protocolVariant = parsed.protocolHypothesis
+                evidenceFormats.append(parsed.formatName)
             }
             if !ndef.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 let parsed = try ndefParser.parse(ndef)
@@ -256,6 +260,8 @@ struct SensorOnboardingView: View {
                 serial = parsed.redactedSerial ?? serial
                 region = parsed.regionHypothesis
                 confidence = parsed.confidence
+                protocolVariant = parsed.protocolHypothesis
+                evidenceFormats.append(parsed.formatName)
             }
 
             parsedIdentity = SensorIdentity(
@@ -263,8 +269,8 @@ struct SensorOnboardingView: View {
                 sku: sku,
                 gtin: gtin,
                 redactedSerial: serial,
-                protocolVariant: .unknown,
-                classificationEvidenceRevision: "synthetic-demo"
+                protocolVariant: protocolVariant,
+                classificationEvidenceRevision: evidenceFormats.joined(separator: "+")
             )
             parsedRegion = region
             parsedConfidence = confidence.rawValue
@@ -278,7 +284,17 @@ struct SensorOnboardingView: View {
     private func importImageData(_ data: Data) async {
         do {
             let payloads = try await imageScanner.payloads(fromImageData: data)
-            guard let first = payloads.first else {
+            var firstParseable: String?
+            for payload in payloads {
+                do {
+                    _ = try packageParser.parse(payload)
+                    firstParseable = payload
+                    break
+                } catch {
+                    continue
+                }
+            }
+            guard let first = firstParseable else {
                 parseMessage = String(localized: "sensor.no_barcode")
                 parsedIdentity = nil
                 return
@@ -322,9 +338,13 @@ struct SensorOnboardingView: View {
 
     private func storeParsedIdentity() async {
         guard let parsedIdentity else { return }
-        await model.confirmIdentity(parsedIdentity)
-        parseMessage = String(localized: "sensor.stored_ok")
-        self.parsedIdentity = nil
+        do {
+            try await model.confirmIdentity(parsedIdentity)
+            parseMessage = String(localized: "sensor.stored_ok")
+            self.parsedIdentity = nil
+        } catch {
+            parseMessage = error.localizedDescription
+        }
     }
 }
 
