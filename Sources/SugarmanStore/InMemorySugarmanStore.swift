@@ -14,6 +14,45 @@ public actor InMemorySugarmanStore: SugarmanStoring {
 
     public init() {}
 
+    public func prepareHistoryRequest(sessionID: UUID, startingAt: UInt32) async throws {
+        guard var session = sessions[sessionID] else { throw StoreError.notFound }
+        if let committed = session.lastCommittedIndex, startingAt != committed {
+            throw StoreError.historyRequestWouldSkipCommittedCursor
+        }
+        if session.lastCommittedIndex == nil,
+           let prepared = session.lastRequestedIndex,
+           startingAt != prepared {
+            throw StoreError.historyRequestWouldSkipCommittedCursor
+        }
+        session.lastRequestedIndex = startingAt
+        sessions[sessionID] = session
+    }
+
+    public func commitSamples(
+        _ incomingSamples: [GlucoseSample],
+        sessionID: UUID
+    ) async throws -> SampleBatchCommitResult {
+        guard var session = sessions[sessionID] else { throw StoreError.notFound }
+        let existing = samples.values.filter { $0.sessionID == sessionID }
+        let plan = try SampleBatchCommitPlanner.makePlan(
+            session: session,
+            existingSamples: existing,
+            incomingSamples: incomingSamples
+        )
+
+        // All validation happens before this copy-on-commit mutation so a
+        // conflicting duplicate cannot leave a partial batch behind.
+        var nextSamples = samples
+        for sample in plan.samplesToInsert {
+            nextSamples[sample.id] = sample
+        }
+        session.lastReceivedIndex = plan.result.lastReceivedIndex
+        session.lastCommittedIndex = plan.result.lastCommittedIndex
+        samples = nextSamples
+        sessions[sessionID] = session
+        return plan.result
+    }
+
     public func insertSample(_ sample: GlucoseSample) async throws {
         let key = sample.id
         if samples[key] != nil {

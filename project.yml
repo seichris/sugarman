@@ -55,6 +55,8 @@ targets:
       properties:
         com.apple.developer.nfc.readersession.formats:
           - NDEF
+        com.apple.security.application-groups:
+          - group.app.sugarman.sensor-owner
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.sugarman.ios
@@ -86,6 +88,8 @@ targets:
         product: Integrations
       - package: Sugarman
         product: SugarmanDiagnostics
+      - package: Sugarman
+        product: SensorOwnership
     scheme:
       testTargets: []
   SugarmanProbe:
@@ -108,6 +112,11 @@ targets:
         NSBluetoothAlwaysUsageDescription: Sugarman Probe performs one explicitly confirmed developer handover attempt with an owned, already-active GS3 sensor.
         NSBluetoothPeripheralUsageDescription: Sugarman Probe performs one explicitly confirmed developer handover attempt with an owned, already-active GS3 sensor.
         LSSupportsOpeningDocumentsInPlace: true
+    entitlements:
+      path: Apps/SugarmanProbe/SugarmanProbe.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.app.sugarman.sensor-owner
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.sugarman.probe
@@ -122,5 +131,7 @@ targets:
         product: GS3DeveloperProbe
       - package: Sugarman
         product: GS3Protocol
+      - package: Sugarman
+        product: SensorOwnership
     scheme:
       testTargets: []

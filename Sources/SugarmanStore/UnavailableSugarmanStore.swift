@@ -11,6 +11,15 @@ public struct UnavailableSugarmanStore: SugarmanStoring {
 
     private func unavailable() throws -> Never { throw StoreError.persistenceUnavailable }
 
+    public func prepareHistoryRequest(sessionID _: UUID, startingAt _: UInt32) async throws {
+        try unavailable()
+    }
+    public func commitSamples(
+        _: [GlucoseSample],
+        sessionID _: UUID
+    ) async throws -> SampleBatchCommitResult {
+        try unavailable()
+    }
     public func insertSample(_: GlucoseSample) async throws { try unavailable() }
     public func sample(sessionID _: UUID, sensorIndex _: UInt32) async throws -> GlucoseSample? { try unavailable() }
     public func latestSample(sessionID _: UUID) async throws -> GlucoseSample? { try unavailable() }

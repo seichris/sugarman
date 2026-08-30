@@ -13,6 +13,10 @@ public enum StoreError: Error, Sendable, Equatable {
     case notFound
     case persistenceUnavailable
     case invalidSensorIndex(Int64)
+    case sampleSessionMismatch
+    case conflictingSample(SampleKey)
+    case historyRequestNotPrepared
+    case historyRequestWouldSkipCommittedCursor
 }
 
 extension StoreError: LocalizedError {
@@ -34,11 +38,32 @@ extension StoreError: LocalizedError {
             "Persistent local storage is unavailable. No data will be saved until this is resolved."
         case .invalidSensorIndex(let value):
             "Stored sensor index \(value) is invalid."
+        case .sampleSessionMismatch:
+            "A glucose batch contained a sample from a different sensor session."
+        case .conflictingSample:
+            "Two glucose samples with the same durable key disagree."
+        case .historyRequestNotPrepared:
+            "The history request was not durably prepared before samples arrived."
+        case .historyRequestWouldSkipCommittedCursor:
+            "The history request would skip the durable backfill cursor."
         }
     }
 }
 
 public protocol SugarmanStoring: Sendable {
+    /// Durably records the inclusive history-request start before a request can
+    /// be sent. Once prepared, a reconnect may repeat that start but may not
+    /// advance past the contiguous committed cursor.
+    func prepareHistoryRequest(sessionID: UUID, startingAt: UInt32) async throws
+
+    /// Atomically inserts a decoded batch and advances the session's received
+    /// and contiguous committed cursors. Existing equivalent keys are counted
+    /// as duplicates; conflicting values fail closed without a partial commit.
+    func commitSamples(
+        _ samples: [GlucoseSample],
+        sessionID: UUID
+    ) async throws -> SampleBatchCommitResult
+
     func insertSample(_ sample: GlucoseSample) async throws
     func sample(sessionID: UUID, sensorIndex: UInt32) async throws -> GlucoseSample?
     func latestSample(sessionID: UUID) async throws -> GlucoseSample?

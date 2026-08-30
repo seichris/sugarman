@@ -4,6 +4,7 @@
 import Foundation
 import GS3Transport
 import Observation
+import SensorOwnership
 import SugarmanDiagnostics
 
 enum ProbePlatform: Sendable {
@@ -35,6 +36,7 @@ final class DiagnosticProbeSession {
     #endif
     private var pollTask: Task<Void, Never>?
     private var activeConnectionOperationID: UUID?
+    private var ownerLease: SensorOwnerLease?
 
     var canEnable: Bool { ProbePlatform.supportsLiveCoreBluetooth }
 
@@ -66,6 +68,13 @@ final class DiagnosticProbeSession {
         }
 
         #if os(iOS) && !targetEnvironment(simulator) && canImport(CoreBluetooth)
+        do {
+            ownerLease = try SharedSensorOwnerLease.acquire()
+        } catch {
+            isEnabled = false
+            status = error.localizedDescription
+            return
+        }
         let runtime = CoreBluetoothRuntime()
         runtime.onDiscover = { [weak self] snapshot in
             Task { @MainActor in
@@ -175,6 +184,8 @@ final class DiagnosticProbeSession {
         selectedPeripheralID = nil
         gattMap = nil
         gattMapFileURL = nil
+        ownerLease?.release()
+        ownerLease = nil
     }
 
     private func upsert(_ snapshot: AdvertisementSnapshot) {

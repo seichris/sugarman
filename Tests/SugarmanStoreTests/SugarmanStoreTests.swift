@@ -100,6 +100,12 @@ struct SugarmanStoreTests {
         await #expect(throws: StoreError.persistenceUnavailable) {
             try await store.insertFueling(FuelingEvent(timestamp: Date(), label: "gel"))
         }
+        await #expect(throws: StoreError.persistenceUnavailable) {
+            try await store.prepareHistoryRequest(sessionID: UUID(), startingAt: 1)
+        }
+        await #expect(throws: StoreError.persistenceUnavailable) {
+            try await store.commitSamples([], sessionID: UUID())
+        }
     }
 
     @Test func fuelingPersistenceUniquenessAndDelete() async throws {
@@ -185,6 +191,112 @@ struct SugarmanStoreTests {
         #expect(try await store.allSamples().allSatisfy { $0.decoderRevision == "synthetic-demo" })
         await #expect(throws: StoreError.duplicateSession(fixture.session.id)) {
             try await store.insertSession(fixture.session)
+        }
+    }
+
+    @Test func atomicBatchCommitDeduplicatesAndPinsAContiguousGap() async throws {
+        let store = InMemorySugarmanStore()
+        let sessionID = UUID()
+        try await store.insertSession(SensorSession(id: sessionID, sensorID: UUID()))
+        await #expect(throws: StoreError.historyRequestNotPrepared) {
+            try await store.commitSamples([], sessionID: sessionID)
+        }
+        try await store.prepareHistoryRequest(sessionID: sessionID, startingAt: 10)
+
+        let first = try await store.commitSamples(
+            [
+                makeSample(session: sessionID, index: 10),
+                makeSample(session: sessionID, index: 12),
+            ],
+            sessionID: sessionID
+        )
+        #expect(first.insertedCount == 2)
+        #expect(first.duplicateCount == 0)
+        #expect(first.gapRangeCount == 1)
+        #expect(first.lastReceivedIndex == 12)
+        #expect(first.lastCommittedIndex == 10)
+        #expect(try await store.session(id: sessionID)?.lastCommittedIndex == 10)
+
+        let emptyRetry = try await store.commitSamples([], sessionID: sessionID)
+        #expect(emptyRetry.insertedCount == 0)
+        #expect(emptyRetry.duplicateCount == 0)
+        #expect(emptyRetry.gapRangeCount == 1)
+        #expect(emptyRetry.lastReceivedIndex == 12)
+        #expect(emptyRetry.lastCommittedIndex == 10)
+
+        // The next request overlaps the committed cursor. Existing records are
+        // ignored only when their decoded sensor content agrees.
+        try await store.prepareHistoryRequest(sessionID: sessionID, startingAt: 10)
+        var semanticDuplicate = makeSample(session: sessionID, index: 10)
+        semanticDuplicate.receiptTimestamp = .distantFuture
+        semanticDuplicate.source = .live
+        semanticDuplicate.decoderRevision = "synthetic-next-revision"
+        let repaired = try await store.commitSamples(
+            [
+                semanticDuplicate,
+                makeSample(session: sessionID, index: 11),
+            ],
+            sessionID: sessionID
+        )
+        #expect(repaired.insertedCount == 1)
+        #expect(repaired.duplicateCount == 1)
+        #expect(repaired.gapRangeCount == 0)
+        #expect(repaired.lastCommittedIndex == 12)
+        #expect(try await store.samples(sessionID: sessionID).map(\.sensorIndex) == [10, 11, 12])
+    }
+
+    @Test func conflictingDuplicateRejectsTheWholeBatchWithoutCursorAdvance() async throws {
+        let store = InMemorySugarmanStore()
+        let sessionID = UUID()
+        try await store.insertSession(SensorSession(id: sessionID, sensorID: UUID()))
+        try await store.prepareHistoryRequest(sessionID: sessionID, startingAt: 5)
+        let original = makeSample(session: sessionID, index: 5)
+        _ = try await store.commitSamples([original], sessionID: sessionID)
+
+        var conflict = original
+        conflict.milligramsPerDeciliter = 200
+        await #expect(throws: StoreError.conflictingSample(original.id)) {
+            try await store.commitSamples(
+                [makeSample(session: sessionID, index: 6), conflict],
+                sessionID: sessionID
+            )
+        }
+        #expect(try await store.samples(sessionID: sessionID) == [original])
+        #expect(try await store.session(id: sessionID)?.lastReceivedIndex == 5)
+        #expect(try await store.session(id: sessionID)?.lastCommittedIndex == 5)
+    }
+
+    @Test func historyPreparationCannotMovePastDurableState() async throws {
+        let store = InMemorySugarmanStore()
+        let sessionID = UUID()
+        try await store.insertSession(SensorSession(id: sessionID, sensorID: UUID()))
+        try await store.prepareHistoryRequest(sessionID: sessionID, startingAt: 100)
+        await #expect(throws: StoreError.historyRequestWouldSkipCommittedCursor) {
+            try await store.prepareHistoryRequest(sessionID: sessionID, startingAt: 101)
+        }
+        _ = try await store.commitSamples(
+            [makeSample(session: sessionID, index: 100)],
+            sessionID: sessionID
+        )
+        await #expect(throws: StoreError.historyRequestWouldSkipCommittedCursor) {
+            try await store.prepareHistoryRequest(sessionID: sessionID, startingAt: 101)
+        }
+        try await store.prepareHistoryRequest(sessionID: sessionID, startingAt: 100)
+    }
+
+    @Test func batchCommitDiagnosticsDoNotPrintSensorIndexes() {
+        let result = SampleBatchCommitResult(
+            insertedCount: 2,
+            duplicateCount: 1,
+            gapRangeCount: 1,
+            lastReceivedIndex: 424_242,
+            lastCommittedIndex: 424_200
+        )
+        var dumped = ""
+        dump(result, to: &dumped)
+        for text in [result.description, String(reflecting: result), dumped] {
+            #expect(!text.contains("424242"))
+            #expect(!text.contains("424200"))
         }
     }
 }
@@ -371,6 +483,51 @@ struct SwiftDataSugarmanStoreTests {
         let record = GlucoseSampleRecord(from: makeSample(session: UUID(), index: 1))
         record.sourceRaw = "future-unknown-source"
         #expect(try record.domainValue().source == .unknown)
+    }
+
+    @Test func swiftDataBatchCommitIsAtomicDeduplicatingAndGapAware() async throws {
+        guard #available(iOS 26, macOS 26, *) else { return }
+        let container = try SwiftDataSugarmanStore.makeContainer(inMemory: true)
+        let store = SwiftDataSugarmanStore(modelContainer: container)
+        let sessionID = UUID()
+        try await store.insertSession(SensorSession(id: sessionID, sensorID: UUID()))
+        try await store.prepareHistoryRequest(sessionID: sessionID, startingAt: 20)
+
+        let first = try await store.commitSamples(
+            [
+                makeSample(session: sessionID, index: 20),
+                makeSample(session: sessionID, index: 22),
+            ],
+            sessionID: sessionID
+        )
+        #expect(first.gapRangeCount == 1)
+        #expect(first.lastCommittedIndex == 20)
+
+        try await store.prepareHistoryRequest(sessionID: sessionID, startingAt: 20)
+        let repaired = try await store.commitSamples(
+            [
+                makeSample(session: sessionID, index: 20),
+                makeSample(session: sessionID, index: 21),
+                makeSample(session: sessionID, index: 22),
+            ],
+            sessionID: sessionID
+        )
+        #expect(repaired.insertedCount == 1)
+        #expect(repaired.duplicateCount == 2)
+        #expect(repaired.gapRangeCount == 0)
+        #expect(repaired.lastCommittedIndex == 22)
+        #expect(try await store.samples(sessionID: sessionID).map(\.sensorIndex) == [20, 21, 22])
+
+        var conflict = makeSample(session: sessionID, index: 22)
+        conflict.milligramsPerDeciliter = 250
+        await #expect(throws: StoreError.conflictingSample(conflict.id)) {
+            try await store.commitSamples(
+                [makeSample(session: sessionID, index: 23), conflict],
+                sessionID: sessionID
+            )
+        }
+        #expect(try await store.sample(sessionID: sessionID, sensorIndex: 23) == nil)
+        #expect(try await store.session(id: sessionID)?.lastCommittedIndex == 22)
     }
 }
 #endif
