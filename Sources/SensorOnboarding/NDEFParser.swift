@@ -5,6 +5,9 @@ import Foundation
 import SugarmanDomain
 
 public struct NDEFParseResult: Sendable, Equatable {
+    /// Parsed records suitable for presentation. Owned-hardware parsers redact
+    /// unique identifiers before returning them; raw reader records must remain
+    /// transient and must not be logged or persisted as diagnostic evidence.
     public var textRecords: [String]
     public var productName: String?
     public var sku: String?
@@ -68,12 +71,69 @@ public struct BoundedNDEFParser: NDEFParsing {
             throw OnboardingError.payloadTooLarge
         }
 
+        let nonEmptyRecords = trimmedRecords.filter { !$0.isEmpty }
+        let observedGS3Records = nonEmptyRecords.filter { $0.hasPrefix("GJ,") }
+        if !observedGS3Records.isEmpty {
+            guard nonEmptyRecords.count == 1, observedGS3Records.count == 1 else {
+                throw OnboardingError.unsupportedFormat(
+                    reason: "ambiguous GS3 NDEF message; expected one text record"
+                )
+            }
+            return try parseObservedGS3(observedGS3Records[0])
+        }
+
         if let synthetic = trimmedRecords.first(where: { $0.hasPrefix("SUGARMAN-SYNTHETIC-NDEF") }) {
             return try parseSynthetic(synthetic, allRecords: trimmedRecords)
         }
 
         throw OnboardingError.unsupportedFormat(
-            reason: "owned-tag NDEF layout is not yet physically validated"
+            reason: "no supported owned-tag NDEF profile"
+        )
+    }
+
+    /// Parses the exact four-field text layout observed on one owned, active
+    /// Mainland China GS3. The six-character link identifier is validated only
+    /// as an input-shape gate; it is deliberately not returned or persisted.
+    private func parseObservedGS3(_ payload: String) throws -> NDEFParseResult {
+        let fields = payload.split(separator: ",", omittingEmptySubsequences: false)
+        guard fields.count == 4, fields[0] == "GJ" else {
+            throw malformedObservedGS3()
+        }
+
+        let serial = String(fields[1])
+        let declaredLinkLength = String(fields[2])
+        let linkIdentifier = String(fields[3])
+        guard serial.utf8.count == 15,
+              isUppercaseASCIIAlphaNumeric(serial),
+              declaredLinkLength == "6",
+              linkIdentifier.utf8.count == 6,
+              isUppercaseASCIIAlphaNumeric(linkIdentifier) else {
+            throw malformedObservedGS3()
+        }
+
+        let redactedSerial = SerialRedaction.redact(serial)
+        return NDEFParseResult(
+            textRecords: ["GJ,\(redactedSerial),6,…"],
+            productName: "GS3",
+            sku: nil,
+            redactedSerial: redactedSerial,
+            regionHypothesis: "Mainland China test context (region is not encoded by the observed NDEF record)",
+            protocolHypothesis: .unknown,
+            confidence: .high,
+            formatName: "sibionics-gs3-gj-ndef-v1",
+            isSynthetic: false
+        )
+    }
+
+    private func isUppercaseASCIIAlphaNumeric(_ value: String) -> Bool {
+        !value.isEmpty && value.utf8.allSatisfy { byte in
+            (48...57).contains(byte) || (65...90).contains(byte)
+        }
+    }
+
+    private func malformedObservedGS3() -> OnboardingError {
+        .unsupportedFormat(
+            reason: "malformed GS3 GJ NDEF record; expected four bounded ASCII fields"
         )
     }
 

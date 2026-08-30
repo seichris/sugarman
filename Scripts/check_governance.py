@@ -195,26 +195,36 @@ def check_binaries_and_resources() -> None:
 
 
 def check_no_write_api() -> None:
-    forbidden = re.compile(
-        r"\b(writeValue\s*\(|writeCharacteristic\s*\(|func\s+write[A-Z])"
+    characteristic_write = re.compile(
+        r"\b(writeValue\s*\(|writeCharacteristic\s*\()"
     )
+    protocol_write_function = re.compile(r"\bfunc\s+write[A-Z]")
     live_cmd = re.compile(
         r"\b(activateSensor|resetSensor|writeSecretKey|authWrite|bindAccountOnSensor)\s*\("
     )
-    for base in (
+
+    guarded_protocol_roots = {
         ROOT / "Sources/SugarmanDiagnostics",
         ROOT / "Sources/GS3Transport",
         ROOT / "Sources/GS3Protocol",
-    ):
+    }
+    for base in (ROOT / "Sources", ROOT / "Apps"):
         if not base.is_dir():
             continue
         for path in base.rglob("*.swift"):
             text = path.read_text(encoding="utf-8", errors="replace")
             rel = path.relative_to(ROOT).as_posix()
-            if forbidden.search(text):
+            if characteristic_write.search(text):
                 error(f"forbidden characteristic-write API in {rel}")
             if live_cmd.search(text):
                 error(f"live sensor command API in {rel}")
+            if "import CoreBluetooth" in text and not path.is_relative_to(
+                ROOT / "Sources/GS3Transport"
+            ):
+                error(f"CoreBluetooth must remain confined to GS3Transport: {rel}")
+            if any(path.is_relative_to(root) for root in guarded_protocol_roots):
+                if protocol_write_function.search(text):
+                    error(f"forbidden protocol write function in {rel}")
     variant_path = ROOT / "Sources/SugarmanDomain/ProtocolVariant.swift"
     variant_text = variant_path.read_text(encoding="utf-8", errors="replace")
     if re.search(r"\bcase\s+v3AES\b", variant_text):

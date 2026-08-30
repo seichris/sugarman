@@ -9,7 +9,8 @@ This policy is operational, not a legal opinion.
 - Credentials, tokens, cookies, account passwords, and Keychain dumps
 - Full UDI strings, full serial numbers, and unredacted package photographs
   that expose unique identifiers
-- Embedded key bytes, registration tokens, and cipher key material
+- Runtime/account key bytes, IVs, registration tokens, authentication IDs, and
+  other owner-specific cipher material
 - Raw BLE/HCI captures that include authentication payloads
 - LLM transcripts used as if they were implementation specifications
 
@@ -50,6 +51,12 @@ phone models and OS versions; visible firmware/hardware/manufacturer.
 
 Fixtures derived from upstream source rather than hardware must be marked
 GPL and recorded in the provenance registry.
+
+One fixed, non-owner-specific V3 protocol constant is present in the GPL source
+under the scoped approval and exact provenance recorded in
+[`V3_AUTH_SOURCE_MAP_2026-08-30.md`](V3_AUTH_SOURCE_MAP_2026-08-30.md). That
+narrow interoperability record does not permit committing runtime material or
+other keys from private evidence.
 
 ## Diagnostic captures inside the app
 

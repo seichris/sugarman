@@ -31,11 +31,15 @@ struct GS3ProtocolTests {
         let frame = EncodedFrame(bytes: [0xDE, 0xAD, 0xBE, 0xEF, 0x00])
         let described = String(describing: frame)
         let reflected = String(reflecting: frame)
+        var dumped = ""
+        dump(frame, to: &dumped)
         #expect(described == "EncodedFrame(byteCount: 5)")
         #expect(reflected == "EncodedFrame(byteCount: 5)")
         #expect(!described.contains("222"))
         #expect(!described.contains("DEAD"))
         #expect(!reflected.contains("222"))
+        #expect(!dumped.contains("222"))
+        #expect(!dumped.contains("173"))
         #expect(frame.bytes == [0xDE, 0xAD, 0xBE, 0xEF, 0x00])
     }
 
@@ -45,6 +49,12 @@ struct GS3ProtocolTests {
         let expected = bytes("69c4e0d86a7b0430d8cdb78070b4c55a")
 
         #expect(try AES128.encrypt(block: plaintext, key: key) == expected)
+        #expect(throws: GS3ProtocolError.invalidAESBlockLength(15)) {
+            try AES128.encrypt(block: [UInt8](repeating: 0, count: 15), key: key)
+        }
+        #expect(throws: GS3ProtocolError.invalidAESKeyLength(15)) {
+            try AES128.encrypt(block: plaintext, key: [UInt8](repeating: 0, count: 15))
+        }
     }
 
     @Test func aes128OFBMatchesNISTSP80038AExample() throws {
@@ -152,11 +162,30 @@ struct GS3ProtocolTests {
                 initializationVector: [UInt8](repeating: 0, count: 15)
             )
         }
+        #expect(throws: GS3ProtocolError.invalidRegistrationMarkerEncoding) {
+            try V3RegistrationEnvelopeDecoder.decode(
+                encodedHex: "26f56cdd0d7548cdaf92921619a01e9598a8f8513c9b0ec1106f88096d180448c0",
+                expectedMarker: "own\0r",
+                initializationVector: [UInt8](repeating: 0, count: 16)
+            )
+        }
+        #expect(throws: GS3ProtocolError.invalidRegistrationMarkerEncoding) {
+            try V3RegistrationEnvelopeDecoder.decode(
+                encodedHex: "26f56cdd0d7548cdaf92921619a01e9598a8f8513c9b0ec1106f88096d180448c0",
+                expectedMarker: "ownér",
+                initializationVector: [UInt8](repeating: 0, count: 16)
+            )
+        }
     }
 
     @Test func v3OfflineAuthLayoutAndCipherMatchIndependentSyntheticVector() throws {
         let inputs = try syntheticV3Inputs()
-        let plaintext = V3OfflineAuthenticationCodec.makePlaintext(inputs)
+        let encoded = try V3OfflineAuthenticationCodec.encode(inputs)
+        let plaintext = try AES128OFB.crypt(
+            encoded.bytes,
+            key: V3ProtocolConstants.fixedKey,
+            initializationVector: Array(0xA0...0xAF)
+        )
 
         #expect(
             plaintext
@@ -164,7 +193,6 @@ struct GS3ProtocolTests {
         #expect(plaintext.count == 38)
         #expect(plaintext.reduce(UInt8.zero) { $0 &+ $1 } == 0)
 
-        let encoded = try V3OfflineAuthenticationCodec.encode(inputs)
         #expect(
             encoded.bytes
                 == bytes("05bee87ea695ebcf6aa251c0fc051bf08610aa17da6a074fcf3a9f8edf1d13ff2020f32a5cd1"))
@@ -172,43 +200,43 @@ struct GS3ProtocolTests {
     }
 
     @Test func v3OfflineAuthInputsRejectEveryUnprovenLength() throws {
-        let valid = try syntheticV3Inputs()
+        let material = try syntheticMaterial()
 
         #expect(throws: GS3ProtocolError.invalidSensorAddressLength(5)) {
             try V3AuthenticationInputs(
-                deviceType: valid.deviceType,
+                deviceType: 0,
                 sensorAddress: [UInt8](repeating: 0, count: 5),
-                registeredBlock: [UInt8](repeating: 0, count: 16),
                 authenticationID: [],
-                initializationVector: [UInt8](repeating: 0, count: 16)
-            )
-        }
-        #expect(throws: GS3ProtocolError.invalidRegisteredBlockLength(15)) {
-            try V3AuthenticationInputs(
-                deviceType: valid.deviceType,
-                sensorAddress: [UInt8](repeating: 0, count: 6),
-                registeredBlock: [UInt8](repeating: 0, count: 15),
-                authenticationID: [],
-                initializationVector: [UInt8](repeating: 0, count: 16)
+                registeredMaterial: material
             )
         }
         #expect(throws: GS3ProtocolError.invalidAuthenticationIDLength(13)) {
             try V3AuthenticationInputs(
-                deviceType: valid.deviceType,
+                deviceType: 0,
                 sensorAddress: [UInt8](repeating: 0, count: 6),
-                registeredBlock: [UInt8](repeating: 0, count: 16),
                 authenticationID: [UInt8](repeating: 0, count: 13),
-                initializationVector: [UInt8](repeating: 0, count: 16)
+                registeredMaterial: material
             )
         }
-        #expect(throws: GS3ProtocolError.invalidInitializationVectorLength(15)) {
-            try V3AuthenticationInputs(
-                deviceType: valid.deviceType,
-                sensorAddress: [UInt8](repeating: 0, count: 6),
-                registeredBlock: [UInt8](repeating: 0, count: 16),
-                authenticationID: [],
-                initializationVector: [UInt8](repeating: 0, count: 15)
+    }
+
+    @Test func v3OfflineAuthAcceptsEveryProvenAuthenticationIDLength() throws {
+        let material = try syntheticMaterial()
+        for count in 0...12 {
+            let inputs = try V3AuthenticationInputs(
+                deviceType: 0,
+                sensorAddress: Array(1...6),
+                authenticationID: [UInt8](repeating: 0x41, count: count),
+                registeredMaterial: material
             )
+            let encoded = try V3OfflineAuthenticationCodec.encode(inputs)
+            let plaintext = try AES128OFB.crypt(
+                encoded.bytes,
+                key: V3ProtocolConstants.fixedKey,
+                initializationVector: Array(0xA0...0xAF)
+            )
+            #expect(encoded.byteCount == 38)
+            #expect(plaintext.reduce(UInt8.zero) { $0 &+ $1 } == 0)
         }
     }
 
@@ -216,11 +244,20 @@ struct GS3ProtocolTests {
         let inputs = try syntheticV3Inputs()
         let described = String(describing: inputs)
         let reflected = String(reflecting: inputs)
+        let material = try syntheticMaterial()
+        var inputDump = ""
+        var materialDump = ""
+        dump(inputs, to: &inputDump)
+        dump(material, to: &materialDump)
 
         #expect(described == reflected)
         #expect(!described.contains("owner"))
         #expect(!described.contains("010203040506"))
         #expect(!described.contains("A0A1"))
+        #expect(!inputDump.contains("owner"))
+        #expect(!inputDump.contains("161"))
+        #expect(!materialDump.contains("161"))
+        #expect(!materialDump.contains("16, 17"))
         #expect(described.contains("authenticationIDByteCount: 9"))
     }
 
@@ -228,8 +265,15 @@ struct GS3ProtocolTests {
         try V3AuthenticationInputs(
             deviceType: 0,
             sensorAddress: Array(1...6),
-            registeredBlock: Array(0x10...0x1F),
             authenticationID: Array("owner-123".utf8),
+            registeredMaterial: syntheticMaterial()
+        )
+    }
+
+    private func syntheticMaterial() throws -> V3RegisteredMaterial {
+        try V3RegistrationEnvelopeDecoder.decode(
+            encodedHex: "26f56cdd0d7548cdaf92921619a01e9598a8f8513c9b0ec1106f88096d180448c0",
+            expectedMarker: "owner",
             initializationVector: Array(0xA0...0xAF)
         )
     }

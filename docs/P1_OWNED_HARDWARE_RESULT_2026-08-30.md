@@ -103,12 +103,63 @@ bytes. This redacting analyzer intentionally does not identify a cipher and no
 glucose was decoded. The separate capture-plus-owned-APK P2 analysis is recorded
 in [`P2_OWNED_PROTOCOL_RESULT_2026-08-30.md`](P2_OWNED_PROTOCOL_RESULT_2026-08-30.md).
 
+## Sanitized owned-tag NDEF evidence
+
+The same owner later read the active sensor's NDEF tag with Sugarman source
+`5481e78cf37e00fc1823ba7f5f4ee4ff277726b1`. The signed app's canonical
+file-manifest SHA-256 was
+`0871bb34a7ca43788d22de335e5edaee1fdde86ca8658438de2e41a4645eeb50`.
+The build used a one-shot `NFCNDEFReaderSession`; it implements NDEF reading
+only and cannot issue NFC tag commands or perform sensor writes,
+authentication, binding, activation, or BLE handover. The official Android app
+remained connected during this separate observation.
+
+Sugarman extracted one NDEF text payload with exactly four comma-separated
+fields. The screenshot did not retain the source record's TNF/type, so the
+record encoding itself is not claimed as physically verified:
+
+1. the literal `GJ`;
+2. a 15-byte uppercase ASCII alphanumeric value that matched the
+   owner-visible sensor serial;
+3. the literal `6`; and
+4. a six-byte uppercase ASCII alphanumeric value that matched the
+   owner-visible official-app link code.
+
+The full record, screenshot, serial, and link code remain private. The public
+shape-only evidence is
+[`evidence/owned-mainland-gs3-ndef-v1.json`](evidence/owned-mainland-gs3-ndef-v1.json);
+it records the private screenshot's SHA-256 so the source observation can be
+reconciled without publishing unique identifiers. The parser accepts only this
+exact bounded shape, returns a redacted serial, does not expose the link code,
+and does not infer a supported Bluetooth protocol from the tag.
+
+Pinned Juggluco commit
+`11d016eb3aeffe77e86d9522f5192e83790b5a21` corroborates only two behavioral
+facts: [`Sib3Scan.java`](../upstream/Juggluco/Common/src/mobileSi/java/tk/glucodata/Sib3Scan.java)
+reads NDEF text records, and
+[`sibionics3/java.cpp`](../upstream/Juggluco/Common/src/main/cpp/sibionics3/java.cpp)
+handles the final six bytes of this record family as an identifier. Their
+respective file SHA-256 values are
+`2effca422165bd40274b5406f4d0c881e59aa7a54232226cb3325c921f2fa5b6` and
+`047c8ae0d411170d2f26b881e74f08f5768415943c98ee2aef41639084d8ebd4`.
+Sugarman's parser was independently authored from the owned observation; no
+Juggluco expression was copied.
+
+Confidence is **high** for this record shape, serial match, and link-code match
+on this one sensor. Interpreting the third field as a length marker and mapping
+the final field to the V3 registration decoder's `expectedId` remain
+**medium-confidence inferences**. The tag contains no observed AppKey or
+registration envelope. A second sensor lot, the legitimate registration
+inputs, and fresh-sensor activation remain unverified.
+
 ## Gate result and next step
 
-The physical scan, explicit selection, GATT discovery, bounded Device
+The BLE physical scan, explicit selection, GATT discovery, bounded Device
 Information read, redacted export, disconnect, and official-app handback gates
 passed on this owned setup. Combined with the private HCI correlation, the P1
-address-source gate also passed for this sensor.
+address-source gate also passed for this sensor. The later NDEF read validates
+one exact onboarding record shape for this sensor, but it does not satisfy the
+second-lot or registration-envelope gates.
 
 This is **not** Mainland GS3 glucose support and does not authorize a live
 authentication attempt. P2 subsequently identified the owned setup's V3,

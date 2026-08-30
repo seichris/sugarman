@@ -78,15 +78,19 @@ the OFB vectors in
   registration-envelope transform when a caller already has the legitimate
   encoded envelope, expected marker, and 16-byte IV. Its RC4 primitive is
   checked against [RFC 6229](https://www.rfc-editor.org/info/rfc6229/) and is
-  unavailable as a general cipher choice.
+  unavailable as a general cipher choice. The public decoder accepts only the
+  non-NUL ASCII marker subset whose bytes have identical Swift UTF-8 and JNI
+  C-string representations; other marker encodings fail closed.
 - Public construction accepts only opaque material returned by that strict
-  decoder; the raw block-and-IV initializer remains module-internal for tests.
+  decoder; raw block-and-IV construction is file-private to the decoder and raw
+  authentication-input construction is private to its type.
 - `ProtocolVariant.v3AES` identifies the observed family but remains
   `isImplemented == false`.
 - `GS3ProtocolRequest` remains empty, `GS3CodecFactory` still fails closed, and
   `GS3Transport` has no characteristic-write API. The encoder is therefore
   reachable only as an explicit offline function.
-- Tests use NIST vectors and independently generated synthetic V3 inputs. No
+- Tests use NIST vectors and synthetic V3 inputs independently reproduced with
+  OpenSSL 3.6.3 during review. No
   owned address, IV, registered block, authentication ID, or HCI payload is in
   the repository.
 

@@ -8,7 +8,7 @@
 /// Bluetooth write. Production logging must use `description`, which omits all
 /// values.
 public struct V3AuthenticationInputs:
-    Sendable, Equatable, CustomStringConvertible, CustomDebugStringConvertible
+    Sendable, Equatable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable
 {
     public let deviceType: UInt8
     let sensorAddress: [UInt8]
@@ -16,7 +16,7 @@ public struct V3AuthenticationInputs:
     let authenticationID: [UInt8]
     let initializationVector: [UInt8]
 
-    init(
+    private init(
         deviceType: UInt8,
         sensorAddress: [UInt8],
         registeredBlock: [UInt8],
@@ -66,6 +66,20 @@ public struct V3AuthenticationInputs:
     }
 
     public var debugDescription: String { description }
+
+    public var customMirror: Mirror {
+        Mirror(
+            self,
+            children: [
+                "deviceType": deviceType,
+                "sensorAddressByteCount": sensorAddress.count,
+                "registeredBlockByteCount": registeredBlock.count,
+                "authenticationIDByteCount": authenticationID.count,
+                "initializationVectorByteCount": initializationVector.count,
+            ],
+            displayStyle: .struct
+        )
+    }
 }
 
 /// Offline-only V3 authentication encoder.
@@ -87,8 +101,7 @@ public enum V3OfflineAuthenticationCodec: Sendable {
         return EncodedFrame(bytes: encrypted)
     }
 
-    /// Internal for deterministic unit tests. Never log or persist the result.
-    static func makePlaintext(_ inputs: V3AuthenticationInputs) -> [UInt8] {
+    private static func makePlaintext(_ inputs: V3AuthenticationInputs) -> [UInt8] {
         var frame: [UInt8] = [0x25, 0xE2, inputs.deviceType]
         frame.reserveCapacity(38)
         frame.append(contentsOf: inputs.sensorAddress)

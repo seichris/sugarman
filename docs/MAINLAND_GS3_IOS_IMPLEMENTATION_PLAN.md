@@ -158,7 +158,9 @@ The public ChatGPT share displayed links to a generated report and evidence
 bundle, but did not expose those artifacts for independent inspection. The
 owned Android app/APK therefore becomes a local research input: hash and inspect
 it under the legal/provenance rules below, without checking the APK, credentials,
-embedded keys, or vendor binaries into Git.
+owner/runtime secrets, or vendor binaries into Git. A later approved source-map
+pass recorded one fixed non-owner protocol constant under the narrower policy in
+[`THIRD_PARTY.md`](../THIRD_PARTY.md).
 
 The conversations also contradict themselves about whether the subtype-specific
 registered block applies to GS3. The pinned code sends subtype-based
@@ -262,7 +264,7 @@ All entries refer to the pinned commits listed above.
 | Data Matrix onboarding | [`PhotoScan.java`](../upstream/Juggluco/Common/src/mobileSi/java/tk/glucodata/PhotoScan.java), lines 199-225 and 270-320; [`sensoren.hpp`](../upstream/Juggluco/Common/src/main/cpp/sensoren.hpp), lines 880-904. | Reimplement camera UI with Vision/VisionKit. Adapt the validated SKU/parser facts under GPL with provenance. |
 | NFC onboarding | [`Sib3Scan.java`](../upstream/Juggluco/Common/src/mobileSi/java/tk/glucodata/Sib3Scan.java), lines 30-94 and 150-231; [`sibionics3/java.cpp`](../upstream/Juggluco/Common/src/main/cpp/sibionics3/java.cpp), lines 109-153. | Android UI is behavioral only. Port only validated parser behavior; use Core NFC NDEF APIs. The existing offset-based parser is brittle and needs bounds checks plus real fixtures. |
 | Sensor classification and state | [`SensorGlucoseData.hpp`](../upstream/Juggluco/Common/src/main/cpp/SensorGlucoseData.hpp), lines 1181-1193 and 1259-1278. | Behavioral/data reference. Do not reuse the packed global-state persistence design. |
-| Initial authentication | [`handleData.cpp`](../upstream/Juggluco/Common/src/main/cpp/sibionics/handleData.cpp), lines 83-110; [`interpret_data.cpp`](../upstream/Juggluco/Common/src/main/cpp/sibionics/interpret_data.cpp), lines 397-459. | GPL protocol adaptation after P1/P2. Address material and subtype-5 registered block must be physically confirmed. Do not expose embedded key material in plans, logs, or diagnostics. |
+| Initial authentication | [`handleData.cpp`](../upstream/Juggluco/Common/src/main/cpp/sibionics/handleData.cpp), lines 83-110; [`interpret_data.cpp`](../upstream/Juggluco/Common/src/main/cpp/sibionics/interpret_data.cpp), lines 397-459. | GPL protocol adaptation after P1/P2. Address material and subtype-5 registered block must be physically confirmed. Do not expose owner/runtime key material in plans, logs, or diagnostics. |
 | Account binding, activation, history | [`interpretgs3.cpp`](../upstream/Juggluco/Common/src/main/cpp/sibionics3/interpretgs3.cpp), lines 51-213. | GPL protocol adaptation into a pure Swift codec after protocol classification. |
 | Decryption and decoding | [`interpretgs3.cpp`](../upstream/Juggluco/Common/src/main/cpp/sibionics3/interpretgs3.cpp), lines 342-420 and 428-725. | GPL adaptation. Preserve checksum, ACK, index, backfill, warm-up, and error semantics; fail closed on unimplemented variants. |
 | Account UI/server behavior | [`GetGS3ID.java`](../upstream/Juggluco/Common/src/mobileSi/java/tk/glucodata/GetGS3ID.java), lines 59-124 and 147-233; [`GS3ID.java`](../upstream/Juggluco/Common/src/mobile/java/tk/glucodata/GS3ID.java), lines 44-170. | Do not reuse. The inspected email/MD5 flow is not verified for Mainland accounts and logs credential-derived data and tokens in debug mode. |
@@ -295,8 +297,10 @@ For every available sensor, record in a private test inventory:
 - Android/iOS model and OS version;
 - visible sensor firmware, hardware, manufacturer, and official app behavior.
 
-Do not put the APK, credentials, full UDI/serials, tokens, or embedded key bytes
-in Git.
+Do not put the APK, credentials, full UDI/serials, tokens, runtime IVs,
+registration material, authentication IDs, or other owner-specific secret bytes
+in Git. The separately governed fixed protocol constant is not a P0 inventory
+value; its publication scope and provenance are recorded in the V3 source map.
 
 Exit evidence: signed-off inventory and sanitized package/NFC fixtures. No BLE
 command has been sent by Sugarman.
@@ -480,8 +484,12 @@ reset, secret-key, and lifecycle commands require explicit policy approval.
 - user-visible confidence and unsupported-format errors;
 - no sensor side effects.
 
-Apple supports NDEF tags through Core NFC, but the owned tag still requires
-physical validation. See [Core NFC](https://developer.apple.com/documentation/corenfc).
+Apple supports NDEF tags through Core NFC. One owned active Mainland GS3 now
+physically validates an exact four-field NDEF text shape, recorded in
+[`evidence/owned-mainland-gs3-ndef-v1.json`](evidence/owned-mainland-gs3-ndef-v1.json).
+That single-sensor result does not validate another lot, registration inputs,
+authentication, or activation. See
+[Core NFC](https://developer.apple.com/documentation/corenfc).
 
 #### `AccountBinding`
 

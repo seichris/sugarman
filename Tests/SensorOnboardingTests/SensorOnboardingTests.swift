@@ -94,8 +94,56 @@ struct SensorOnboardingTests {
 
     @Test func ndefUnknownFailsClosed() {
         let ndef = BoundedNDEFParser()
-        #expect(throws: OnboardingError.unsupportedFormat(reason: "owned-tag NDEF layout is not yet physically validated")) {
+        #expect(throws: OnboardingError.unsupportedFormat(reason: "no supported owned-tag NDEF profile")) {
             try ndef.parseTextRecords(["hello"])
+        }
+    }
+
+    @Test func observedGS3NDEFParsesAndRedactsIdentifiers() throws {
+        let ndef = BoundedNDEFParser()
+        let sanitizedPayload = "GJ,04CS000000000AA,6,ABC123"
+        let result = try ndef.parse(sanitizedPayload)
+
+        #expect(result.textRecords == ["GJ,…00AA,6,…"])
+        #expect(!result.textRecords.joined().contains("04CS000000000AA"))
+        #expect(!result.textRecords.joined().contains("ABC123"))
+        #expect(result.productName == "GS3")
+        #expect(result.sku == nil)
+        #expect(result.redactedSerial == "…00AA")
+        #expect(result.regionHypothesis.contains("region is not encoded"))
+        #expect(result.protocolHypothesis.rawValue == "unknown")
+        #expect(result.confidence == .high)
+        #expect(result.formatName == "sibionics-gs3-gj-ndef-v1")
+        #expect(!result.isSynthetic)
+    }
+
+    @Test func observedGS3NDEFRejectsMalformedOrAmbiguousRecords() {
+        let ndef = BoundedNDEFParser()
+        let malformed = [
+            "GJ,04CS00000000AA,6,ABC123",
+            "GJ,04CS000000000AAA,6,ABC123",
+            "GJ,04Cs000000000AA,6,ABC123",
+            "GJ,04CS000000000AA,5,ABC123",
+            "GJ,04CS000000000AA,6,ABC12",
+            "GJ,04CS000000000AA,6,ABC1234",
+            "GJ,04CS000000000AA,6,abc123",
+            "GJ,04CS000000000AA,6,ABC123,EXTRA",
+        ]
+        for payload in malformed {
+            #expect(throws: OnboardingError.unsupportedFormat(
+                reason: "malformed GS3 GJ NDEF record; expected four bounded ASCII fields"
+            )) {
+                try ndef.parse(payload)
+            }
+        }
+
+        #expect(throws: OnboardingError.unsupportedFormat(
+            reason: "ambiguous GS3 NDEF message; expected one text record"
+        )) {
+            try ndef.parseTextRecords([
+                "GJ,04CS000000000AA,6,ABC123",
+                "unexpected second record",
+            ])
         }
     }
 

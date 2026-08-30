@@ -5,12 +5,12 @@
 /// Values are intentionally unavailable as public properties; they can only be
 /// passed into `V3AuthenticationInputs` and are omitted from descriptions.
 public struct V3RegisteredMaterial:
-    Sendable, Equatable, CustomStringConvertible, CustomDebugStringConvertible
+    Sendable, Equatable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable
 {
     let registeredBlock: [UInt8]
     let initializationVector: [UInt8]
 
-    init(registeredBlock: [UInt8], initializationVector: [UInt8]) {
+    fileprivate init(registeredBlock: [UInt8], initializationVector: [UInt8]) {
         self.registeredBlock = registeredBlock
         self.initializationVector = initializationVector
     }
@@ -21,6 +21,17 @@ public struct V3RegisteredMaterial:
     }
 
     public var debugDescription: String { description }
+
+    public var customMirror: Mirror {
+        Mirror(
+            self,
+            children: [
+                "registeredBlockByteCount": registeredBlock.count,
+                "initializationVectorByteCount": initializationVector.count,
+            ],
+            displayStyle: .struct
+        )
+    }
 }
 
 /// Strict offline decoder for the registration-envelope shape observed in the
@@ -55,6 +66,12 @@ public enum V3RegistrationEnvelopeDecoder: Sendable {
 
         let decoded = try RC4.crypt(encrypted, key: V3ProtocolConstants.fixedKey)
         let marker = Array(expectedMarker.utf8)
+        // JNI's GetStringUTFChars result is consumed with strlen. Restrict the
+        // offline API to the byte-for-byte compatible ASCII subset so NUL and
+        // modified-UTF-8 edge cases cannot produce false parity.
+        guard marker.allSatisfy({ $0 > 0 && $0 < 0x80 }) else {
+            throw GS3ProtocolError.invalidRegistrationMarkerEncoding
+        }
         let requiredMarkerLength = decoded.count - 28
         guard marker.count == requiredMarkerLength else {
             throw GS3ProtocolError.registrationMarkerMismatch

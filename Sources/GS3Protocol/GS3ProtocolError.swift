@@ -18,6 +18,7 @@ public enum GS3ProtocolError: Error, Sendable, Equatable {
     case invalidRC4KeyLength(Int)
     case invalidRegistrationEnvelopeLength(Int)
     case invalidRegistrationEnvelopeEncoding
+    case invalidRegistrationMarkerEncoding
     case registrationMarkerMismatch
 }
 
@@ -50,6 +51,8 @@ extension GS3ProtocolError: CustomStringConvertible {
             return "V3 registration envelope has an unsupported encoded length of \(count) bytes."
         case .invalidRegistrationEnvelopeEncoding:
             return "V3 registration envelope must contain only ASCII hexadecimal characters."
+        case .invalidRegistrationMarkerEncoding:
+            return "V3 registration marker must contain only non-NUL ASCII bytes."
         case .registrationMarkerMismatch:
             return "V3 registration envelope did not match the caller-provided marker."
         }

@@ -43,18 +43,21 @@ dependencies. See [docs/UPSTREAMS.md](docs/UPSTREAMS.md).
 - Offline-first; no cloud backend and no CloudKit in the initial product.
 - First live UI always shows reading age, stale/disconnected state, and the
   no-dosing notice.
-- No live sensor commands (authentication write, binding mutation, activation,
-  reset, expiry, secret-key, or other lifecycle writes) until physical gates
-  P1 and P2 in the
-  [implementation plan](docs/MAINLAND_GS3_IOS_IMPLEMENTATION_PLAN.md) pass.
-- No GS3 codec/cipher implementation in this milestone.
+- No live sensor command (authentication write, binding mutation, activation,
+  reset, expiry, secret-key, or other lifecycle write) is currently
+  representable. A live authentication attempt remains gated on legitimate
+  owner-controlled runtime material, private replay parity, independent review,
+  and a fresh exact physical-write confirmation; see the
+  [implementation plan](docs/MAINLAND_GS3_IOS_IMPLEMENTATION_PLAN.md).
+- An isolated offline V3 authentication encoder is present. The live request
+  enum is empty, the codec factory fails closed, and transport has no write API.
 
 ## Repository layout
 
 | Path | Role |
 | --- | --- |
 | `Sources/SugarmanDomain` | Pure domain types and product copy |
-| `Sources/GS3Protocol` | Protocol interfaces only; every variant fails closed |
+| `Sources/GS3Protocol` | Fail-closed live interfaces plus an isolated offline V3 authentication encoder |
 | `Sources/GS3Transport` | BLE state machine and testable central abstraction |
 | `Sources/SensorOnboarding` | Bounded package/NDEF parser interfaces |
 | `Sources/AccountBinding` | Manual legitimate owner ID only |

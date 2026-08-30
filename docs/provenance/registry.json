@@ -189,14 +189,38 @@
       "repository_licence": "GPL-3.0-or-later",
       "purpose_and_behavior_taken": "Independently authored Swift AES-128/OFB follows NIST and the registration-only RC4 primitive is checked against IETF vectors. The V3 code records only the approved interoperability facts required for registration-envelope decoding and the exact 38-byte authentication construction: field lengths/order, transforms, zero padding, additive checksum, fixed protocol constant, and runtime-IV use. It does not obtain owner material, represent a live request, or write to Bluetooth.",
       "reuse_mode": "independently observed",
-      "sugarman_destination_path": "Sources/GS3Protocol/AES128.swift; Sources/GS3Protocol/V3Authentication.swift; Sources/GS3Protocol/V3Registration.swift; Sources/SugarmanDomain/ProtocolVariant.swift; Tests/GS3ProtocolTests/GS3ProtocolTests.swift; docs/V3_AUTH_SOURCE_MAP_2026-08-30.md",
+      "sugarman_destination_path": "Sources/GS3Protocol/AES128.swift; Sources/GS3Protocol/V3Authentication.swift; Sources/GS3Protocol/V3Registration.swift; Sources/SugarmanDomain/ProtocolVariant.swift; Tests/GS3ProtocolTests/GS3ProtocolTests.swift; Scripts/check_governance.py; README.md; THIRD_PARTY.md; docs/V3_AUTH_SOURCE_MAP_2026-08-30.md",
       "modification_date": "2026-08-30",
       "author": "Sugarman contributors",
       "fixtures_origin": "NIST and IETF published vectors plus independently generated synthetic V3 inputs only; owned replay parity remains pending",
       "fixtures_capture_sha256": "NIST-FIPS-197;NIST-SP-800-38A-F.4.1;IETF-RFC-6229;synthetic-v3-vector",
-      "reviewer": "independent code review pending",
+      "reviewer": "independent repository deep review completed 2026-08-30; human distribution review remains required",
       "legal_review_status": "lean-local",
       "notes": "User-reported approval covers offline analysis and publication of the separately authored GPL Swift source. Vendor binaries are never build inputs. The live factory and transport remain fail-closed; App Store/binary distribution and any physical write require separate review/confirmation."
+    },
+    {
+      "id": "prov-20260830-owned-mainland-gs3-ndef-layout",
+      "upstream_project": "Owned Mainland GS3; pinned Juggluco corroboration",
+      "upstream_url": "https://github.com/seichris/Juggluco",
+      "pinned_commit": "11d016eb3aeffe77e86d9522f5192e83790b5a21",
+      "source_path": "Owned GS3 NDEF text observation; Common/src/mobileSi/java/tk/glucodata/Sib3Scan.java; Common/src/main/cpp/sibionics3/java.cpp",
+      "source_blob_sha256": "private-screenshot=1e6cf59d002faea4fe0c3e533d1fa6a37e02665d336f48e8ebd1a06610794426;Sib3Scan.java=2effca422165bd40274b5406f4d0c881e59aa7a54232226cb3325c921f2fa5b6;java.cpp=047c8ae0d411170d2f26b881e74f08f5768415943c98ee2aef41639084d8ebd4",
+      "copyright_holders": [
+        "Juggluco contributors"
+      ],
+      "history_reviewed": false,
+      "file_header_licence": "GPL-3.0-or-later",
+      "repository_licence": "GPL-3.0",
+      "purpose_and_behavior_taken": "An exact four-field NDEF text shape was independently observed on one owned active Mainland GS3. Pinned Juggluco is used only to corroborate NDEF text reading and handling of the final six bytes as an identifier. No upstream expression was copied. Sugarman's bounded parser returns only a redacted serial, does not expose the link identifier, and keeps protocol confidence unknown.",
+      "reuse_mode": "independently observed",
+      "sugarman_destination_path": "Sources/SensorOnboarding/NDEFParser.swift; Tests/SensorOnboardingTests/SensorOnboardingTests.swift; docs/evidence/owned-mainland-gs3-ndef-v1.json",
+      "modification_date": "2026-08-30",
+      "author": "chris",
+      "fixtures_origin": "Sanitized same-length identifiers derived from one owned active Mainland GS3 NDEF observation",
+      "fixtures_capture_sha256": "1e6cf59d002faea4fe0c3e533d1fa6a37e02665d336f48e8ebd1a06610794426",
+      "reviewer": "chris",
+      "legal_review_status": "lean-local",
+      "notes": "The raw screenshot, full serial, and link code remain private. This is one sensor/lot and is not proof of authentication, binding, activation, registration-envelope availability, or glucose decoding."
     }
   ]
 }

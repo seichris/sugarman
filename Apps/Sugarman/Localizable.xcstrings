@@ -1321,7 +1321,18 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Protocol confidence"
+            "value": "Evidence confidence"
+          }
+        }
+      }
+    },
+    "sensor.owned_hardware_notice": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Owned-hardware format match. Identity fields are redacted; protocol support remains unimplemented."
           }
         }
       }
