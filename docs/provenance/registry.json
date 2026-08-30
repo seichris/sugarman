@@ -54,6 +54,30 @@
       "reviewer": "chris",
       "legal_review_status": "lean-local",
       "notes": "Vision wrapper uses Apple Vision only. Do not copy Juggluco PhotoScan."
+    },
+    {
+      "id": "prov-20260830-gs3-advertised-name-ranking",
+      "upstream_project": "Juggluco",
+      "upstream_url": "https://github.com/seichris/Juggluco",
+      "pinned_commit": "11d016eb3aeffe77e86d9522f5192e83790b5a21",
+      "source_path": "Common/src/mobileSi/java/tk/glucodata/Si3GattCallback.java",
+      "source_blob_sha256": "9a1799201bc379be203414668f2586d2b654a84258caad4f2c1208e5ed91f8f3",
+      "copyright_holders": [
+        "Jaap Korthals Altes"
+      ],
+      "history_reviewed": false,
+      "file_header_licence": "GPL-3.0-or-later",
+      "repository_licence": "GPL-3.0",
+      "purpose_and_behavior_taken": "The pinned Android reference and an independently observed owned Mainland GS3 both use 12-character uppercase alphanumeric advertised names beginning with AA. Independently authored Swift uses this only as a presentation heuristic to rank a likely GS3 first in a read-only scan list. No upstream implementation was copied.",
+      "reuse_mode": "behavioral",
+      "sugarman_destination_path": "Sources/SugarmanDiagnostics/PeripheralDiscoveryList.swift",
+      "modification_date": "2026-08-30",
+      "author": "chris",
+      "fixtures_origin": "Owned active Mainland GS3 official-app runtime observation; identifying value omitted",
+      "fixtures_capture_sha256": "not-retained-sensitive-runtime-log",
+      "reviewer": "chris",
+      "legal_review_status": "lean-local",
+      "notes": "UI ordering and candidate label only. The heuristic never auto-connects, authenticates, binds, activates, or establishes device identity. Tests use synthetic names."
     }
   ]
 }

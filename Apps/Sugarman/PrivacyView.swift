@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Sugarman contributors
 
+import GS3Transport
+import SugarmanDiagnostics
 import SugarmanDomain
 import SwiftUI
 
@@ -10,6 +12,7 @@ struct PrivacyView: View {
     @State private var sessionPendingDelete: UUID?
     @State private var exportFileURL: URL?
     @State private var exportError: String?
+    @State private var peripheralSearchText = ""
 
     var body: some View {
         NavigationStack {
@@ -112,12 +115,28 @@ struct PrivacyView: View {
                             Text("privacy.probe_empty")
                                 .foregroundStyle(.secondary)
                         } else {
-                            ForEach(model.probeSession.peripherals, id: \.peripheralID) { item in
+                            TextField("privacy.probe_search", text: $peripheralSearchText)
+                                .textInputAutocapitalization(.characters)
+                                .autocorrectionDisabled()
+                                .accessibilityHint(Text("privacy.probe_search_hint"))
+                            if visiblePeripherals.isEmpty {
+                                Text("privacy.probe_no_matches")
+                                    .foregroundStyle(.secondary)
+                            }
+                            ForEach(visiblePeripherals, id: \.peripheralID) { item in
                                 Button {
                                     Task { await model.probeSession.connectAndRead(item.peripheralID) }
                                 } label: {
                                     VStack(alignment: .leading) {
                                         Text(item.name ?? String(localized: "privacy.probe_unnamed"))
+                                        if PeripheralDiscoveryList.hasObservedGS3NameFormat(item.name) {
+                                            Label(
+                                                "privacy.probe_likely_gs3",
+                                                systemImage: "sensor.tag.radiowaves.forward"
+                                            )
+                                            .font(.footnote.weight(.semibold))
+                                            .foregroundStyle(.secondary)
+                                        }
                                         Text(item.peripheralID.uuidString)
                                             .font(.footnote)
                                             .foregroundStyle(.secondary)
@@ -207,6 +226,13 @@ struct PrivacyView: View {
                 Text("privacy.delete_session_body")
             }
         }
+    }
+
+    private var visiblePeripherals: [AdvertisementSnapshot] {
+        PeripheralDiscoveryList.results(
+            from: model.probeSession.peripherals,
+            searchText: peripheralSearchText
+        )
     }
 
     private enum ExportKind {
