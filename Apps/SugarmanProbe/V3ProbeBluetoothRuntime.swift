@@ -216,8 +216,7 @@ final class V3ProbeBluetoothRuntime: NSObject, @unchecked Sendable {
                     fail("The probe reached completion without both bounded CoreBluetooth write calls.")
                     return
                 }
-                if probe?.state == .completed,
-                   probe?.quarantinedGlucoseCommandCount == 0 {
+                if probe?.completionGatePassed == true {
                     emitDiagnostic(
                         "Completion gate passed with CoreBluetooth write calls E2=1, 0x39=1; disconnecting."
                     )
@@ -234,8 +233,7 @@ final class V3ProbeBluetoothRuntime: NSObject, @unchecked Sendable {
                     )
                 }
                 finishing = true
-                completedSuccessfully = probe?.state == .completed
-                    && probe?.quarantinedGlucoseCommandCount == 0
+                completedSuccessfully = probe?.completionGatePassed == true
                 disconnectAndFinish()
             }
         }

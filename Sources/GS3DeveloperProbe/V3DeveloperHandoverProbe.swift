@@ -214,6 +214,10 @@ public struct V3DeveloperHandoverProbe: Sendable {
     public private(set) var quarantinedGlucoseCommandCount = 0
     public private(set) var lastPacketDiagnostic: V3ProbePacketDiagnostic?
 
+    public var completionGatePassed: Bool {
+        state == .completed && quarantinedGlucoseCommandCount == 0
+    }
+
     private let material: V3ProbeMaterial
     private let requiredLiveReadingCount: Int
     private var observedLiveIndexes: Set<UInt16> = []

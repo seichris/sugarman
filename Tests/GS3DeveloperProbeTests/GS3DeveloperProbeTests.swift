@@ -124,6 +124,7 @@ struct GS3DeveloperProbeTests {
         #expect(probe.lastPacketDiagnostic?.stateAfter == .completed)
         #expect(probe.authenticationTransmissionCount == 1)
         #expect(probe.effectiveDataTransmissionCount == 1)
+        #expect(probe.completionGatePassed)
         #expect(throws: V3ProbeError.invalidTransition(from: .completed)) {
             try probe.didReceive(glucose)
         }
@@ -450,6 +451,7 @@ struct GS3DeveloperProbeTests {
         #expect(completion.last == .disconnect)
         #expect(probe.state == .completed)
         #expect(probe.quarantinedGlucoseCommandCount == 1)
+        #expect(!probe.completionGatePassed)
         #expect(probe.authenticationTransmissionCount == 1)
         #expect(probe.effectiveDataTransmissionCount == 1)
 
@@ -525,6 +527,64 @@ struct GS3DeveloperProbeTests {
             duplicateProbe.lastPacketDiagnostic?.classification
                 == .glucoseUnsupportedCommand(0x31)
         )
+
+        var longPlaintext = try decryptTransport(unsupported)
+        longPlaintext.insert(
+            contentsOf: [UInt8](repeating: 0, count: 16),
+            at: longPlaintext.count - 3
+        )
+        longPlaintext[0] = UInt8(longPlaintext.count - 1)
+        replaceChecksum(in: &longPlaintext)
+        let longUnsupported = try encryptTransport(longPlaintext)
+        let longDiagnostic = V3ProbePacketDiagnostic(
+            stateBefore: .awaitingEffectiveData,
+            stateAfter: .failed,
+            classification: .glucoseUnsupportedCommand(0x31),
+            byteCount: 40,
+            authenticationTransmissionCount: 1,
+            effectiveDataTransmissionCount: 1,
+            uniqueLiveReadingCount: 0
+        )
+        var longProbe = V3DeveloperHandoverProbe(material: try syntheticMaterial())
+        _ = try longProbe.start()
+        _ = try longProbe.didSubscribe()
+        _ = try longProbe.didReceive(
+            encryptedControlResponse(command: 0xE2, code: 1, detail: 0)
+        )
+        #expect(throws: V3ProbeError.unexpectedNotification(longDiagnostic)) {
+            try longProbe.didReceive(
+                longUnsupported,
+                effectiveDataWriteAcknowledgementPending: true
+            )
+        }
+        #expect(longProbe.quarantinedGlucoseCommandCount == 0)
+
+        var postLiveProbe = V3DeveloperHandoverProbe(
+            material: try syntheticMaterial(),
+            requiredLiveReadingCount: 2
+        )
+        _ = try postLiveProbe.start()
+        _ = try postLiveProbe.didSubscribe()
+        _ = try postLiveProbe.didReceive(
+            encryptedControlResponse(command: 0xE2, code: 1, detail: 0)
+        )
+        _ = try postLiveProbe.didReceive(live)
+        let postLiveDiagnostic = V3ProbePacketDiagnostic(
+            stateBefore: .awaitingEffectiveData,
+            stateAfter: .failed,
+            classification: .glucoseUnsupportedCommand(0x31),
+            byteCount: 24,
+            authenticationTransmissionCount: 1,
+            effectiveDataTransmissionCount: 1,
+            uniqueLiveReadingCount: 1
+        )
+        #expect(throws: V3ProbeError.unexpectedNotification(postLiveDiagnostic)) {
+            try postLiveProbe.didReceive(
+                unsupported,
+                effectiveDataWriteAcknowledgementPending: true
+            )
+        }
+        #expect(postLiveProbe.quarantinedGlucoseCommandCount == 0)
     }
 
     @Test func timeoutAndCancelDisconnectWithoutRetry() throws {
