@@ -71,7 +71,7 @@ private import changes only `effectiveDataStartIndex` from the original PR #13
 file to that newest verified start. The selected value and import hash remain
 outside Git. The mismatch is the leading cause at medium confidence, not proof:
 the second-run FF31 payload was intentionally not retained. The next candidate
-also distinguishes every safe validation stage without retaining the value.
+already distinguishes every safe validation stage without retaining the value.
 
 ## Enforced command boundary
 
@@ -97,7 +97,7 @@ timeout disconnects without another application write.
 The reviewed follow-up also classifies every inbound FF31 value without
 retaining its payload, records state transitions and byte counts in memory,
 reports CoreBluetooth write calls separately from acknowledgements, and permits
-only one in-flight application write. Its next diagnostic revision separates
+only one in-flight application write. It separates
 control length/command/checksum failures and glucose minimum length/declared
 length/command/count/layout/checksum failures. It also records whether
 an FF31 value arrived while an FF32 write acknowledgement was outstanding. The

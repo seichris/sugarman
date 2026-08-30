@@ -194,7 +194,7 @@ index, glucose history, or private-import hash is printed or committed.
 ## Follow-up decision
 
 Do not rerun either the PR #13 or merged PR #14 artifact/material combination.
-The next candidate retains the two-command maximum and adds only:
+The reviewed candidate retains the two-command maximum and adds only:
 
 - granular payload-free classifications for control length/command/checksum and
   glucose minimum length/declared length/command/count/layout/checksum;

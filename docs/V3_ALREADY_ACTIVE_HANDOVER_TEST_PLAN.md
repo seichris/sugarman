@@ -35,9 +35,9 @@ The separate `SugarmanProbe` target exposes only these operations:
 7. display redacted state plus the latest value and disconnect after five
    unique live `0x32` indexes or a seven-minute cap.
 
-The follow-up candidate additionally retains an in-memory payload-free trace of
+The reviewed follow-up candidate retains an in-memory payload-free trace of
 state transitions, inbound class/length, CoreBluetooth write calls, and write
-acknowledgements. Its next revision separates control
+acknowledgements. It separates control
 length/command/checksum and glucose minimum-length/declared-length/command/count/
 layout/checksum failures, and marks an FF31 delivery that occurs while an
 FF32 write acknowledgement is outstanding. It permits only one application
