@@ -475,8 +475,12 @@ reset, secret-key, and lifecycle commands require explicit policy approval.
 - user-visible confidence and unsupported-format errors;
 - no sensor side effects.
 
-Apple supports NDEF tags through Core NFC, but the owned tag still requires
-physical validation. See [Core NFC](https://developer.apple.com/documentation/corenfc).
+Apple supports NDEF tags through Core NFC. One owned active Mainland GS3 now
+physically validates an exact four-field NDEF text shape, recorded in
+[`evidence/owned-mainland-gs3-ndef-v1.json`](evidence/owned-mainland-gs3-ndef-v1.json).
+That single-sensor result does not validate another lot, registration inputs,
+authentication, or activation. See
+[Core NFC](https://developer.apple.com/documentation/corenfc).
 
 #### `AccountBinding`
 

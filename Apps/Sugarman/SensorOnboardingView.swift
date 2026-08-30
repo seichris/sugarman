@@ -24,6 +24,7 @@ struct SensorOnboardingView: View {
     @State private var parsedIdentity: SensorIdentity?
     @State private var parsedRegion = ""
     @State private var parsedConfidence = ""
+    @State private var parsedIsSynthetic = true
     @State private var ownerID = ""
     @State private var ownerStatus = String(localized: "onboarding.owner_idle")
     @State private var confirmStore = false
@@ -114,7 +115,7 @@ struct SensorOnboardingView: View {
                         LabeledContent("sensor.region", value: parsedRegion)
                         LabeledContent("sensor.protocol", value: identity.protocolVariant.rawValue)
                         LabeledContent("sensor.confidence", value: parsedConfidence)
-                        Text("sensor.synthetic_notice")
+                        Text(parsedIsSynthetic ? "sensor.synthetic_notice" : "sensor.owned_hardware_notice")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                         Button("sensor.confirm") {
@@ -241,6 +242,7 @@ struct SensorOnboardingView: View {
             var confidence = EvidenceConfidence.unsupported
             var protocolVariant = ProtocolVariant.unknown
             var evidenceFormats: [String] = []
+            var isSynthetic = true
 
             if !package.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 let parsed = try packageParser.parse(package)
@@ -252,6 +254,7 @@ struct SensorOnboardingView: View {
                 confidence = parsed.confidence
                 protocolVariant = parsed.protocolHypothesis
                 evidenceFormats.append(parsed.formatName)
+                isSynthetic = isSynthetic && parsed.isSynthetic
             }
             if !ndef.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 let parsed = try ndefParser.parse(ndef)
@@ -262,6 +265,7 @@ struct SensorOnboardingView: View {
                 confidence = parsed.confidence
                 protocolVariant = parsed.protocolHypothesis
                 evidenceFormats.append(parsed.formatName)
+                isSynthetic = isSynthetic && parsed.isSynthetic
             }
 
             parsedIdentity = SensorIdentity(
@@ -274,6 +278,7 @@ struct SensorOnboardingView: View {
             )
             parsedRegion = region
             parsedConfidence = confidence.rawValue
+            parsedIsSynthetic = isSynthetic
             parseMessage = String(localized: "sensor.parse_ok")
         } catch {
             parseMessage = error.localizedDescription
