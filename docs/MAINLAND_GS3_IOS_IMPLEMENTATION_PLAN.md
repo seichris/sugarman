@@ -1,6 +1,6 @@
 # Mainland China SiBionics GS3 support for Sugarman
 
-- Status: implementation has started; P1/P2 passed for one owned active sensor on 2026-08-30. The observed family is V3/AES-OFB and the six address bytes are available from Device Information `2A25`. Private replay now verifies the already-active authentication inputs and one 7.2 mmol/L/flat notification point. Offline authentication and glucose codecs remain deliberately disconnected from live transport; review, private-material handling, a fixed-key publication decision, and fresh physical confirmation still gate every live write. Fresh activation remains unresolved.
+- Status: P1/P2 and one-value already-active iPhone interoperability passed for one owned sensor on 2026-08-30; official Android handback also passed. Five-reading durability, zero-quarantine behavior, and iPhone reconnect remain incomplete. The normal app's live writer remains fail closed. The host-testable foreground ownership/reconnect/history slice is specified in [`GS3_FOREGROUND_PRODUCTION_DESIGN.md`](GS3_FOREGROUND_PRODUCTION_DESIGN.md); a separately reviewed typed adapter and fresh physical confirmation still gate any normal-app sensor write. Fresh activation remains unresolved.
 - Date: 2026-08-28
 - Product: Sugarman — glucose monitoring and fueling insight for endurance athletes
 
@@ -756,6 +756,13 @@ Exit gate: all offline vectors, replay, negative tests, and provenance review
 pass. No live activation/reset command exists yet.
 
 ### M3 — same-owner handover proof
+
+The current software-only foreground slice implements process ownership,
+deterministic reconnect sequencing, per-connection subscribe/auth/history
+intents, atomic overlap/deduplication, and fail-closed UI projection. It does not
+implement or authorize the live CoreBluetooth adapter, binding, background
+restoration, or a physical run. See
+[`GS3_FOREGROUND_PRODUCTION_DESIGN.md`](GS3_FOREGROUND_PRODUCTION_DESIGN.md).
 
 Deliverables:
 

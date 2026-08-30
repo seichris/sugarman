@@ -29,6 +29,11 @@ struct GS3DeveloperProbeTests {
         #expect(!diagnostic.description.contains("glucose-secret"))
         #expect(!diagnostic.description.contains("record-index-secret"))
         #expect(!diagnostic.description.contains("sensor-identifier"))
+        #expect(
+            diagnostic.failureDescription
+                == "The sensor disconnected before the bounded probe completed; "
+                    + "transport=CoreBluetooth code 6."
+        )
 
         let redactedOther = V3ProbeDisconnectDiagnostic(
             sessionOrdinal: 3,
@@ -42,6 +47,7 @@ struct GS3DeveloperProbeTests {
         )
         #expect(redactedOther.description.contains("non-CoreBluetooth error redacted"))
         #expect(redactedOther.description.contains("Session #3"))
+        #expect(!redactedOther.failureDescription.contains("raw-private-error"))
     }
 
     @Test func privateImportNormalizesAndRedactsEverySensitiveField() throws {

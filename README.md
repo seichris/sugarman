@@ -46,6 +46,11 @@ dependencies. See [docs/UPSTREAMS.md](docs/UPSTREAMS.md).
 - The normal `Sugarman` target cannot represent a live sensor command: its live
   request enum is empty, codec factory fails closed, and transport has no write
   API.
+- The production foreground lifecycle core is host-testable but not yet wired
+  to a live writer. It requires one shared App Group process lease, repeats
+  subscription/authentication/history intent per connection, uses bounded
+  single-flight reconnect, and commits overlapping history atomically. See the
+  [foreground production design](docs/GS3_FOREGROUND_PRODUCTION_DESIGN.md).
 - A separate, foreground-only `SugarmanProbe` developer target can perform one
   tightly bounded already-active handover attempt: subscribe to FF31, transmit
   one typed `0xE2` authentication, transmit one typed `0x39` request only after
@@ -74,6 +79,8 @@ dependencies. See [docs/UPSTREAMS.md](docs/UPSTREAMS.md).
 | `Sources/GS3Protocol` | Fail-closed live interfaces plus isolated offline V3 authentication and glucose codecs |
 | `Sources/GS3DeveloperProbe` | Typed, one-shot already-active V3 probe state machine and device-only private-material store |
 | `Sources/GS3Transport` | BLE state machine and testable central abstraction |
+| `Sources/GS3Session` | Foreground ownership/reconnect/history lifecycle reducer; no live adapter |
+| `Sources/SensorOwnership` | Payload-free cross-process App Group file lease |
 | `Sources/SensorOnboarding` | Bounded package/NDEF parser interfaces |
 | `Sources/AccountBinding` | Manual legitimate owner ID only |
 | `Sources/SugarmanStore` | Repository protocols, in-memory store, optional SwiftData |

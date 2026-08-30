@@ -338,6 +338,69 @@ public actor SwiftDataSugarmanStore: SugarmanStoring {
         #endif
     }
 
+    public func prepareHistoryRequest(sessionID: UUID, startingAt: UInt32) async throws {
+        let records = try modelContext.fetch(
+            FetchDescriptor<SensorSessionRecord>(
+                predicate: #Predicate { $0.sessionID == sessionID }
+            )
+        )
+        guard let record = records.first else { throw StoreError.notFound }
+        let session = try record.domainValue()
+        if let committed = session.lastCommittedIndex, startingAt != committed {
+            throw StoreError.historyRequestWouldSkipCommittedCursor
+        }
+        if session.lastCommittedIndex == nil,
+           let prepared = session.lastRequestedIndex,
+           startingAt != prepared {
+            throw StoreError.historyRequestWouldSkipCommittedCursor
+        }
+        record.lastRequestedIndex = Int64(startingAt)
+        do {
+            try modelContext.save()
+        } catch {
+            modelContext.rollback()
+            throw error
+        }
+    }
+
+    public func commitSamples(
+        _ incomingSamples: [GlucoseSample],
+        sessionID: UUID
+    ) async throws -> SampleBatchCommitResult {
+        let sessionRecords = try modelContext.fetch(
+            FetchDescriptor<SensorSessionRecord>(
+                predicate: #Predicate { $0.sessionID == sessionID }
+            )
+        )
+        guard let sessionRecord = sessionRecords.first else { throw StoreError.notFound }
+        var session = try sessionRecord.domainValue()
+        let sampleRecords = try modelContext.fetch(
+            FetchDescriptor<GlucoseSampleRecord>(
+                predicate: #Predicate { $0.sessionID == sessionID }
+            )
+        )
+        let existingSamples = try sampleRecords.map { try $0.domainValue() }
+        let plan = try SampleBatchCommitPlanner.makePlan(
+            session: session,
+            existingSamples: existingSamples,
+            incomingSamples: incomingSamples
+        )
+
+        for sample in plan.samplesToInsert {
+            modelContext.insert(GlucoseSampleRecord(from: sample))
+        }
+        session.lastReceivedIndex = plan.result.lastReceivedIndex
+        session.lastCommittedIndex = plan.result.lastCommittedIndex
+        sessionRecord.update(from: session)
+        do {
+            try modelContext.save()
+        } catch {
+            modelContext.rollback()
+            throw error
+        }
+        return plan.result
+    }
+
     public func insertSample(_ sample: GlucoseSample) async throws {
         let sessionID = sample.sessionID
         let index = Int64(sample.sensorIndex)

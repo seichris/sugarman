@@ -255,6 +255,7 @@ def check_no_write_api() -> None:
             "V3ProbeDisconnectDiagnostic(",
             "nsError.domain == CBErrorDomain",
             "runStartedAtUptimeNanoseconds",
+            "emit(.failed(diagnostic.failureDescription))",
         ):
             if required not in body:
                 error(f"developer probe adapter missing strict boundary: {required}")
@@ -308,6 +309,7 @@ def check_no_write_api() -> None:
             "effectiveDataWriteCallCount",
             "uniqueLiveReadingCount",
             "quarantinedCommandCount",
+            "failureDescription",
         ):
             if required not in diagnostic_body:
                 error(
@@ -352,6 +354,88 @@ def check_no_write_api() -> None:
         }:
             error("ProtocolVariant v3AES requires recorded scoped legal review")
 
+
+def check_sensor_ownership_and_foreground_slice() -> None:
+    group = "group.app.sugarman.sensor-owner"
+    project = (ROOT / "project.yml").read_text(encoding="utf-8", errors="replace")
+    if project.count(group) != 2:
+        error("both iOS targets must declare the same sensor-owner App Group")
+    if project.count("product: SensorOwnership") != 2:
+        error("both iOS targets must link the shared SensorOwnership product")
+
+    for relative in (
+        "Apps/Sugarman/Sugarman.entitlements",
+        "Apps/SugarmanProbe/SugarmanProbe.entitlements",
+    ):
+        path = ROOT / relative
+        if not path.is_file() or group not in path.read_text(
+            encoding="utf-8", errors="replace"
+        ):
+            error(f"{relative} missing shared sensor-owner App Group")
+
+    ownership = ROOT / "Sources/SensorOwnership/SensorOwnerLease.swift"
+    if not ownership.is_file():
+        error("missing cross-process sensor ownership lease")
+    else:
+        body = ownership.read_text(encoding="utf-8", errors="replace")
+        for required in (
+            '@_silgen_name("flock")',
+            "LOCK_EX | LOCK_NB",
+            "O_CLOEXEC",
+            "O_NOFOLLOW",
+            "alreadyOwnedByAnotherProcess",
+            "SharedSensorOwnerLease",
+        ):
+            if required not in body:
+                error(f"sensor ownership lease missing boundary: {required}")
+        if re.search(r"\b(write|pwrite)\s*\(", body):
+            error("sensor ownership lock file must remain payload-free")
+
+    for relative in (
+        "Apps/Sugarman/DiagnosticProbeSession.swift",
+        "Apps/SugarmanProbe/V3ProbeBluetoothRuntime.swift",
+    ):
+        path = ROOT / relative
+        body = path.read_text(encoding="utf-8", errors="replace")
+        if "SharedSensorOwnerLease.acquire()" not in body:
+            error(f"{relative} bypasses shared sensor ownership")
+
+    session_root = ROOT / "Sources/GS3Session"
+    if not session_root.is_dir():
+        error("missing host-testable foreground GS3 session slice")
+        return
+    session_body = "\n".join(
+        path.read_text(encoding="utf-8", errors="replace")
+        for path in sorted(session_root.glob("*.swift"))
+    )
+    for required in (
+        "GS3ForegroundSessionMachine",
+        "acquireOwnership",
+        "subscribeToNotifications",
+        "authenticateConnection",
+        "prepareHistoryRequest",
+        "requestHistory",
+        "scheduleReconnect",
+        "persistenceFailed",
+        "CaptureBackedHistoryStart",
+        "HistoryCursorPolicy",
+        "GS3LifecycleEvent",
+    ):
+        if required not in session_body:
+            error(f"foreground GS3 slice missing boundary: {required}")
+    for forbidden in (
+        ".writeValue(",
+        "import CoreBluetooth",
+        "import GS3Protocol",
+        "Data(",
+        "[UInt8]",
+        "EncodedFrame(bytes:",
+        "activateSensor(",
+        "resetSensor(",
+        "writeSecretKey(",
+    ):
+        if forbidden in session_body:
+            error(f"foreground GS3 slice contains forbidden live surface: {forbidden}")
 
 def check_private_evidence_gitignore() -> None:
     gi = ROOT / ".gitignore"
@@ -407,6 +491,7 @@ def main() -> int:
     check_provenance()
     check_binaries_and_resources()
     check_no_write_api()
+    check_sensor_ownership_and_foreground_slice()
     check_private_evidence_gitignore()
     if ERRORS:
         print("Governance check failed:")

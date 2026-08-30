@@ -4,6 +4,7 @@
 import Foundation
 import GS3DeveloperProbe
 import GS3Protocol
+import SensorOwnership
 @preconcurrency import CoreBluetooth
 
 struct ProbePeripheral: Identifiable, Sendable, Equatable {
@@ -73,6 +74,7 @@ final class V3ProbeBluetoothRuntime: NSObject, @unchecked Sendable {
     private var sessionOrdinal = 0
     private var activeSessionOrdinal: Int?
     private var runStartedAtUptimeNanoseconds: UInt64?
+    private var ownerLease: SensorOwnerLease?
 
     init(eventHandler: @escaping @Sendable (ProbeRuntimeEvent) -> Void) {
         self.eventHandler = eventHandler
@@ -85,13 +87,19 @@ final class V3ProbeBluetoothRuntime: NSObject, @unchecked Sendable {
                 self.emit(.failed("The previous bounded probe is still disconnecting."))
                 return
             }
+            guard self.acquireOwner() else { return }
             self.ensureCentral()
             guard CBManager.authorization != .denied,
                   CBManager.authorization != .restricted else {
                 self.emit(.failed("Bluetooth permission is denied."))
+                self.releaseOwnerIfIdle()
                 return
             }
-            guard let central = self.central else { return }
+            guard let central = self.central else {
+                self.emit(.failed("Bluetooth could not be initialized."))
+                self.releaseOwnerIfIdle()
+                return
+            }
             if central.state == .poweredOn {
                 central.scanForPeripherals(withServices: nil)
                 self.emit(.status("Scanning. The imported expected name is pinned first."))
@@ -106,6 +114,7 @@ final class V3ProbeBluetoothRuntime: NSObject, @unchecked Sendable {
         queue.async {
             self.scanWhenPoweredOn = false
             self.central?.stopScan()
+            self.releaseOwnerIfIdle()
             self.emit(.status("Scan stopped."))
         }
     }
@@ -131,6 +140,7 @@ final class V3ProbeBluetoothRuntime: NSObject, @unchecked Sendable {
                 self.emit(.failed("The selected peripheral is no longer available."))
                 return
             }
+            guard self.acquireOwner() else { return }
 
             central.stopScan()
             self.scanWhenPoweredOn = false
@@ -166,7 +176,9 @@ final class V3ProbeBluetoothRuntime: NSObject, @unchecked Sendable {
     func cancel() {
         queue.async {
             guard self.runToken != nil else {
+                self.scanWhenPoweredOn = false
                 self.central?.stopScan()
+                self.releaseOwnerIfIdle()
                 return
             }
             if var probe = self.probe {
@@ -194,6 +206,23 @@ final class V3ProbeBluetoothRuntime: NSObject, @unchecked Sendable {
     private func emitDiagnostic(_ message: String) {
         diagnosticSequence += 1
         emit(.diagnostic(ProbeDiagnosticEntry(id: diagnosticSequence, message: message)))
+    }
+
+    private func acquireOwner() -> Bool {
+        if ownerLease != nil { return true }
+        do {
+            ownerLease = try SharedSensorOwnerLease.acquire()
+            return true
+        } catch {
+            emit(.failed(error.localizedDescription))
+            return false
+        }
+    }
+
+    private func releaseOwnerIfIdle() {
+        guard runToken == nil else { return }
+        ownerLease?.release()
+        ownerLease = nil
     }
 
     private func apply(_ effects: [V3ProbeEffect]) {
@@ -360,6 +389,8 @@ final class V3ProbeBluetoothRuntime: NSObject, @unchecked Sendable {
         effectiveDataWriteCallCount = 0
         activeSessionOrdinal = nil
         runStartedAtUptimeNanoseconds = nil
+        ownerLease?.release()
+        ownerLease = nil
     }
 
     private func disconnectDiagnostic(error: Error?) -> V3ProbeDisconnectDiagnostic {
@@ -404,12 +435,14 @@ extension V3ProbeBluetoothRuntime: CBCentralManagerDelegate {
             if runToken != nil {
                 fail("Bluetooth permission is denied.")
             } else {
+                releaseOwnerIfIdle()
                 emit(.failed("Bluetooth permission is denied."))
             }
         } else if central.state == .poweredOff || central.state == .unsupported {
             if runToken != nil {
                 fail("Bluetooth is unavailable.")
             } else {
+                releaseOwnerIfIdle()
                 emit(.failed("Bluetooth is unavailable."))
             }
         }
@@ -462,12 +495,9 @@ extension V3ProbeBluetoothRuntime: CBCentralManagerDelegate {
     ) {
         guard activePeripheral?.identifier == peripheral.identifier else { return }
         if !finishing {
-            emitDiagnostic(disconnectDiagnostic(error: error).description)
-            if let error {
-                emit(.failed(error.localizedDescription))
-            } else {
-                emit(.failed("The sensor disconnected before the bounded probe completed."))
-            }
+            let diagnostic = disconnectDiagnostic(error: error)
+            emitDiagnostic(diagnostic.description)
+            emit(.failed(diagnostic.failureDescription))
         }
         let completedSuccessfully = completedSuccessfully
         resetRun()

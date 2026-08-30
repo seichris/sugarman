@@ -72,6 +72,13 @@ public struct V3ProbeDisconnectDiagnostic:
             + "quarantined commands=\(quarantinedCommandCount)."
     }
 
+    /// Sanitized status copied into the manually shareable report. Never use
+    /// the transport error's arbitrary localized description here.
+    public var failureDescription: String {
+        "The sensor disconnected before the bounded probe completed; "
+            + "transport=\(transportError)."
+    }
+
     public var debugDescription: String { description }
 
     public var customMirror: Mirror {

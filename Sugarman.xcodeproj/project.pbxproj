@@ -17,6 +17,7 @@
 		49FEDAFEF5F23DA7FD82079F /* GS3Protocol in Frameworks */ = {isa = PBXBuildFile; productRef = E9EB7D6D79BE31130E3A86B9 /* GS3Protocol */; };
 		4F3EAF6A77D5002026D89A18 /* DataMatrixCameraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3488762722113D1DF2E2D318 /* DataMatrixCameraView.swift */; };
 		560BC0BADE45D27FAC05D341 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29BED539403ADB33595539AE /* DashboardView.swift */; };
+		5AB576F431822FF1828D7CFA /* SensorOwnership in Frameworks */ = {isa = PBXBuildFile; productRef = 7E8B64029D6BD24F1A302D50 /* SensorOwnership */; };
 		74735FDEB0F1627C9F14766B /* GS3DeveloperProbe in Frameworks */ = {isa = PBXBuildFile; productRef = AA164286726B3EF92D3AAE1C /* GS3DeveloperProbe */; };
 		78E8C92384E18DBC9C515A18 /* SugarmanDomain in Frameworks */ = {isa = PBXBuildFile; productRef = ADE13AEECE159CEFFE400572 /* SugarmanDomain */; };
 		7F15A41C2BF5312E05733725 /* WorkoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 624C211ABA31163598C2C265 /* WorkoutView.swift */; };
@@ -35,6 +36,7 @@
 		E15309AE01C533808742A893 /* SugarmanApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4704D8B1664BAC86165C699F /* SugarmanApp.swift */; };
 		E957FF0A866DAEBEE78F454D /* PrivacyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D62AEF0933A5D37DBD9819B /* PrivacyView.swift */; };
 		F31E6F71459357BB609CA8AE /* ActiveSessionBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15DF313DF9367CC3CEA50640 /* ActiveSessionBanner.swift */; };
+		F85EFE7C19C587F8C7A6FB07 /* SensorOwnership in Frameworks */ = {isa = PBXBuildFile; productRef = 0A8CB8EC5B8B728EAA009209 /* SensorOwnership */; };
 		FF8873FC56CAC156D746ECE0 /* SugarmanDiagnostics in Frameworks */ = {isa = PBXBuildFile; productRef = 68C83594A30351E0BAA91AE3 /* SugarmanDiagnostics */; };
 /* End PBXBuildFile section */
 
@@ -62,6 +64,7 @@
 		D9DEBFFC56BDC6FB81519643 /* V3ProbeBluetoothRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = V3ProbeBluetoothRuntime.swift; sourceTree = "<group>"; };
 		E2EE7DEAE55777159E636FBD /* DiagnosticProbeSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticProbeSession.swift; sourceTree = "<group>"; };
 		E6EE39F377CDFD5147B0BA60 /* Sugarman.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Sugarman.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F628625178EE8285CEC183DE /* SugarmanProbe.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SugarmanProbe.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -71,6 +74,7 @@
 			files = (
 				74735FDEB0F1627C9F14766B /* GS3DeveloperProbe in Frameworks */,
 				49FEDAFEF5F23DA7FD82079F /* GS3Protocol in Frameworks */,
+				5AB576F431822FF1828D7CFA /* SensorOwnership in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -87,6 +91,7 @@
 				B2FC75E9F9317D3F50202930 /* SafetyEngine in Frameworks */,
 				2180F84F9A632C8BD78BEB55 /* Integrations in Frameworks */,
 				FF8873FC56CAC156D746ECE0 /* SugarmanDiagnostics in Frameworks */,
+				F85EFE7C19C587F8C7A6FB07 /* SensorOwnership in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -130,6 +135,7 @@
 			children = (
 				CD93DE80D8823F077A698FBA /* ProbeAppModel.swift */,
 				60D75ABFD67CB22CB7D4C18B /* ProbeView.swift */,
+				F628625178EE8285CEC183DE /* SugarmanProbe.entitlements */,
 				CA4F6CD684BA19A9D21C9C65 /* SugarmanProbeApp.swift */,
 				D9DEBFFC56BDC6FB81519643 /* V3ProbeBluetoothRuntime.swift */,
 			);
@@ -196,6 +202,7 @@
 				A9114B2D0C315218CD65C655 /* SafetyEngine */,
 				67DE8DC36AEDDAE5D84B6DDD /* Integrations */,
 				68C83594A30351E0BAA91AE3 /* SugarmanDiagnostics */,
+				0A8CB8EC5B8B728EAA009209 /* SensorOwnership */,
 			);
 			productName = Sugarman;
 			productReference = E6EE39F377CDFD5147B0BA60 /* Sugarman.app */;
@@ -216,6 +223,7 @@
 			packageProductDependencies = (
 				AA164286726B3EF92D3AAE1C /* GS3DeveloperProbe */,
 				E9EB7D6D79BE31130E3A86B9 /* GS3Protocol */,
+				7E8B64029D6BD24F1A302D50 /* SensorOwnership */,
 			);
 			productName = SugarmanProbe;
 			productReference = 805EFD4E6C63AC4FA9C59EB9 /* SugarmanProbe.app */;
@@ -384,6 +392,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Apps/SugarmanProbe/SugarmanProbe.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Apps/SugarmanProbe/Info.plist;
@@ -406,6 +415,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Apps/SugarmanProbe/SugarmanProbe.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Apps/SugarmanProbe/Info.plist;
@@ -578,6 +588,10 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		0A8CB8EC5B8B728EAA009209 /* SensorOwnership */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SensorOwnership;
+		};
 		375AFB438175197FEB7F5409 /* SugarmanStore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SugarmanStore;
@@ -597,6 +611,10 @@
 		68C83594A30351E0BAA91AE3 /* SugarmanDiagnostics */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SugarmanDiagnostics;
+		};
+		7E8B64029D6BD24F1A302D50 /* SensorOwnership */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SensorOwnership;
 		};
 		9BD053E9E2482A4DF749F1BC /* GS3Transport */ = {
 			isa = XCSwiftPackageProductDependency;
