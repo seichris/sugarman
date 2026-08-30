@@ -17,6 +17,17 @@ final class ProbeAppModel {
     var isRunning = false
     var reading: V3ProbeReading?
     var validatedLiveReadingCount = 0
+    var diagnostics: [ProbeDiagnosticEntry] = []
+
+    var redactedDiagnosticReport: String {
+        let lines = diagnostics.map(\.displayText)
+        return ([
+            "Sugarman Probe redacted diagnostics",
+            "Payloads, device identifiers, private material, glucose values, and record indexes omitted.",
+            "Final status: \(status)",
+            "",
+        ] + lines).joined(separator: "\n")
+    }
 
     @ObservationIgnored
     private let materialStore = KeychainV3ProbeMaterialStore()
@@ -78,6 +89,7 @@ final class ProbeAppModel {
             expectedPeripheralName = nil
             reading = nil
             validatedLiveReadingCount = 0
+            diagnostics = []
             status = "Private material deleted from this device."
         } catch {
             status = error.localizedDescription
@@ -114,6 +126,7 @@ final class ProbeAppModel {
             isRunning = true
             reading = nil
             validatedLiveReadingCount = 0
+            diagnostics = []
             runtime.run(peripheral: peripheral, material: material)
         } catch {
             isRunning = false
@@ -149,6 +162,11 @@ final class ProbeAppModel {
             }
         case .status(let message):
             status = message
+        case .diagnostic(let entry):
+            diagnostics.append(entry)
+            if diagnostics.count > 64 {
+                diagnostics.removeFirst(diagnostics.count - 64)
+            }
         case .reading(let value):
             reading = value
             if value.source == .liveNotification {

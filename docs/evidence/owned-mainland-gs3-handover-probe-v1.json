@@ -47,9 +47,22 @@
   },
   "verification": {
     "publicFixtures": "synthetic-only",
-    "physicalIPhoneRun": false,
+    "physicalIPhoneRun": true,
+    "physicalIPhoneRunOutcome": "connected-then-failed-closed-before-a-validated-reading",
+    "physicalRunSourceCommit": "e0e332cee3dd7acf725262ba9da6bb52ddb59c94",
+    "physicalRunManifestSHA256": "1c15cbfcbde10135a0f93bd167fd0af06b807f51015f764feb75540005c16855",
+    "actualApplicationWriteCountsCaptured": false,
+    "iPhoneGlucoseValidated": false,
     "sensorWriteAuthorizedByThisRecord": false,
-    "officialAndroidHandbackVerified": false
+    "officialAndroidHandbackVerified": true,
+    "officialAndroidPostRunControl": {
+      "displayedUpdateTime": "20:02",
+      "timeContext": "owner-local Asia/Singapore test context",
+      "glucoseMillimolesPerLiter": 8.8,
+      "arrowVisualDirection": "right-down",
+      "nativeTrendMeaningClaimed": false
+    },
+    "followUpPhysicalRunAuthorized": false
   },
-  "decision": "Review and merge source, then build a signed artifact and obtain a fresh exact artifact-device-action confirmation before installation or sensor traffic."
+  "decision": "Do not retry the PR 13 artifact. Review the payload-free diagnostic follow-up, then build a new signed artifact and obtain a fresh exact artifact-device-action confirmation before installation or sensor traffic."
 }

@@ -4,8 +4,11 @@
 
 `SugarmanProbe` is a separate, foreground-only iOS developer application for
 one owner-controlled, already-active Mainland GS3. It is implemented and
-host-verified with synthetic data. It has **not** been installed on an iPhone,
-connected to the sensor, or physically validated.
+host-verified with synthetic data. The first exact PR #13 physical run on
+2026-08-30 connected and then failed closed with an unclassified generic error;
+the official Android app subsequently reconnected and resumed fresh readings.
+No iPhone glucose value was validated, so the handover gate remains failed.
+See [`V3_PROBE_PHYSICAL_RESULT_2026-08-30.md`](V3_PROBE_PHYSICAL_RESULT_2026-08-30.md).
 
 The normal `Sugarman` application does not link `GS3DeveloperProbe` and retains
 its empty live-request enum and transport without a write API. The developer
@@ -31,6 +34,21 @@ native library, and HCI capture. Raw packets, owner identifiers, cryptographic
 material, and non-authorized glucose history remain outside Git. Operational
 iPhone handover confidence is **unproven until the physical gate passes**.
 
+## First-run diagnosis and official-sequence comparison
+
+The PR #13 UI retained neither packet classification nor state/counter
+diagnostics. Source inspection shows that `error.localizedDescription` also
+lost the probe's `CustomStringConvertible` message. The observed generic error
+therefore cannot establish which packet class triggered the fail-closed path or
+whether the conditional `0x39` CoreBluetooth call occurred.
+
+A payload-free private re-analysis of all four connections in the canonical
+Android capture verified the repeated order `0xE2 request`, exact acceptance,
+device-information exchanges, `0x39` request, `0x39` acknowledgement, then
+data. No live notification preceded authentication acceptance. The developer
+probe omits the intervening device-information writes. That difference is
+verified, but their necessity is not; the follow-up does not add them.
+
 ## Enforced command boundary
 
 The flow is a typed state machine:
@@ -51,6 +69,13 @@ entry point, `0x35`, `0x30`, `0xF0`, activation, binding, reset, secret-key,
 firmware, lifecycle, HealthKit, or notification path. Authentication rejection,
 an unknown notification, malformed crypto/frame data, BLE failure, cancel, or
 timeout disconnects without another application write.
+
+The reviewed follow-up also classifies every inbound FF31 value without
+retaining its payload, records state transitions and byte counts in memory,
+reports CoreBluetooth write calls separately from acknowledgements, and permits
+only one in-flight application write. The trace can be manually shared as text
+and excludes packet bytes, identifiers, private material, glucose values, and
+record indexes.
 
 `Scripts/check_governance.py` permits exactly one CoreBluetooth write call in
 the repository, in the probe adapter. It requires typed authentication and
@@ -121,8 +146,9 @@ one-shot `0xE2`/`0x39` attempt.
 Then follow
 [`V3_ALREADY_ACTIVE_HANDOVER_TEST_PLAN.md`](V3_ALREADY_ACTIVE_HANDOVER_TEST_PLAN.md):
 record the official Android baseline, turn Android Bluetooth off without
-unbinding, run only the confirmed iPhone artifact once, require five unique live
-readings, disconnect, and prove official Android handback. Any extra write,
+unbinding, run only a newly confirmed follow-up artifact once, preserve its
+redacted trace, require five unique live readings, disconnect, and prove
+official Android handback. Do not rerun the PR #13 artifact. Any extra write,
 unexpected response, value mismatch, or failed handback fails the gate.
 
 Fresh activation is outside this probe and requires a separate implementation,

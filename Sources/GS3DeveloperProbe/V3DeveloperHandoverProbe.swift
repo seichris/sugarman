@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Sugarman contributors
 
+import Foundation
 import GS3Protocol
 
 public enum V3ProbeState: Sendable, Equatable {
@@ -10,6 +11,85 @@ public enum V3ProbeState: Sendable, Equatable {
     case awaitingEffectiveData
     case completed
     case failed
+}
+
+extension V3ProbeState: CustomStringConvertible {
+    public var description: String {
+        switch self {
+        case .idle: "idle"
+        case .subscribing: "subscribing"
+        case .awaitingAuthentication: "awaiting authentication"
+        case .awaitingEffectiveData: "awaiting effective data"
+        case .completed: "completed"
+        case .failed: "failed"
+        }
+    }
+}
+
+/// Payload-free classification of an FF31 notification.
+///
+/// This deliberately omits ciphertext, plaintext, identifiers, status-detail
+/// bytes, glucose values, record indexes, and cryptographic material.
+public enum V3ProbeInboundClassification: Sendable, Equatable {
+    case authenticationAccepted
+    case authenticationRejected
+    case effectiveDataAcknowledgement
+    case effectiveDataBatch
+    case liveNotificationBatch
+    case malformedOrUnsupported
+}
+
+extension V3ProbeInboundClassification: CustomStringConvertible {
+    public var description: String {
+        switch self {
+        case .authenticationAccepted: "authentication acceptance"
+        case .authenticationRejected: "authentication rejection"
+        case .effectiveDataAcknowledgement: "effective-data acknowledgement"
+        case .effectiveDataBatch: "effective-data batch"
+        case .liveNotificationBatch: "live-notification batch"
+        case .malformedOrUnsupported: "malformed or unsupported notification"
+        }
+    }
+}
+
+/// Redacted state/packet evidence retained only by the developer probe UI.
+public struct V3ProbePacketDiagnostic:
+    Sendable, Equatable, CustomStringConvertible, CustomDebugStringConvertible,
+    CustomReflectable
+{
+    public let stateBefore: V3ProbeState
+    public let stateAfter: V3ProbeState
+    public let classification: V3ProbeInboundClassification
+    public let byteCount: Int
+    public let authenticationTransmissionCount: Int
+    public let effectiveDataTransmissionCount: Int
+    public let uniqueLiveReadingCount: Int
+
+    public var description: String {
+        "RX FF31: \(classification), \(byteCount) bytes; "
+            + "\(stateBefore) -> \(stateAfter); "
+            + "authorized E2=\(authenticationTransmissionCount), "
+            + "authorized 0x39=\(effectiveDataTransmissionCount), "
+            + "unique live=\(uniqueLiveReadingCount)"
+    }
+
+    public var debugDescription: String { description }
+
+    public var customMirror: Mirror {
+        Mirror(
+            self,
+            children: [
+                "stateBefore": stateBefore,
+                "stateAfter": stateAfter,
+                "classification": classification,
+                "byteCount": byteCount,
+                "authenticationTransmissionCount": authenticationTransmissionCount,
+                "effectiveDataTransmissionCount": effectiveDataTransmissionCount,
+                "uniqueLiveReadingCount": uniqueLiveReadingCount,
+            ],
+            displayStyle: .struct
+        )
+    }
 }
 
 public enum V3ProbeTransmission: Sendable, Equatable {
@@ -67,10 +147,12 @@ public enum V3ProbeError: Error, Sendable, Equatable {
     case authenticationRejected(code: UInt8, detail: UInt8)
     case timedOut
     case cancelled
-    case unexpectedNotification
+    case unexpectedNotification(V3ProbePacketDiagnostic)
 }
 
-extension V3ProbeError: CustomStringConvertible {
+extension V3ProbeError: LocalizedError, CustomStringConvertible {
+    public var errorDescription: String? { description }
+
     public var description: String {
         switch self {
         case .invalidTransition(let state):
@@ -81,8 +163,12 @@ extension V3ProbeError: CustomStringConvertible {
             return "The bounded developer probe timed out."
         case .cancelled:
             return "The bounded developer probe was cancelled."
-        case .unexpectedNotification:
-            return "The sensor sent a notification outside the bounded probe protocol."
+        case .unexpectedNotification(let diagnostic):
+            return "Unexpected \(diagnostic.classification) while "
+                + "\(diagnostic.stateBefore) (\(diagnostic.byteCount) bytes; "
+                + "authorized E2=\(diagnostic.authenticationTransmissionCount), "
+                + "authorized 0x39=\(diagnostic.effectiveDataTransmissionCount)). "
+                + "Disconnected; do not retry this artifact."
         }
     }
 }
@@ -97,6 +183,7 @@ public struct V3DeveloperHandoverProbe: Sendable {
     public private(set) var authenticationTransmissionCount = 0
     public private(set) var effectiveDataTransmissionCount = 0
     public private(set) var uniqueLiveReadingCount = 0
+    public private(set) var lastPacketDiagnostic: V3ProbePacketDiagnostic?
 
     private let material: V3ProbeMaterial
     private let requiredLiveReadingCount: Int
@@ -128,10 +215,12 @@ public struct V3DeveloperHandoverProbe: Sendable {
     }
 
     public mutating func didReceive(_ frame: EncodedFrame) throws -> [V3ProbeEffect] {
+        let stateBefore = state
+        let decoded = decode(frame)
+
         switch state {
         case .awaitingAuthentication:
-            let response = try material.decodeControl(frame)
-            switch response {
+            switch decoded.controlResponse {
             case .authenticationAccepted:
                 guard effectiveDataTransmissionCount == 0 else {
                     throw V3ProbeError.invalidTransition(from: state)
@@ -139,16 +228,30 @@ public struct V3DeveloperHandoverProbe: Sendable {
                 let request = try material.effectiveDataFrame()
                 effectiveDataTransmissionCount = 1
                 state = .awaitingEffectiveData
+                recordDiagnostic(
+                    stateBefore: stateBefore,
+                    classification: decoded.classification,
+                    byteCount: frame.byteCount
+                )
                 return [.transmit(.effectiveData(request))]
             case .authenticationRejected(let code, let detail):
                 state = .failed
+                recordDiagnostic(
+                    stateBefore: stateBefore,
+                    classification: decoded.classification,
+                    byteCount: frame.byteCount
+                )
                 throw V3ProbeError.authenticationRejected(code: code, detail: detail)
-            case .effectiveDataAcknowledgement:
-                throw V3ProbeError.unexpectedNotification
+            case .effectiveDataAcknowledgement, .none:
+                throw unexpectedNotification(
+                    stateBefore: stateBefore,
+                    classification: decoded.classification,
+                    byteCount: frame.byteCount
+                )
             }
 
         case .awaitingEffectiveData:
-            if let batch = try? material.decodeGlucose(frame),
+            if let batch = decoded.glucoseBatch,
                let record = batch.records.last {
                 let reading = V3ProbeReading(
                     index: record.index,
@@ -157,6 +260,11 @@ public struct V3DeveloperHandoverProbe: Sendable {
                     source: batch.source
                 )
                 guard batch.source == .liveNotification else {
+                    recordDiagnostic(
+                        stateBefore: stateBefore,
+                        classification: decoded.classification,
+                        byteCount: frame.byteCount
+                    )
                     return [
                         .report(
                             reading,
@@ -165,7 +273,14 @@ public struct V3DeveloperHandoverProbe: Sendable {
                         )
                     ]
                 }
-                guard observedLiveIndexes.insert(record.index).inserted else { return [] }
+                guard observedLiveIndexes.insert(record.index).inserted else {
+                    recordDiagnostic(
+                        stateBefore: stateBefore,
+                        classification: decoded.classification,
+                        byteCount: frame.byteCount
+                    )
+                    return []
+                }
                 uniqueLiveReadingCount += 1
                 let progress = V3ProbeEffect.report(
                     reading,
@@ -174,15 +289,33 @@ public struct V3DeveloperHandoverProbe: Sendable {
                 )
                 if uniqueLiveReadingCount >= requiredLiveReadingCount {
                     state = .completed
+                    recordDiagnostic(
+                        stateBefore: stateBefore,
+                        classification: decoded.classification,
+                        byteCount: frame.byteCount
+                    )
                     return [progress, .disconnect]
                 }
+                recordDiagnostic(
+                    stateBefore: stateBefore,
+                    classification: decoded.classification,
+                    byteCount: frame.byteCount
+                )
                 return [progress]
             }
-            if let response = try? material.decodeControl(frame),
-               case .effectiveDataAcknowledgement = response {
+            if case .effectiveDataAcknowledgement = decoded.controlResponse {
+                recordDiagnostic(
+                    stateBefore: stateBefore,
+                    classification: decoded.classification,
+                    byteCount: frame.byteCount
+                )
                 return []
             }
-            throw V3ProbeError.unexpectedNotification
+            throw unexpectedNotification(
+                stateBefore: stateBefore,
+                classification: decoded.classification,
+                byteCount: frame.byteCount
+            )
 
         case .idle, .subscribing, .completed, .failed:
             throw V3ProbeError.invalidTransition(from: state)
@@ -199,5 +332,69 @@ public struct V3DeveloperHandoverProbe: Sendable {
         guard state != .completed, state != .failed else { return [] }
         state = .failed
         return [.disconnect]
+    }
+
+    private func decode(
+        _ frame: EncodedFrame
+    ) -> (
+        classification: V3ProbeInboundClassification,
+        controlResponse: V3ControlResponse?,
+        glucoseBatch: V3GlucoseBatch?
+    ) {
+        if let response = try? material.decodeControl(frame) {
+            let classification: V3ProbeInboundClassification
+            switch response {
+            case .authenticationAccepted:
+                classification = .authenticationAccepted
+            case .authenticationRejected:
+                classification = .authenticationRejected
+            case .effectiveDataAcknowledgement:
+                classification = .effectiveDataAcknowledgement
+            }
+            return (classification, response, nil)
+        }
+        if let batch = try? material.decodeGlucose(frame) {
+            let classification: V3ProbeInboundClassification = switch batch.source {
+            case .effectiveData: .effectiveDataBatch
+            case .liveNotification: .liveNotificationBatch
+            }
+            return (classification, nil, batch)
+        }
+        return (.malformedOrUnsupported, nil, nil)
+    }
+
+    private mutating func recordDiagnostic(
+        stateBefore: V3ProbeState,
+        classification: V3ProbeInboundClassification,
+        byteCount: Int
+    ) {
+        lastPacketDiagnostic = V3ProbePacketDiagnostic(
+            stateBefore: stateBefore,
+            stateAfter: state,
+            classification: classification,
+            byteCount: byteCount,
+            authenticationTransmissionCount: authenticationTransmissionCount,
+            effectiveDataTransmissionCount: effectiveDataTransmissionCount,
+            uniqueLiveReadingCount: uniqueLiveReadingCount
+        )
+    }
+
+    private mutating func unexpectedNotification(
+        stateBefore: V3ProbeState,
+        classification: V3ProbeInboundClassification,
+        byteCount: Int
+    ) -> V3ProbeError {
+        state = .failed
+        let diagnostic = V3ProbePacketDiagnostic(
+            stateBefore: stateBefore,
+            stateAfter: state,
+            classification: classification,
+            byteCount: byteCount,
+            authenticationTransmissionCount: authenticationTransmissionCount,
+            effectiveDataTransmissionCount: effectiveDataTransmissionCount,
+            uniqueLiveReadingCount: uniqueLiveReadingCount
+        )
+        lastPacketDiagnostic = diagnostic
+        return .unexpectedNotification(diagnostic)
     }
 }

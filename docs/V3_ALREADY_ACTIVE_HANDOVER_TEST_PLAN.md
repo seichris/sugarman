@@ -7,12 +7,14 @@ active Mainland GS3. It is designed to prove authentication, one effective-data
 request, live notification decoding, and official Android-app handback while
 excluding activation and every lifecycle mutation.
 
-The developer-only probe is **implemented and host-verified, but has not been
-installed or physically run**. Its code and material boundary are documented in
-[`V3_DEVELOPER_HANDOVER_PROBE.md`](V3_DEVELOPER_HANDOVER_PROBE.md). The normal
-`Sugarman` application remains read-only; only the separate `SugarmanProbe`
-target can express the bounded writes below. No artifact covered by this
-document is currently authorized for installation or sensor traffic.
+The first developer-only PR #13 artifact was installed and run once on
+2026-08-30. It connected, failed closed with a generic unclassified error, and
+produced no validated iPhone glucose value. The official Android app then
+reconnected and resumed fresh readings. That artifact must not be retried. See
+[`V3_PROBE_PHYSICAL_RESULT_2026-08-30.md`](V3_PROBE_PHYSICAL_RESULT_2026-08-30.md).
+The normal `Sugarman` application remains read-only; only the separate
+`SugarmanProbe` target can express the bounded writes below. No follow-up
+artifact is currently authorized for installation or sensor traffic.
 
 ## Implemented boundary before the physical gate
 
@@ -29,6 +31,12 @@ The separate `SugarmanProbe` target exposes only these operations:
    offline-reviewed decoder;
 7. display redacted state plus the latest value and disconnect after five
    unique live `0x32` indexes or a seven-minute cap.
+
+The follow-up candidate additionally retains an in-memory payload-free trace of
+state transitions, inbound class/length, CoreBluetooth write calls, and write
+acknowledgements. It permits only one application write in flight and can share
+the redacted trace manually after the session. This does not add a command,
+retry, reconnect, or background path.
 
 The target contains no builders or cases for `0x35`, binding, activation,
 reset, secret-key, expiry/lifecycle, firmware, or arbitrary raw writes. The
@@ -77,6 +85,8 @@ connect. The final confirmation must cover both if both are intended.
 4. Run one bounded probe. Abort automatically if authentication is rejected, an
    unexpected command would be needed, frame validation fails, or the timeout
    expires.
+   If it aborts, share the in-memory redacted diagnostic text before deleting
+   private material or terminating the app. Do not retry the artifact.
 5. Require at least five consecutive approximately one-minute iPhone readings.
    Compare timestamp/index, mmol/L after documented rounding, reading age, and
    the known flat trend case against the official app's private record. Do not

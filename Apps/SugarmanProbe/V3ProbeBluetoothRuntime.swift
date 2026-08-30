@@ -17,9 +17,31 @@ struct ProbePeripheral: Identifiable, Sendable, Equatable {
 enum ProbeRuntimeEvent: Sendable, Equatable {
     case discovered(ProbePeripheral)
     case status(String)
+    case diagnostic(ProbeDiagnosticEntry)
     case reading(V3ProbeReading)
     case failed(String)
     case finished(completedSuccessfully: Bool)
+}
+
+struct ProbeDiagnosticEntry: Identifiable, Sendable, Equatable {
+    let id: Int
+    let message: String
+
+    var displayText: String {
+        String(format: "%02d  %@", id, message)
+    }
+}
+
+private enum ProbeWriteKind: Sendable, Equatable {
+    case authentication
+    case effectiveData
+
+    var diagnosticName: String {
+        switch self {
+        case .authentication: "E2 authentication"
+        case .effectiveData: "0x39 effective-data request"
+        }
+    }
 }
 
 /// Foreground-only CoreBluetooth adapter for the separate developer target.
@@ -43,6 +65,11 @@ final class V3ProbeBluetoothRuntime: NSObject, @unchecked Sendable {
     private var runToken: UUID?
     private var finishing = false
     private var completedSuccessfully = false
+    private var diagnosticSequence = 0
+    private var inFlightWrite: ProbeWriteKind?
+    private var queuedTransmission: V3ProbeTransmission?
+    private var authenticationWriteCallCount = 0
+    private var effectiveDataWriteCallCount = 0
 
     init(eventHandler: @escaping @Sendable (ProbeRuntimeEvent) -> Void) {
         self.eventHandler = eventHandler
@@ -110,9 +137,17 @@ final class V3ProbeBluetoothRuntime: NSObject, @unchecked Sendable {
             self.probe = V3DeveloperHandoverProbe(material: material)
             self.finishing = false
             self.completedSuccessfully = false
+            self.diagnosticSequence = 0
+            self.inFlightWrite = nil
+            self.queuedTransmission = nil
+            self.authenticationWriteCallCount = 0
+            self.effectiveDataWriteCallCount = 0
             let token = UUID()
             self.runToken = token
             peripheral.delegate = self
+            self.emitDiagnostic(
+                "Session started for the explicitly selected expected peripheral; no identifier retained."
+            )
             self.emit(.status("Connecting once; there is no automatic reconnect."))
             central.connect(peripheral, options: nil)
             self.queue.asyncAfter(deadline: .now() + Self.timeoutSeconds) { [weak self] in
@@ -150,6 +185,11 @@ final class V3ProbeBluetoothRuntime: NSObject, @unchecked Sendable {
         eventHandler(event)
     }
 
+    private func emitDiagnostic(_ message: String) {
+        diagnosticSequence += 1
+        emit(.diagnostic(ProbeDiagnosticEntry(id: diagnosticSequence, message: message)))
+    }
+
     private func apply(_ effects: [V3ProbeEffect]) {
         for effect in effects {
             switch effect {
@@ -161,6 +201,7 @@ final class V3ProbeBluetoothRuntime: NSObject, @unchecked Sendable {
                 }
                 peripheral.setNotifyValue(true, for: characteristic)
                 emit(.status("Subscribing to FF31 notifications."))
+                emitDiagnostic("Enabling FF31 notifications; state=subscribing.")
 
             case .transmit(let transmission):
                 transmit(transmission)
@@ -170,6 +211,16 @@ final class V3ProbeBluetoothRuntime: NSObject, @unchecked Sendable {
                 emit(.status("Validated live readings: \(count)/\(required)."))
 
             case .disconnect:
+                if probe?.state == .completed,
+                   (authenticationWriteCallCount != 1 || effectiveDataWriteCallCount != 1) {
+                    fail("The probe reached completion without both bounded CoreBluetooth write calls.")
+                    return
+                }
+                if probe?.state == .completed {
+                    emitDiagnostic(
+                        "Completion gate passed with CoreBluetooth write calls E2=1, 0x39=1; disconnecting."
+                    )
+                }
                 finishing = true
                 completedSuccessfully = probe?.state == .completed
                 disconnectAndFinish()
@@ -178,6 +229,21 @@ final class V3ProbeBluetoothRuntime: NSObject, @unchecked Sendable {
     }
 
     private func transmit(_ transmission: V3ProbeTransmission) {
+        guard !finishing else { return }
+        if let inFlightWrite {
+            guard inFlightWrite == .authentication,
+                  case .effectiveData = transmission,
+                  queuedTransmission == nil else {
+                fail("A second application write was requested while another write was in flight.")
+                return
+            }
+            queuedTransmission = transmission
+            emitDiagnostic(
+                "0x39 authorized after authentication acceptance; waiting for the E2 CoreBluetooth write acknowledgement."
+            )
+            return
+        }
+
         guard let peripheral = activePeripheral,
               let characteristic = transmissionCharacteristic,
               characteristic.uuid == Self.transmissionUUID,
@@ -188,23 +254,44 @@ final class V3ProbeBluetoothRuntime: NSObject, @unchecked Sendable {
 
         let frame: EncodedFrame
         let message: String
+        let writeKind: ProbeWriteKind
         switch transmission {
         case .authentication(let typedFrame):
             guard typedFrame.byteCount == 38 else {
                 fail("Typed authentication frame has an invalid length.")
                 return
             }
+            guard authenticationWriteCallCount == 0,
+                  effectiveDataWriteCallCount == 0 else {
+                fail("The bounded E2 CoreBluetooth write-call limit was reached.")
+                return
+            }
             frame = typedFrame
+            writeKind = .authentication
+            authenticationWriteCallCount += 1
             message = "Transmitting the single typed 0xE2 authentication."
         case .effectiveData(let typedFrame):
             guard typedFrame.byteCount == 7 else {
                 fail("Typed effective-data frame has an invalid length.")
                 return
             }
+            guard authenticationWriteCallCount == 1,
+                  effectiveDataWriteCallCount == 0 else {
+                fail("The bounded 0x39 CoreBluetooth write-call limit was reached.")
+                return
+            }
             frame = typedFrame
+            writeKind = .effectiveData
+            effectiveDataWriteCallCount += 1
             message = "Authentication accepted; transmitting the single typed 0x39 request."
         }
+        inFlightWrite = writeKind
         emit(.status(message))
+        emitDiagnostic(
+            "TX FF32 \(writeKind.diagnosticName), \(frame.byteCount) bytes; "
+                + "CoreBluetooth write calls E2=\(authenticationWriteCallCount), "
+                + "0x39=\(effectiveDataWriteCallCount)."
+        )
         peripheral.writeValue(
             Data(frame.bytes),
             for: characteristic,
@@ -219,6 +306,8 @@ final class V3ProbeBluetoothRuntime: NSObject, @unchecked Sendable {
         }
         finishing = true
         completedSuccessfully = false
+        queuedTransmission = nil
+        emitDiagnostic("Fail closed: \(message)")
         emit(.failed(message))
         disconnectAndFinish()
     }
@@ -248,6 +337,10 @@ final class V3ProbeBluetoothRuntime: NSObject, @unchecked Sendable {
         probe = nil
         finishing = false
         completedSuccessfully = false
+        inFlightWrite = nil
+        queuedTransmission = nil
+        authenticationWriteCallCount = 0
+        effectiveDataWriteCallCount = 0
     }
 }
 
@@ -298,6 +391,7 @@ extension V3ProbeBluetoothRuntime: CBCentralManagerDelegate {
             central.cancelPeripheralConnection(peripheral)
             return
         }
+        emitDiagnostic("Connected once; discovering only service FF30.")
         emit(.status("Connected; discovering only the FF30 service."))
         peripheral.discoverServices([Self.serviceUUID])
     }
@@ -369,6 +463,7 @@ extension V3ProbeBluetoothRuntime: CBPeripheralDelegate {
             fail("The expected FF31/FF32 properties are unavailable.")
             return
         }
+        emitDiagnostic("Found FF31 notify and FF32 acknowledged-write characteristics.")
         do {
             guard var probe else { throw V3ProbeError.invalidTransition(from: .failed) }
             let effects = try probe.start()
@@ -394,6 +489,7 @@ extension V3ProbeBluetoothRuntime: CBPeripheralDelegate {
             fail("FF31 notification subscription was not enabled.")
             return
         }
+        emitDiagnostic("FF31 notification subscription enabled.")
         do {
             guard var probe else { throw V3ProbeError.invalidTransition(from: .failed) }
             let effects = try probe.didSubscribe()
@@ -411,7 +507,25 @@ extension V3ProbeBluetoothRuntime: CBPeripheralDelegate {
     ) {
         guard activePeripheral?.identifier == peripheral.identifier,
               characteristic.uuid == Self.transmissionUUID else { return }
-        if let error { fail(error.localizedDescription) }
+        guard !finishing else {
+            inFlightWrite = nil
+            queuedTransmission = nil
+            return
+        }
+        if let error {
+            fail(error.localizedDescription)
+            return
+        }
+        guard let completedWrite = inFlightWrite else {
+            fail("CoreBluetooth acknowledged an FF32 write with no tracked in-flight command.")
+            return
+        }
+        inFlightWrite = nil
+        emitDiagnostic("CoreBluetooth acknowledged FF32 \(completedWrite.diagnosticName).")
+        if let queuedTransmission {
+            self.queuedTransmission = nil
+            transmit(queuedTransmission)
+        }
     }
 
     func peripheral(
@@ -427,14 +541,24 @@ extension V3ProbeBluetoothRuntime: CBPeripheralDelegate {
             return
         }
         guard let data = characteristic.value else { return }
+        guard var activeProbe = probe else {
+            fail(V3ProbeError.invalidTransition(from: .failed).localizedDescription)
+            return
+        }
         do {
-            guard var probe else { throw V3ProbeError.invalidTransition(from: .failed) }
-            let effects = try probe.didReceive(
+            let effects = try activeProbe.didReceive(
                 EncodedFrame(bytes: [UInt8](data))
             )
-            self.probe = probe
+            self.probe = activeProbe
+            if let diagnostic = activeProbe.lastPacketDiagnostic {
+                emitDiagnostic(diagnostic.description)
+            }
             apply(effects)
         } catch {
+            self.probe = activeProbe
+            if let diagnostic = activeProbe.lastPacketDiagnostic {
+                emitDiagnostic(diagnostic.description)
+            }
             fail(error.localizedDescription)
         }
     }

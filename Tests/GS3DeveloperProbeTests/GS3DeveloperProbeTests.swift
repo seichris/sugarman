@@ -83,6 +83,17 @@ struct GS3DeveloperProbeTests {
         #expect(requestFrame.byteCount == 7)
         #expect(probe.authenticationTransmissionCount == 1)
         #expect(probe.effectiveDataTransmissionCount == 1)
+        #expect(
+            probe.lastPacketDiagnostic == V3ProbePacketDiagnostic(
+                stateBefore: .awaitingAuthentication,
+                stateAfter: .awaitingEffectiveData,
+                classification: .authenticationAccepted,
+                byteCount: 5,
+                authenticationTransmissionCount: 1,
+                effectiveDataTransmissionCount: 1,
+                uniqueLiveReadingCount: 0
+            )
+        )
 
         let requestPlaintext = try decryptTransport(requestFrame)
         #expect(requestPlaintext == [0x06, 0x39, 0x34, 0x12, 0xFF, 0xFF, 0x7D])
@@ -94,6 +105,7 @@ struct GS3DeveloperProbeTests {
         )
         #expect(try probe.didReceive(acknowledgement).isEmpty)
         #expect(probe.state == .awaitingEffectiveData)
+        #expect(probe.lastPacketDiagnostic?.classification == .effectiveDataAcknowledgement)
 
         let glucose = try encryptedGlucoseBatch(command: 0x32, glucoseTenths: 72)
         let completion = try probe.didReceive(glucose)
@@ -108,6 +120,8 @@ struct GS3DeveloperProbeTests {
         #expect(required == 1)
         #expect(completion.last == .disconnect)
         #expect(probe.state == .completed)
+        #expect(probe.lastPacketDiagnostic?.classification == .liveNotificationBatch)
+        #expect(probe.lastPacketDiagnostic?.stateAfter == .completed)
         #expect(probe.authenticationTransmissionCount == 1)
         #expect(probe.effectiveDataTransmissionCount == 1)
         #expect(throws: V3ProbeError.invalidTransition(from: .completed)) {
@@ -200,9 +214,20 @@ struct GS3DeveloperProbeTests {
         var freshProbe = V3DeveloperHandoverProbe(material: try syntheticMaterial())
         _ = try freshProbe.start()
         _ = try freshProbe.didSubscribe()
-        #expect(throws: V3ProbeError.unexpectedNotification) {
+        let expectedDiagnostic = V3ProbePacketDiagnostic(
+            stateBefore: .awaitingAuthentication,
+            stateAfter: .failed,
+            classification: .effectiveDataAcknowledgement,
+            byteCount: 5,
+            authenticationTransmissionCount: 1,
+            effectiveDataTransmissionCount: 0,
+            uniqueLiveReadingCount: 0
+        )
+        #expect(throws: V3ProbeError.unexpectedNotification(expectedDiagnostic)) {
             try freshProbe.didReceive(unexpectedPreAuthenticationAcknowledgement)
         }
+        #expect(freshProbe.lastPacketDiagnostic == expectedDiagnostic)
+        #expect(freshProbe.state == .failed)
 
         let fifth = try encryptedGlucoseBatch(
             command: 0x32,
@@ -215,6 +240,72 @@ struct GS3DeveloperProbeTests {
         #expect(probe.authenticationTransmissionCount == 1)
         #expect(probe.effectiveDataTransmissionCount == 1)
         #expect(probe.uniqueLiveReadingCount == 5)
+    }
+
+    @Test func diagnosticsDistinguishDuplicateAuthAndMalformedFramesWithoutPayloads() throws {
+        var duplicateAuthProbe = V3DeveloperHandoverProbe(material: try syntheticMaterial())
+        _ = try duplicateAuthProbe.start()
+        _ = try duplicateAuthProbe.didSubscribe()
+        let accepted = try encryptedControlResponse(command: 0xE2, code: 1, detail: 0)
+        _ = try duplicateAuthProbe.didReceive(accepted)
+
+        let duplicateDiagnostic = V3ProbePacketDiagnostic(
+            stateBefore: .awaitingEffectiveData,
+            stateAfter: .failed,
+            classification: .authenticationAccepted,
+            byteCount: 5,
+            authenticationTransmissionCount: 1,
+            effectiveDataTransmissionCount: 1,
+            uniqueLiveReadingCount: 0
+        )
+        #expect(throws: V3ProbeError.unexpectedNotification(duplicateDiagnostic)) {
+            try duplicateAuthProbe.didReceive(accepted)
+        }
+        #expect(duplicateAuthProbe.lastPacketDiagnostic == duplicateDiagnostic)
+
+        var malformedProbe = V3DeveloperHandoverProbe(material: try syntheticMaterial())
+        _ = try malformedProbe.start()
+        _ = try malformedProbe.didSubscribe()
+        let malformedDiagnostic = V3ProbePacketDiagnostic(
+            stateBefore: .awaitingAuthentication,
+            stateAfter: .failed,
+            classification: .malformedOrUnsupported,
+            byteCount: 3,
+            authenticationTransmissionCount: 1,
+            effectiveDataTransmissionCount: 0,
+            uniqueLiveReadingCount: 0
+        )
+        let malformed = EncodedFrame(bytes: [0xAA, 0xBB, 0xCC])
+        #expect(throws: V3ProbeError.unexpectedNotification(malformedDiagnostic)) {
+            try malformedProbe.didReceive(malformed)
+        }
+
+        let message = V3ProbeError.unexpectedNotification(malformedDiagnostic)
+            .localizedDescription
+        #expect(message.contains("malformed or unsupported notification"))
+        #expect(message.contains("awaiting authentication"))
+        #expect(message.contains("3 bytes"))
+        #expect(message.contains("do not retry"))
+        #expect(!message.contains("GS3DeveloperProbe.V3ProbeError"))
+        #expect(!message.contains("AABBCC"))
+        #expect(!malformedDiagnostic.description.contains("AABBCC"))
+
+        var earlyLiveProbe = V3DeveloperHandoverProbe(material: try syntheticMaterial())
+        _ = try earlyLiveProbe.start()
+        _ = try earlyLiveProbe.didSubscribe()
+        let earlyLive = try encryptedGlucoseBatch(command: 0x32, glucoseTenths: 72)
+        let earlyLiveDiagnostic = V3ProbePacketDiagnostic(
+            stateBefore: .awaitingAuthentication,
+            stateAfter: .failed,
+            classification: .liveNotificationBatch,
+            byteCount: 24,
+            authenticationTransmissionCount: 1,
+            effectiveDataTransmissionCount: 0,
+            uniqueLiveReadingCount: 0
+        )
+        #expect(throws: V3ProbeError.unexpectedNotification(earlyLiveDiagnostic)) {
+            try earlyLiveProbe.didReceive(earlyLive)
+        }
     }
 
     @Test func timeoutAndCancelDisconnectWithoutRetry() throws {
