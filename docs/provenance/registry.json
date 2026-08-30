@@ -221,6 +221,30 @@
       "reviewer": "chris",
       "legal_review_status": "lean-local",
       "notes": "The raw screenshot, full serial, and link code remain private. This is one sensor/lot and is not proof of authentication, binding, activation, registration-envelope availability, or glucose decoding."
+    },
+    {
+      "id": "prov-20260830-owned-mainland-gs3-runtime-material-negative",
+      "upstream_project": "SiBionics official Android app owned copy and owned active Mainland GS3",
+      "upstream_url": "not-applicable-owned-evidence",
+      "pinned_commit": "not-applicable",
+      "source_path": "Owner-readable /sdcard/Android/data/com.sibionics.gstoc files; process-filtered official-app logcat; five private BTSnoop files; com.sibionics.gstoc 01.10.00.00 APK string tables; existing libcxm_protocol.so source map",
+      "source_blob_sha256": "logcat=c2754841bf877864bd4924998f26dfaa4364718b48a8307b5de6c80865f60922;external-log=74894891046cd8e19b32b4425991300ae640150192e7c730f6849d27259ca149;apk=0357d558c221a62129dca632fec2c73de70a978862228024f63f45d0b88fc1d7",
+      "copyright_holders": [
+        "Vendor app copyright holder not independently verified"
+      ],
+      "history_reviewed": false,
+      "file_header_licence": "not-applicable",
+      "repository_licence": "not-applicable",
+      "purpose_and_behavior_taken": "Read-only inspection established that the bounded owner-readable corpus contains link/user connection metadata and the private HCI authentication ciphertext, but no legitimate encoded registration envelope or runtime IV. Only hashes, sizes, boolean findings, counts, and confidence-scoped inferences are published. Opaque MQTT credentials were explicitly excluded.",
+      "reuse_mode": "independently observed",
+      "sugarman_destination_path": "docs/P2_RUNTIME_MATERIAL_RESULT_2026-08-30.md; docs/evidence/owned-mainland-gs3-runtime-material-summary-v1.json; docs/V3_AUTH_SOURCE_MAP_2026-08-30.md; docs/P2_OWNED_PROTOCOL_RESULT_2026-08-30.md",
+      "modification_date": "2026-08-30",
+      "author": "chris",
+      "fixtures_origin": "One owned active Mainland GS3, owner-authorized Android phone/app/account, and existing owner captures; raw evidence remains gitignored",
+      "fixtures_capture_sha256": "c2754841bf877864bd4924998f26dfaa4364718b48a8307b5de6c80865f60922,74894891046cd8e19b32b4425991300ae640150192e7c730f6849d27259ca149,8f59200f694c51c533a30ae6e7398c35b46ced2bce3d7a6ec200e8e072302c19,d0a389eaa1b29024daf441ff7816ad2572b61a40a9bf500c37ddd511c6553008,165d697f4126d0fa2a8ea4f6d822b8fe74dd03e5663ba1e0910c9a197882d3e7",
+      "reviewer": "independent repository review 2026-08-30",
+      "legal_review_status": "lean-local",
+      "notes": "No raw log line, credential, address, serial, link code, account/user identifier, IV, registered block, registration envelope, authentication payload, or glucose value is committed. No app-private storage, root, TLS interception, protection bypass, or live sensor/NFC command was used."
     }
   ]
 }

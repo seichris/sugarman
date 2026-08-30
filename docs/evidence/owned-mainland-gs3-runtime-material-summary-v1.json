@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "scope": "Payload-free read-only search for legitimate V3 runtime registration inputs using one owner's official app, owner-readable Android logs, and existing owned HCI captures.",
+  "inputs": {
+    "officialApp": {
+      "package": "com.sibionics.gstoc",
+      "version": "01.10.00.00",
+      "apkSHA256": "0357d558c221a62129dca632fec2c73de70a978862228024f63f45d0b88fc1d7"
+    },
+    "processFilteredLogcat": {
+      "sha256": "c2754841bf877864bd4924998f26dfaa4364718b48a8307b5de6c80865f60922",
+      "byteCount": 836474
+    },
+    "canonicalOwnerReadableExternalLog": {
+      "sha256": "74894891046cd8e19b32b4425991300ae640150192e7c730f6849d27259ca149",
+      "byteCount": 2389290
+    },
+    "privateHCICorpus": {
+      "fileCount": 5,
+      "completePayloadBearingCaptureCount": 3,
+      "headersOnlyCaptureCount": 1,
+      "truncatedFilteredCaptureCount": 1
+    }
+  },
+  "verifiedEvidence": {
+    "ownerReadableLogs": {
+      "linkAndUserMetadataPresent": true,
+      "namedRegistrationEnvelopeFound": false,
+      "namedRuntimeIVFound": false,
+      "nativeRegisterKeyRecordFound": false,
+      "authIdRecordFound": false,
+      "opaqueMQTTCredentialsExcluded": true
+    },
+    "hci": {
+      "officialAuthenticationCiphertextAvailablePrivately": true,
+      "officialAuthenticationCiphertextByteCount": 38,
+      "registrationEnvelopeAvailable": false,
+      "runtimeIVAvailable": false,
+      "rawPayloadsOmitted": true
+    },
+    "ownedAPK": {
+      "nativeRegistrationInputShapeMapped": true,
+      "protectedManagedPayloadBypassed": false,
+      "vendorBinaryCommittedOrLinked": false
+    }
+  },
+  "inferences": [
+    {
+      "claim": "The package/NDEF link field may be the native expected registration marker.",
+      "confidence": "medium",
+      "acceptedAsImplementationInput": false
+    },
+    {
+      "claim": "The owner-visible user identifier may map to the native authentication ID.",
+      "confidence": "low-to-medium",
+      "acceptedAsImplementationInput": false
+    }
+  ],
+  "missingRequiredInputs": [
+    "Legitimate encoded registration envelope",
+    "Legitimate 16-byte runtime IV",
+    "Verified authentication-ID semantics"
+  ],
+  "offlineOwnedReplayStatus": "blocked by unavailable legitimate inputs",
+  "liveProbeStatus": "not prepared and not authorized",
+  "decision": "Do not guess, scrape app-private storage, use MQTT credentials, bypass transport security, or send a live authentication write. Seek vendor documentation or an official owner-visible export; consider a separately confirmed fresh official-app activation only within the same read-only evidence boundaries."
+}

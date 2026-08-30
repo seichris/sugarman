@@ -119,6 +119,11 @@ inputs or redistributable artifacts.
 
 ### Physical/private evidence still required
 
+The bounded owner-readable log/HCI search is documented in
+[`P2_RUNTIME_MATERIAL_RESULT_2026-08-30.md`](P2_RUNTIME_MATERIAL_RESULT_2026-08-30.md).
+It did not locate the missing registration envelope or runtime IV and does not
+permit a live probe.
+
 1. Establish a legitimate owner-controlled source for the runtime IV,
    registered block, and authentication ID without reading another app's
    private storage or inventing values.

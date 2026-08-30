@@ -114,7 +114,9 @@ redistributable input.
    approved by this report.
 2. Establish a legitimate owner-controlled source for the runtime IV,
    registered block, and authentication ID without extracting another app's
-   private storage or inventing values.
+   private storage or inventing values. The completed owner-readable search did
+   not locate them; see
+   [`P2_RUNTIME_MATERIAL_RESULT_2026-08-30.md`](P2_RUNTIME_MATERIAL_RESULT_2026-08-30.md).
 3. Reproduce the private official-app 38-byte authentication write with the
    isolated Swift encoder, including the correct address order.
 4. Only after that parity, independent review, and a fresh physical-write
