@@ -64,15 +64,18 @@
     "protocolGeneration": "V3",
     "authenticationCipherFamily": "AES-OFB",
     "confidence": "high for this owned app, sensor, and firmware",
-    "pinnedV120RC4Compatible": false
+    "pinnedV120RC4Compatible": false,
+    "followUpSourceMap": "docs/V3_AUTH_SOURCE_MAP_2026-08-30.md",
+    "offlineEncoderStatus": "implemented but not matched to an owned replay and not live-connected"
   },
   "notYetVerified": [
-    "Key and IV provenance and derivation",
-    "Pure Swift 38-byte authentication frame parity",
+    "Legitimate owner-controlled runtime IV, registered-block, and authentication-ID source",
+    "Pure Swift 38-byte authentication frame parity against the private official-app write",
+    "Address byte order for authentication",
     "Notification decryption and glucose decoding",
     "Already-active handover authentication",
     "Fresh-sensor activation",
     "A second sensor lot"
   ],
-  "decision": "Do not implement or send authentication yet. Obtain legal review and an approved source/provenance route for the missing V3 details; never ship or link the Android APK or shared library."
+  "decision": "Scoped user-reported approval permits the separately authored GPL offline encoder and source map. Do not expose it through the live codec factory or transport, and do not send authentication until runtime-material provenance, private replay parity, independent review, and a fresh physical-write confirmation pass. Never ship or link the Android APK or shared library."
 }

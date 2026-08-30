@@ -160,16 +160,43 @@
       "history_reviewed": false,
       "file_header_licence": "proprietary-or-unknown",
       "repository_licence": "not-applicable",
-      "purpose_and_behavior_taken": "Read-only dynamic-symbol and targeted ARM64 disassembly inspection of the owned app verified a V3 JNI authentication call chain through sdk_authid, AesFixedIvXorWithKey, and AES_OFB_encrypt_buffer. The function encrypts and returns 38 bytes, matching the payload-free HCI frame length. Only symbol names, call edges, byte count, and hashes are recorded; no binary code, constants, keys, IVs, or payloads were copied.",
+      "purpose_and_behavior_taken": "Read-only dynamic-symbol and targeted ARM64 disassembly inspection of the owned app verified the V3 JNI authentication call chain, 38-byte frame layout, additive checksum, exact fixed 16-byte protocol constant, runtime-IV handoff, and registered-block handoff. No instruction sequence, compiled object, runtime IV, registration value, account data, device identifier, or HCI payload was copied.",
       "reuse_mode": "independently observed",
-      "sugarman_destination_path": "docs/evidence/owned-mainland-gs3-p2-summary-v1.json",
+      "sugarman_destination_path": "docs/evidence/owned-mainland-gs3-p2-summary-v1.json; docs/V3_AUTH_SOURCE_MAP_2026-08-30.md",
       "modification_date": "2026-08-30",
       "author": "chris",
       "fixtures_origin": "Owned official Chinese Android app APK and owned active Mainland GS3 HCI snapshot; all raw inputs remain gitignored",
       "fixtures_capture_sha256": "8f59200f694c51c533a30ae6e7398c35b46ced2bce3d7a6ec200e8e072302c19",
       "reviewer": "chris",
-      "legal_review_status": "required-before-implementation",
-      "notes": "The APK and shared library are evidence only and must never be committed, linked, or distributed with Sugarman. Legal review must approve any further interoperability analysis and every source of V3 implementation facts."
+      "legal_review_status": "lean-local",
+      "notes": "On 2026-08-30 the owner reported scoped approval for offline interoperability analysis and publication of a separately authored GPL Swift implementation. No approval document or reviewer identity is asserted here. The APK/shared library remain evidence only and must never be committed, linked, or distributed. This status does not approve a live sensor write or App Store/binary distribution."
+    },
+    {
+      "id": "prov-20260830-v3-offline-auth-codec",
+      "upstream_project": "NIST AES standards, IETF RC4 test vectors, plus approved owned-binary interoperability observation",
+      "upstream_url": "https://csrc.nist.gov/pubs/fips/197/final; https://csrc.nist.gov/pubs/sp/800/38/a/final; https://www.rfc-editor.org/info/rfc6229/; not-applicable-owned-apk",
+      "pinned_commit": "not-applicable",
+      "source_path": "NIST FIPS 197; NIST SP 800-38A; IETF RFC 6229; owned libcxm_protocol.so VMAs 0x8b4bc,0x8f810,0xa9184,0xa93ec,0x935b8 and storage 0x5b910,0x172880,0x172890",
+      "source_blob_sha256": "libcxm_protocol.so=19238019b9aca5f8ffae6a81fad98bb9f6525750b914367378f1ac1bbf765964",
+      "copyright_holders": [
+        "NIST publications (United States government works)",
+        "IETF Trust and RFC 6229 authors",
+        "Vendor binary copyright holder not independently verified",
+        "Sugarman contributors"
+      ],
+      "history_reviewed": false,
+      "file_header_licence": "GPL-3.0-or-later",
+      "repository_licence": "GPL-3.0-or-later",
+      "purpose_and_behavior_taken": "Independently authored Swift AES-128/OFB follows NIST and the registration-only RC4 primitive is checked against IETF vectors. The V3 code records only the approved interoperability facts required for registration-envelope decoding and the exact 38-byte authentication construction: field lengths/order, transforms, zero padding, additive checksum, fixed protocol constant, and runtime-IV use. It does not obtain owner material, represent a live request, or write to Bluetooth.",
+      "reuse_mode": "independently observed",
+      "sugarman_destination_path": "Sources/GS3Protocol/AES128.swift; Sources/GS3Protocol/V3Authentication.swift; Sources/GS3Protocol/V3Registration.swift; Sources/SugarmanDomain/ProtocolVariant.swift; Tests/GS3ProtocolTests/GS3ProtocolTests.swift; docs/V3_AUTH_SOURCE_MAP_2026-08-30.md",
+      "modification_date": "2026-08-30",
+      "author": "Sugarman contributors",
+      "fixtures_origin": "NIST and IETF published vectors plus independently generated synthetic V3 inputs only; owned replay parity remains pending",
+      "fixtures_capture_sha256": "NIST-FIPS-197;NIST-SP-800-38A-F.4.1;IETF-RFC-6229;synthetic-v3-vector",
+      "reviewer": "independent code review pending",
+      "legal_review_status": "lean-local",
+      "notes": "User-reported approval covers offline analysis and publication of the separately authored GPL Swift source. Vendor binaries are never build inputs. The live factory and transport remain fail-closed; App Store/binary distribution and any physical write require separate review/confirmation."
     }
   ]
 }

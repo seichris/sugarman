@@ -215,12 +215,30 @@ def check_no_write_api() -> None:
                 error(f"forbidden characteristic-write API in {rel}")
             if live_cmd.search(text):
                 error(f"live sensor command API in {rel}")
-    protocol_sources = list((ROOT / "Sources/GS3Protocol").rglob("*.swift"))
-    for path in protocol_sources:
-        text = path.read_text(encoding="utf-8", errors="replace")
-        if re.search(r"\bcase\s+v3AES\b", text):
-            error("ProtocolVariant must not include v3AES until a source map exists")
-
+    variant_path = ROOT / "Sources/SugarmanDomain/ProtocolVariant.swift"
+    variant_text = variant_path.read_text(encoding="utf-8", errors="replace")
+    if re.search(r"\bcase\s+v3AES\b", variant_text):
+        source_map = ROOT / "docs/V3_AUTH_SOURCE_MAP_2026-08-30.md"
+        if not source_map.is_file():
+            error("ProtocolVariant v3AES requires the owned-binary source map")
+        registry = json.loads(
+            (ROOT / "docs/provenance/registry.json").read_text(encoding="utf-8")
+        )
+        record = next(
+            (
+                item
+                for item in registry.get("records", [])
+                if item.get("id") == "prov-20260830-v3-offline-auth-codec"
+            ),
+            None,
+        )
+        if record is None:
+            error("ProtocolVariant v3AES requires an exact provenance record")
+        elif record.get("legal_review_status") not in {
+            "lean-local",
+            "distribution-approved",
+        }:
+            error("ProtocolVariant v3AES requires recorded scoped legal review")
 
 
 def check_private_evidence_gitignore() -> None:

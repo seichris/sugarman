@@ -1,6 +1,6 @@
 # Mainland China SiBionics GS3 support for Sugarman
 
-- Status: implementation has started; M0, simulator product, no-device slice, and P0/P1 lab software are on `main`. M2+ protocol work stays gated on physical P1/P2. If P1/P2 fail, no protocol implementation.
+- Status: implementation has started; P1/P2 passed for one owned active sensor on 2026-08-30. The observed family is V3/AES-OFB and the six address bytes are available from Device Information `2A25`. An approved offline-only M2 authentication encoder is present but deliberately disconnected from live transport; owned replay parity and legitimate runtime registration material still gate every live write.
 - Date: 2026-08-28
 - Product: Sugarman — glucose monitoring and fueling insight for endurance athletes
 
@@ -32,8 +32,8 @@ has been expanded enough to cover GPL/App Store compatibility, interoperability,
 vendor terms, cryptography/export declarations, privacy, and medical/wellness
 positioning.
 
-Two technical questions block protocol implementation and must be answered with
-physical evidence first:
+Two technical questions originally blocked protocol implementation and now
+have evidence-backed answers for one owned sensor/app/library combination:
 
 1. Does the available Mainland GS3 use Juggluco's RC4/V1.20 path, the AES-OFB
    "V3" path alleged by the shared LLM conversations, or another firmware
@@ -44,8 +44,11 @@ physical evidence first:
    prove a legitimate source for the required six bytes from the package, NFC,
    advertisement, Device Information service, or another readable field.
 
-No live sensor command should be implemented until both questions have an
-evidence-backed answer.
+See [`P1_OWNED_HARDWARE_RESULT_2026-08-30.md`](P1_OWNED_HARDWARE_RESULT_2026-08-30.md),
+[`P2_OWNED_PROTOCOL_RESULT_2026-08-30.md`](P2_OWNED_PROTOCOL_RESULT_2026-08-30.md),
+and [`V3_AUTH_SOURCE_MAP_2026-08-30.md`](V3_AUTH_SOURCE_MAP_2026-08-30.md).
+These results permit offline work; they do not by themselves authorize a live
+sensor command.
 
 ## Resolved product and project decisions
 
@@ -440,9 +443,11 @@ Pure Swift, deterministic protocol implementation:
 - injected validated address/auth/account inputs;
 - no CoreBluetooth, Keychain, persistence, UI, or side-effectful logging.
 
-Use explicit variants such as `.v120RC4` and `.unknown`. Do not add `.v3AES`
-until its primary evidence and source map exist. Unknown firmware must fail
-closed before an authentication or activation write.
+Use explicit variants such as `.v120RC4`, `.v3AES`, and `.unknown`. The `.v3AES`
+classification is present only because its primary evidence and source map now
+exist; it remains live-unimplemented until owned replay parity and the physical
+write gate pass. Unknown firmware must fail closed before an authentication or
+activation write.
 
 #### `GS3Transport`
 
@@ -724,7 +729,8 @@ Deliverables:
 - RC4 versus V3 protocol-identification report;
 - firmware/SKU support matrix.
 
-Exit gate: P1 and P2 pass. If they do not, no protocol implementation begins.
+Exit gate: P1 and P2 pass. This gate passed for one owned active sensor on
+2026-08-30; another lot remains a generalization gate.
 
 ### M2 — offline GS3 protocol library
 
@@ -873,8 +879,9 @@ These are software acceptance criteria, not independent clinical validation.
 
 | Risk | Current assessment | Required response |
 | --- | --- | --- |
-| RC4 versus AES V3 | High impact; unknown until owned-device capture. | P2 before codec work; implement only the proven variant. |
-| Six address bytes unavailable on iOS | High impact; source/platform mismatch verified. | Resolve at P1 from legitimate readable data. If unavailable, seek vendor support and stop. |
+| RC4 versus AES V3 | Resolved as V3/AES-OFB for the owned app/sensor/library hash; other lots unknown. | Keep an explicit variant allowlist and require evidence before generalizing. |
+| Six address bytes unavailable on iOS | Resolved for the owned sensor through readable Device Information `2A25`; other lots unknown. | Verify every supported firmware/lot and fail closed if the field is absent or malformed. |
+| V3 runtime IV/registered block/authentication ID | High impact; native layout verified but legitimate owner-controlled source and replay parity remain open. | Do not scrape app-private storage or guess. Obtain the values through an authorized package/account/vendor route and pass private offline replay before transport work. |
 | Subtype-5 registered block is wrong | High impact; upstream calls it `Guess`. | Prove on already-active handover before fresh activation. |
 | Mainland account binding/API | High impact; official flow not mapped. | Start with a legitimate documented/manual owner ID. Add network login only with reviewed endpoint and terms. |
 | SKU/NFC format drift | Medium/high. | Versioned fixture corpus, bounded parsers, explicit unsupported state. |

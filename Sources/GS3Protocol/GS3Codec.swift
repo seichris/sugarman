@@ -40,8 +40,8 @@ public protocol GS3Codec: Sendable {
     func decode(_ frame: EncodedFrame) throws -> GS3ProtocolEvent
 }
 
-/// Placeholder codec for `.unknown` and `.v120RC4`. Does not implement a
-/// cipher, checksum, or packet builder.
+/// Placeholder live codec. Even `.v3AES` stays unavailable here: its current
+/// implementation surface is an isolated offline authentication builder only.
 public struct UnimplementedGS3Codec: GS3Codec {
     public let variant: ProtocolVariant
 
@@ -52,7 +52,7 @@ public struct UnimplementedGS3Codec: GS3Codec {
     public func encode(_ request: GS3ProtocolRequest) throws -> EncodedFrame {
         _ = request
         switch variant {
-        case .unknown, .v120RC4:
+        case .unknown, .v120RC4, .v3AES:
             throw GS3ProtocolError.unimplementedVariant(variant)
         }
     }
