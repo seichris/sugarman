@@ -242,7 +242,7 @@ struct GS3DeveloperProbeTests {
         #expect(probe.uniqueLiveReadingCount == 5)
     }
 
-    @Test func diagnosticsDistinguishDuplicateAuthAndMalformedFramesWithoutPayloads() throws {
+    @Test func diagnosticsDistinguishDuplicateAuthAndShortFramesWithoutPayloads() throws {
         var duplicateAuthProbe = V3DeveloperHandoverProbe(material: try syntheticMaterial())
         _ = try duplicateAuthProbe.start()
         _ = try duplicateAuthProbe.didSubscribe()
@@ -269,7 +269,7 @@ struct GS3DeveloperProbeTests {
         let malformedDiagnostic = V3ProbePacketDiagnostic(
             stateBefore: .awaitingAuthentication,
             stateAfter: .failed,
-            classification: .malformedOrUnsupported,
+            classification: .glucoseFrameTooShort,
             byteCount: 3,
             authenticationTransmissionCount: 1,
             effectiveDataTransmissionCount: 0,
@@ -282,7 +282,7 @@ struct GS3DeveloperProbeTests {
 
         let message = V3ProbeError.unexpectedNotification(malformedDiagnostic)
             .localizedDescription
-        #expect(message.contains("malformed or unsupported notification"))
+        #expect(message.contains("glucose frame shorter than the verified minimum"))
         #expect(message.contains("awaiting authentication"))
         #expect(message.contains("3 bytes"))
         #expect(message.contains("do not retry"))
@@ -306,6 +306,97 @@ struct GS3DeveloperProbeTests {
         #expect(throws: V3ProbeError.unexpectedNotification(earlyLiveDiagnostic)) {
             try earlyLiveProbe.didReceive(earlyLive)
         }
+    }
+
+    @Test func diagnosticsClassifyEveryPayloadFreeValidationStage() throws {
+        func classification(
+            for frame: EncodedFrame
+        ) throws -> V3ProbeInboundClassification? {
+            var probe = V3DeveloperHandoverProbe(material: try syntheticMaterial())
+            _ = try probe.start()
+            _ = try probe.didSubscribe()
+            _ = try probe.didReceive(
+                encryptedControlResponse(command: 0xE2, code: 1, detail: 0)
+            )
+            do {
+                _ = try probe.didReceive(frame)
+                Issue.record("malformed synthetic frame did not fail closed")
+            } catch is V3ProbeError {
+                // Expected. The assertion below checks the redacted failure stage.
+            }
+            #expect(probe.state == .failed)
+            #expect(probe.authenticationTransmissionCount == 1)
+            #expect(probe.effectiveDataTransmissionCount == 1)
+            return probe.lastPacketDiagnostic?.classification
+        }
+
+        let accepted = try encryptedControlResponse(command: 0xE2, code: 1, detail: 0)
+        var controlLengthPlaintext = try decryptTransport(accepted)
+        controlLengthPlaintext[0] = 3
+        replaceChecksum(in: &controlLengthPlaintext)
+        #expect(
+            try classification(for: encryptTransport(controlLengthPlaintext))
+                == .controlLengthMismatch
+        )
+
+        #expect(
+            try classification(
+                for: encryptedControlResponse(command: 0xF0, code: 1, detail: 0)
+            ) == .controlUnsupportedCommand
+        )
+
+        var controlChecksumPlaintext = try decryptTransport(accepted)
+        controlChecksumPlaintext[4] &+= 1
+        #expect(
+            try classification(for: encryptTransport(controlChecksumPlaintext))
+                == .controlChecksumMismatch
+        )
+
+        let valid = try encryptedGlucoseBatch(command: 0x32, glucoseTenths: 72)
+        var glucosePlaintext = try decryptTransport(valid)
+
+        var declaredLengthPlaintext = glucosePlaintext
+        declaredLengthPlaintext[0] &-= 1
+        replaceChecksum(in: &declaredLengthPlaintext)
+        #expect(
+            try classification(for: encryptTransport(declaredLengthPlaintext))
+                == .glucoseDeclaredLengthMismatch
+        )
+
+        var unsupportedCommandPlaintext = glucosePlaintext
+        unsupportedCommandPlaintext[1] = 0x31
+        replaceChecksum(in: &unsupportedCommandPlaintext)
+        #expect(
+            try classification(for: encryptTransport(unsupportedCommandPlaintext))
+                == .glucoseUnsupportedCommand
+        )
+
+        var invalidCountPlaintext = glucosePlaintext
+        invalidCountPlaintext[2] = 0
+        replaceChecksum(in: &invalidCountPlaintext)
+        #expect(
+            try classification(for: encryptTransport(invalidCountPlaintext))
+                == .glucoseRecordCountInvalid
+        )
+
+        var invalidLayoutPlaintext = glucosePlaintext
+        invalidLayoutPlaintext[2] = 2
+        replaceChecksum(in: &invalidLayoutPlaintext)
+        #expect(
+            try classification(for: encryptTransport(invalidLayoutPlaintext))
+                == .glucoseRecordLayoutMismatch
+        )
+
+        glucosePlaintext[23] &+= 1
+        #expect(
+            try classification(for: encryptTransport(glucosePlaintext))
+                == .glucoseChecksumMismatch
+        )
+
+        #expect(
+            try classification(for: EncodedFrame(bytes: [0xAA, 0xBB, 0xCC]))
+                == .glucoseFrameTooShort
+        )
     }
 
     @Test func timeoutAndCancelDisconnectWithoutRetry() throws {
@@ -432,5 +523,21 @@ struct GS3DeveloperProbeTests {
             key: V3ProtocolConstants.fixedKey,
             initializationVector: Array(1...6) + [UInt8](repeating: 0, count: 10)
         )
+    }
+
+    private func encryptTransport(_ plaintext: [UInt8]) throws -> EncodedFrame {
+        EncodedFrame(
+            bytes: try AES128OFB.crypt(
+                plaintext,
+                key: V3ProtocolConstants.fixedKey,
+                initializationVector: Array(1...6) + [UInt8](repeating: 0, count: 10)
+            )
+        )
+    }
+
+    private func replaceChecksum(in plaintext: inout [UInt8]) {
+        plaintext[plaintext.count - 1] = 0
+        plaintext[plaintext.count - 1] = UInt8.zero
+            &- plaintext.dropLast().reduce(UInt8.zero, &+)
     }
 }

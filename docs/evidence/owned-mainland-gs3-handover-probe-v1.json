@@ -48,21 +48,79 @@
   "verification": {
     "publicFixtures": "synthetic-only",
     "physicalIPhoneRun": true,
-    "physicalIPhoneRunOutcome": "connected-then-failed-closed-before-a-validated-reading",
-    "physicalRunSourceCommit": "e0e332cee3dd7acf725262ba9da6bb52ddb59c94",
-    "physicalRunManifestSHA256": "1c15cbfcbde10135a0f93bd167fd0af06b807f51015f764feb75540005c16855",
-    "actualApplicationWriteCountsCaptured": false,
+    "physicalIPhoneRunCount": 2,
+    "physicalIPhoneRunOutcome": "both-runs-failed-closed-before-a-validated-reading",
+    "physicalRuns": [
+      {
+        "run": 1,
+        "pullRequest": 13,
+        "sourceCommit": "e0e332cee3dd7acf725262ba9da6bb52ddb59c94",
+        "manifestSHA256": "1c15cbfcbde10135a0f93bd167fd0af06b807f51015f764feb75540005c16855",
+        "outcome": "connected-then-generic-fail-closed",
+        "actualApplicationWriteCountsCaptured": false,
+        "officialAndroidHandbackVerified": true,
+        "officialAndroidPostRunControl": {
+          "displayedUpdateTime": "20:02",
+          "timeContext": "owner-local Asia/Singapore test context",
+          "glucoseMillimolesPerLiter": 8.8,
+          "arrowVisualDirection": "right-down",
+          "nativeTrendMeaningClaimed": false
+        }
+      },
+      {
+        "run": 2,
+        "pullRequest": 14,
+        "sourceCommit": "99717cee15a6f83a0a9c1a3b05607445f2f24787",
+        "manifestSHA256": "8c2290dfb8e5e0e381dca23702f752a1e3efc576fad3219d88544951ef4f360e",
+        "redactedDiagnosticSHA256": "c2449c64d444961a56b5f830c72dcfef09552fbaa38486e36fcb5d3ff340f5ef",
+        "outcome": "authentication-accepted-one-effective-data-write-call-then-24-byte-fail-closed",
+        "authenticationWriteCalls": 1,
+        "authenticationWriteAcknowledgements": 1,
+        "authenticationAccepted": true,
+        "effectiveDataWriteCalls": 1,
+        "effectiveDataWriteAcknowledgements": 0,
+        "effectiveDataControlAcknowledgements": 0,
+        "unexpectedNotificationByteCount": 24,
+        "unexpectedNotificationPayloadRetained": false,
+        "officialAndroidPreRunControl": {
+          "displayedUpdateTime": "20:57",
+          "timeContext": "owner-local Asia/Singapore test context",
+          "glucoseMillimolesPerLiter": 6.7,
+          "arrowVisualDirection": "right",
+          "nativeTrendMeaningClaimed": false
+        },
+        "officialAndroidHandbackVerified": true,
+        "officialAndroidPostRunControl": {
+          "displayedUpdateTime": "21:17",
+          "timeContext": "owner-local Asia/Singapore test context",
+          "glucoseMillimolesPerLiter": 6.2,
+          "arrowVisualDirection": "right",
+          "nativeTrendMeaningClaimed": false
+        }
+      }
+    ],
     "iPhoneGlucoseValidated": false,
     "sensorWriteAuthorizedByThisRecord": false,
-    "officialAndroidHandbackVerified": true,
-    "officialAndroidPostRunControl": {
-      "displayedUpdateTime": "20:02",
-      "timeContext": "owner-local Asia/Singapore test context",
-      "glucoseMillimolesPerLiter": 8.8,
-      "arrowVisualDirection": "right-down",
-      "nativeTrendMeaningClaimed": false
+    "allRunsOfficialAndroidHandbackVerified": true,
+    "offlineFollowUp": {
+      "canonicalUnique24ByteLiveFramesDecoded": 69,
+      "officialEffectiveDataRequestCount": 4,
+      "distinctOfficialEffectiveDataStartCount": 3,
+      "everyOfficialStartMatchesFirstFollowingDataBatch": true,
+      "run2ImportedStartMatchesAnyOfficialRequest": false,
+      "freshReconnectCaptureSHA256": "6d6467d9bcde31b23bc8c561e50a549dd5a24e43e231bc8bad40ae40ff4f77ac",
+      "freshReconnectHCIRecordCount": 13527,
+      "freshReconnectATTPDUCount": 580,
+      "freshReconnectOfficialAuthenticationWriteCount": 5,
+      "freshReconnectOfficialEffectiveDataRequestCount": 5,
+      "freshReconnectDistinctEffectiveDataStartCount": 4,
+      "freshReconnectEveryStartMatchesFirstFollowingDataBatch": true,
+      "freshReconnectLatestStartDiffersFromPriorProvisional": true,
+      "replacementImportChangesOnlyEffectiveDataStartIndex": true,
+      "replacementIndexAndImportHashCommittedOrPrinted": false,
+      "leadingCauseConfidence": "medium-not-proven-without-run2-payload"
     },
     "followUpPhysicalRunAuthorized": false
   },
-  "decision": "Do not retry the PR 13 artifact. Review the payload-free diagnostic follow-up, then build a new signed artifact and obtain a fresh exact artifact-device-action confirmation before installation or sensor traffic."
+  "decision": "Do not retry either the PR 13 or merged PR 14 artifact/material combination. Review and host-verify granular payload-free failure diagnostics plus the fresh-reconnect-backed replacement start index, then build a new signed artifact and obtain a fresh exact artifact-device-private-import-action confirmation before installation or sensor traffic."
 }

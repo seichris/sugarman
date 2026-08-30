@@ -541,6 +541,12 @@ extension V3ProbeBluetoothRuntime: CBPeripheralDelegate {
             return
         }
         guard let data = characteristic.value else { return }
+        if let inFlightWrite {
+            emitDiagnostic(
+                "RX FF31 delivered while CoreBluetooth awaited FF32 "
+                    + "\(inFlightWrite.diagnosticName) acknowledgement."
+            )
+        }
         guard var activeProbe = probe else {
             fail(V3ProbeError.invalidTransition(from: .failed).localizedDescription)
             return

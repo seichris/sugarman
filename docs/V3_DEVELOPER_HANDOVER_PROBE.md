@@ -4,10 +4,12 @@
 
 `SugarmanProbe` is a separate, foreground-only iOS developer application for
 one owner-controlled, already-active Mainland GS3. It is implemented and
-host-verified with synthetic data. The first exact PR #13 physical run on
-2026-08-30 connected and then failed closed with an unclassified generic error;
-the official Android app subsequently reconnected and resumed fresh readings.
-No iPhone glucose value was validated, so the handover gate remains failed.
+host-verified with synthetic data. Two exact physical runs on 2026-08-30 failed
+closed before an iPhone glucose value was validated. PR #13 produced only a
+generic error; merged PR #14 proved authentication acceptance, one acknowledged
+`0xE2` write, one `0x39` write call, and then a rejected 24-byte FF31 value.
+Official Android handback passed after both runs. The handover gate remains
+failed because neither run validated an iPhone glucose value.
 See [`V3_PROBE_PHYSICAL_RESULT_2026-08-30.md`](V3_PROBE_PHYSICAL_RESULT_2026-08-30.md).
 
 The normal `Sugarman` application does not link `GS3DeveloperProbe` and retains
@@ -34,7 +36,7 @@ native library, and HCI capture. Raw packets, owner identifiers, cryptographic
 material, and non-authorized glucose history remain outside Git. Operational
 iPhone handover confidence is **unproven until the physical gate passes**.
 
-## First-run diagnosis and official-sequence comparison
+## Physical-run diagnosis and official-sequence comparison
 
 The PR #13 UI retained neither packet classification nor state/counter
 diagnostics. Source inspection shows that `error.localizedDescription` also
@@ -48,6 +50,28 @@ device-information exchanges, `0x39` request, `0x39` acknowledgement, then
 data. No live notification preceded authentication acceptance. The developer
 probe omits the intervening device-information writes. That difference is
 verified, but their necessity is not; the follow-up does not add them.
+
+Merged PR #14 retained the payload-free trace. It proves the exact
+authentication acceptance and bounded application-write calls, but its single
+combined malformed/unsupported classification cannot identify why the
+following 24-byte FF31 value failed. Private offline replay narrows the next
+test:
+
+- the imported address, outer material, and inner material decode all 69 unique
+  canonical 24-byte live frames;
+- each of four official `0x39` request starts exactly matches the first
+  following data-batch start; and
+- the second-run import's start index matches none of those official requests.
+
+A fresh post-handback ring-buffer summary then independently yielded five
+official `0x39` requests with four distinct starts. Every request start matches
+its first following valid data batch. The newest request differs from both the
+second-run value and the earlier provisional correction. The replacement
+private import changes only `effectiveDataStartIndex` from the original PR #13
+file to that newest verified start. The selected value and import hash remain
+outside Git. The mismatch is the leading cause at medium confidence, not proof:
+the second-run FF31 payload was intentionally not retained. The next candidate
+already distinguishes every safe validation stage without retaining the value.
 
 ## Enforced command boundary
 
@@ -73,9 +97,12 @@ timeout disconnects without another application write.
 The reviewed follow-up also classifies every inbound FF31 value without
 retaining its payload, records state transitions and byte counts in memory,
 reports CoreBluetooth write calls separately from acknowledgements, and permits
-only one in-flight application write. The trace can be manually shared as text
-and excludes packet bytes, identifiers, private material, glucose values, and
-record indexes.
+only one in-flight application write. It separates
+control length/command/checksum failures and glucose minimum length/declared
+length/command/count/layout/checksum failures. It also records whether
+an FF31 value arrived while an FF32 write acknowledgement was outstanding. The
+trace can be manually shared as text and excludes packet bytes, identifiers,
+private material, glucose values, and record indexes.
 
 `Scripts/check_governance.py` permits exactly one CoreBluetooth write call in
 the repository, in the probe adapter. It requires typed authentication and
@@ -105,9 +132,12 @@ analysis:
 
 `expectedPeripheralName` may be omitted, but including the exact owned name pins
 it first in the searchable scan list. `effectiveDataStartIndex` is an unsigned
-16-bit index selected from the private official-app capture; it is not a time or
-glucose value. The importer rejects wrong schema versions, non-ASCII hex,
-incorrect byte counts, and invalid names.
+16-bit index selected from an actual private official-app `0x39` request whose
+start matches its first following data batch; it is not a time or glucose
+value. A placeholder, package link code, guessed number, or unrelated sensor
+index is not valid material. The importer rejects wrong schema versions,
+non-ASCII hex, incorrect byte counts, and invalid names, while capture-backed
+selection remains an operator evidence gate.
 
 The file is imported after installation with the Files picker. The app stores a
 normalized binary record in a generic-password Keychain item using
@@ -146,9 +176,10 @@ one-shot `0xE2`/`0x39` attempt.
 Then follow
 [`V3_ALREADY_ACTIVE_HANDOVER_TEST_PLAN.md`](V3_ALREADY_ACTIVE_HANDOVER_TEST_PLAN.md):
 record the official Android baseline, turn Android Bluetooth off without
-unbinding, run only a newly confirmed follow-up artifact once, preserve its
-redacted trace, require five unique live readings, disconnect, and prove
-official Android handback. Do not rerun the PR #13 artifact. Any extra write,
+unbinding, run only a newly confirmed follow-up artifact and replacement
+private import once, preserve its redacted trace, require five unique live
+readings, disconnect, and prove official Android handback. Do not rerun either
+the PR #13 or merged PR #14 artifact/material combination. Any extra write,
 unexpected response, value mismatch, or failed handback fails the gate.
 
 Fresh activation is outside this probe and requires a separate implementation,

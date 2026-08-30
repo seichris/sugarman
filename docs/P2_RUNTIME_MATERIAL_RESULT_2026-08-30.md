@@ -27,8 +27,10 @@ This made an already-active private replay technically possible. The normal
 its live request enum is empty and transport has no write API. A later separate
 developer target now implements the bounded private-material import and one-shot
 handover path described in
-[`V3_DEVELOPER_HANDOVER_PROBE.md`](V3_DEVELOPER_HANDOVER_PROBE.md), but it has
-not been physically run and no current artifact is authorized for execution.
+[`V3_DEVELOPER_HANDOVER_PROBE.md`](V3_DEVELOPER_HANDOVER_PROBE.md). Two bounded
+physical runs have since failed closed before a validated iPhone value; the
+latest proves authentication acceptance but not glucose decoding. No current
+artifact is authorized for execution.
 
 The payload-free machine-readable summary is
 [`evidence/owned-mainland-gs3-runtime-material-summary-v1.json`](evidence/owned-mainland-gs3-runtime-material-summary-v1.json).

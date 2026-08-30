@@ -21,7 +21,9 @@ public enum GS3ProtocolError: Error, Sendable, Equatable {
     case invalidRegistrationMarkerEncoding
     case registrationMarkerMismatch
     case invalidV3GlucoseNotificationLength(Int)
+    case invalidV3GlucoseNotificationDeclaredLength
     case invalidV3GlucoseRecordCount(Int)
+    case invalidV3GlucoseRecordLayout
     case unsupportedV3NotificationCommand(UInt8)
     case invalidV3GlucoseNotificationChecksum
     case invalidV3ControlResponseLength(Int)
@@ -64,8 +66,12 @@ extension GS3ProtocolError: CustomStringConvertible {
             return "V3 registration envelope did not match the caller-provided marker."
         case .invalidV3GlucoseNotificationLength(let count):
             return "V3 glucose notification has an unsupported length of \(count) bytes."
+        case .invalidV3GlucoseNotificationDeclaredLength:
+            return "V3 glucose notification declared a length that does not match the frame."
         case .invalidV3GlucoseRecordCount(let count):
             return "V3 glucose notification has an unsupported record count of \(count)."
+        case .invalidV3GlucoseRecordLayout:
+            return "V3 glucose notification record count does not match the frame layout."
         case .unsupportedV3NotificationCommand(let command):
             return "V3 notification command 0x\(String(command, radix: 16)) is unsupported."
         case .invalidV3GlucoseNotificationChecksum:

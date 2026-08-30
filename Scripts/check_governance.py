@@ -249,6 +249,7 @@ def check_no_write_api() -> None:
             "authenticationWriteCallCount == 0",
             "effectiveDataWriteCallCount == 0",
             "emitDiagnostic(diagnostic.description)",
+            "RX FF31 delivered while CoreBluetooth awaited FF32",
         ):
             if required not in body:
                 error(f"developer probe adapter missing strict boundary: {required}")
@@ -273,6 +274,9 @@ def check_no_write_api() -> None:
             "LocalizedError",
             "case unexpectedNotification(V3ProbePacketDiagnostic)",
             '"RX FF31: \\(classification), \\(byteCount) bytes; "',
+            "case glucoseDeclaredLengthMismatch",
+            "case glucoseRecordLayoutMismatch",
+            "case glucoseChecksumMismatch",
         ):
             if required not in machine_body:
                 error(f"developer probe missing redacted diagnostic boundary: {required}")

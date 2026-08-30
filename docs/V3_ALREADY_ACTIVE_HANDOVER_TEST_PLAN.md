@@ -7,10 +7,13 @@ active Mainland GS3. It is designed to prove authentication, one effective-data
 request, live notification decoding, and official Android-app handback while
 excluding activation and every lifecycle mutation.
 
-The first developer-only PR #13 artifact was installed and run once on
-2026-08-30. It connected, failed closed with a generic unclassified error, and
-produced no validated iPhone glucose value. The official Android app then
-reconnected and resumed fresh readings. That artifact must not be retried. See
+Two developer-only artifacts were run once each on 2026-08-30. PR #13
+connected and failed closed with a generic unclassified error. Merged PR #14
+then proved authentication acceptance, one acknowledged `0xE2` write, one
+`0x39` write call, and a fail-closed rejection of the following 24-byte FF31
+value. Neither run produced a validated iPhone glucose value, and neither exact
+artifact/material combination may be retried. Official Android handback passed
+after both runs. See
 [`V3_PROBE_PHYSICAL_RESULT_2026-08-30.md`](V3_PROBE_PHYSICAL_RESULT_2026-08-30.md).
 The normal `Sugarman` application remains read-only; only the separate
 `SugarmanProbe` target can express the bounded writes below. No follow-up
@@ -32,11 +35,22 @@ The separate `SugarmanProbe` target exposes only these operations:
 7. display redacted state plus the latest value and disconnect after five
    unique live `0x32` indexes or a seven-minute cap.
 
-The follow-up candidate additionally retains an in-memory payload-free trace of
+The reviewed follow-up candidate retains an in-memory payload-free trace of
 state transitions, inbound class/length, CoreBluetooth write calls, and write
-acknowledgements. It permits only one application write in flight and can share
-the redacted trace manually after the session. This does not add a command,
-retry, reconnect, or background path.
+acknowledgements. It separates control
+length/command/checksum and glucose minimum-length/declared-length/command/count/
+layout/checksum failures, and marks an FF31 delivery that occurs while an
+FF32 write acknowledgement is outstanding. It permits only one application
+write in flight and can share the redacted trace manually after the session.
+This does not add a command, retry, reconnect, or background path.
+
+The imported effective-data start index is also an evidence gate. It must be an
+actual official-app `0x39` request start that matches the first following data
+batch. The second-run import met neither condition. A fresh official reconnect
+confirmed the relationship across five requests and showed that its newest
+start also differs from the earlier provisional correction. The replacement
+private import changes only this field to the newest verified request start;
+the value and import hash stay outside Git.
 
 The target contains no builders or cases for `0x35`, binding, activation,
 reset, secret-key, expiry/lifecycle, firmware, or arbitrary raw writes. The
@@ -58,9 +72,9 @@ packaged or committed.
 Before producing a device artifact:
 
 - all `swift test` and governance checks pass;
-- synthetic tests cover authentication, `0x39`, `0x32`, checksum failures,
-  timeouts, duplicate notifications, exact five-reading completion, and unknown
-  commands;
+- synthetic tests cover authentication, `0x39`, `0x32`, every payload-free
+  failure-stage classification, timeouts, duplicate notifications, exact
+  five-reading completion, and unknown commands;
 - an independent reviewer confirms the outbound command enum contains only
   `0xE2` and `0x39` for this target;
 - a build-product string/byte audit finds no forbidden command builder and no
@@ -80,13 +94,15 @@ connect. The final confirmation must cover both if both are intended.
 2. Stop HCI logging unless a new owner-approved capture is required. Release the
    sensor by disabling Android Bluetooth; do not unbind, log out, clear app data,
    or change sensor settings.
-3. Install and launch only the confirmed iPhone artifact. Select the owned
-   sensor explicitly. Do not enable any activation or onboarding action.
+3. Install and launch only the confirmed iPhone artifact. Import only the
+   confirmed replacement private file, select the owned sensor explicitly, and
+   do not enable any activation or onboarding action.
 4. Run one bounded probe. Abort automatically if authentication is rejected, an
    unexpected command would be needed, frame validation fails, or the timeout
    expires.
    If it aborts, share the in-memory redacted diagnostic text before deleting
-   private material or terminating the app. Do not retry the artifact.
+   private material or terminating the app. Do not retry the artifact or
+   private-material combination.
 5. Require at least five consecutive approximately one-minute iPhone readings.
    Compare timestamp/index, mmol/L after documented rounding, reading age, and
    the known flat trend case against the official app's private record. Do not
