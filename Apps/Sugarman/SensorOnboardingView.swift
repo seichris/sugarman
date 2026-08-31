@@ -140,6 +140,9 @@ struct SensorOnboardingView: View {
                         }
                     }
                 }
+#if SUGARMAN_DEVICE_TEST
+                DeviceTestProvisioningSection()
+#endif
                 Section("onboarding.owner") {
                     TextField("onboarding.owner_field", text: $ownerID)
                         .textInputAutocapitalization(.never)

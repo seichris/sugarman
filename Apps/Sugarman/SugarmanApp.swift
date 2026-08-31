@@ -2,6 +2,9 @@
 // Copyright (C) 2026 Sugarman contributors
 
 import AccountBinding
+#if SUGARMAN_DEVICE_TEST
+import GS3DeviceProvisioning
+#endif
 import GS3Transport
 import Integrations
 import Observation
@@ -61,6 +64,17 @@ final class AppModel {
     var demoLoadError: String?
     var storeErrorMessage: String?
     private var foregroundSessionBridge: ForegroundGS3SessionBridge
+#if SUGARMAN_DEVICE_TEST
+    var hasDeviceTestProvisioning: Bool
+    var deviceTestLinkedSensorID: UUID?
+    var isDeviceTestArmed: Bool
+    var deviceTestStatus: String
+    var deviceTestLifecycleLines: [String]
+    var deviceTestAuthenticationAcknowledgementCount: Int
+    var deviceTestHistoryAcknowledgementCount: Int
+    @ObservationIgnored private let deviceTestProvisioning: DeviceOnlyGS3Provisioning
+    private var currentScenePhase: ScenePhase
+#endif
 
     static func bootstrapped() -> AppModel {
         let result = SugarmanStoreFactory.makePersistent()
@@ -104,6 +118,17 @@ final class AppModel {
         self.demoLoadError = nil
         self.storeErrorMessage = initialStoreError
         self.foregroundSessionBridge = ForegroundGS3SessionBridge()
+#if SUGARMAN_DEVICE_TEST
+        self.hasDeviceTestProvisioning = false
+        self.deviceTestLinkedSensorID = nil
+        self.isDeviceTestArmed = false
+        self.deviceTestStatus = "Import private material after storing an owned sensor identity."
+        self.deviceTestLifecycleLines = []
+        self.deviceTestAuthenticationAcknowledgementCount = 0
+        self.deviceTestHistoryAcknowledgementCount = 0
+        self.deviceTestProvisioning = DeviceOnlyGS3Provisioning()
+        self.currentScenePhase = .inactive
+#endif
     }
 
     func assessment(at now: Date = Date()) -> SafetyAssessment {
@@ -157,6 +182,9 @@ final class AppModel {
     }
 
     func handleScenePhase(_ phase: ScenePhase) async {
+#if SUGARMAN_DEVICE_TEST
+        currentScenePhase = phase
+#endif
         switch phase {
         case .active:
             do {
@@ -189,15 +217,168 @@ final class AppModel {
                 await self?.refresh()
             }
         }
+#if SUGARMAN_DEVICE_TEST
+        let callbacks = GS3ForegroundSessionCallbacks(
+            onConnection: { _ in refresh() },
+            onLifecycleEvent: { [weak self] event in
+                Task { @MainActor [weak self] in
+                    self?.recordDeviceTestLifecycle(event.description)
+                }
+            },
+            onSamplesCommitted: { _ in refresh() },
+            onCommandAcknowledged: { [weak self] command in
+                Task { @MainActor [weak self] in
+                    switch command {
+                    case .authentication:
+                        self?.deviceTestAuthenticationAcknowledgementCount += 1
+                    case .effectiveData:
+                        self?.deviceTestHistoryAcknowledgementCount += 1
+                    }
+                }
+            },
+            onFailure: { [weak self] failure in
+                refresh()
+                Task { @MainActor [weak self] in
+                    self?.deviceTestStatus =
+                        "Managed foreground session failed closed (\(failure.rawValue))."
+                }
+            }
+        )
+#else
         let callbacks = GS3ForegroundSessionCallbacks(
             onConnection: { _ in refresh() },
             onSamplesCommitted: { _ in refresh() },
             onFailure: { _ in refresh() }
         )
+#endif
         foregroundSessionBridge.install {
             try await factory(callbacks)
         }
     }
+
+#if SUGARMAN_DEVICE_TEST
+    var redactedDeviceTestReport: String {
+        ([
+            "Sugarman managed foreground device-test diagnostics",
+            "Packet bodies, sensor identifiers, private material, glucose values, and record indexes are omitted.",
+            "Authentication write acknowledgements: \(deviceTestAuthenticationAcknowledgementCount)",
+            "History write acknowledgements: \(deviceTestHistoryAcknowledgementCount)",
+            "",
+        ] + deviceTestLifecycleLines).joined(separator: "\n")
+    }
+
+    func refreshDeviceTestProvisioningAvailability() async {
+        do {
+            let summary = try await deviceTestProvisioning.summary()
+            hasDeviceTestProvisioning = summary != nil
+            deviceTestLinkedSensorID = summary?.linkedSensorID
+            if summary != nil, !isDeviceTestArmed {
+                deviceTestStatus = "Private material is available in this device's Keychain."
+            } else if summary == nil {
+                deviceTestStatus =
+                    "Import private material after storing an owned sensor identity."
+            }
+        } catch {
+            hasDeviceTestProvisioning = false
+            deviceTestLinkedSensorID = nil
+            deviceTestStatus = error.localizedDescription
+        }
+    }
+
+    func importDeviceTestProvisioning(
+        from url: URL,
+        linkedSensorID: UUID
+    ) async {
+        guard !isDeviceTestArmed else {
+            deviceTestStatus = "Stop the managed foreground session before importing material."
+            return
+        }
+        let accessed = url.startAccessingSecurityScopedResource()
+        defer {
+            if accessed { url.stopAccessingSecurityScopedResource() }
+        }
+        do {
+            var data = try Data(contentsOf: url, options: [.mappedIfSafe])
+            defer {
+                if !data.isEmpty { data.resetBytes(in: 0..<data.count) }
+            }
+            try await deviceTestProvisioning.importDocument(
+                data,
+                linkedSensorID: linkedSensorID,
+                into: primaryStore
+            )
+            try await refreshFromStore()
+            await refreshDeviceTestProvisioningAvailability()
+            deviceTestStatus =
+                "Private material imported. No Bluetooth action has started."
+        } catch {
+            deviceTestStatus = error.localizedDescription
+        }
+    }
+
+    func armDeviceTest() async {
+        guard !isSyntheticDemo else {
+            deviceTestStatus = "Exit synthetic demo mode before arming the device test."
+            return
+        }
+        guard hasDeviceTestProvisioning, !isDeviceTestArmed else { return }
+        let provisioning = deviceTestProvisioning
+        let liveStore = primaryStore
+        deviceTestLifecycleLines = []
+        deviceTestAuthenticationAcknowledgementCount = 0
+        deviceTestHistoryAcknowledgementCount = 0
+        installForegroundSessionFactory { callbacks in
+            try await provisioning.makeController(
+                store: liveStore,
+                callbacks: callbacks
+            )
+        }
+        isDeviceTestArmed = true
+        deviceTestStatus = "Managed foreground session armed."
+        guard currentScenePhase == .active else { return }
+        do {
+            try await foregroundSessionBridge.enterForeground()
+        } catch {
+            isDeviceTestArmed = false
+            await foregroundSessionBridge.removeFactory()
+            deviceTestStatus = error.localizedDescription
+        }
+    }
+
+    func stopDeviceTest() async {
+        isDeviceTestArmed = false
+        await foregroundSessionBridge.removeFactory()
+        if hasDeviceTestProvisioning {
+            deviceTestStatus =
+                "Managed foreground session stopped. Private material remains device-only."
+        }
+        await refresh()
+    }
+
+    func deleteDeviceTestProvisioning() async {
+        await stopDeviceTest()
+        do {
+            try await deviceTestProvisioning.delete()
+            hasDeviceTestProvisioning = false
+            deviceTestLinkedSensorID = nil
+            deviceTestLifecycleLines = []
+            deviceTestAuthenticationAcknowledgementCount = 0
+            deviceTestHistoryAcknowledgementCount = 0
+            deviceTestStatus = "Private device-test material deleted from this device."
+        } catch {
+            deviceTestStatus = error.localizedDescription
+        }
+    }
+
+    private func recordDeviceTestLifecycle(_ line: String) {
+        deviceTestLifecycleLines.append(line)
+        if deviceTestLifecycleLines.count > 128 {
+            deviceTestLifecycleLines.removeFirst(
+                deviceTestLifecycleLines.count - 128
+            )
+        }
+    }
+#endif
 
     func loadDemo(_ scenario: SyntheticDemoScenario) async throws {
         demoLoadError = nil
@@ -313,6 +494,12 @@ final class AppModel {
     }
 
     func deleteAllLocalData() async throws {
+#if SUGARMAN_DEVICE_TEST
+        await stopDeviceTest()
+        try await deviceTestProvisioning.delete()
+        hasDeviceTestProvisioning = false
+        deviceTestLinkedSensorID = nil
+#endif
         try await primaryStore.deleteAll()
         store = primaryStore
         clearLivePresentation()

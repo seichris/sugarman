@@ -7,33 +7,61 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		002EFC6ED59C2E7037C2B4E2 /* DeviceTestProvisioningSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C91B80E38A6B0F30FC5BA2F /* DeviceTestProvisioningSection.swift */; };
+		12724BCD612662109738652C /* PrivacyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D62AEF0933A5D37DBD9819B /* PrivacyView.swift */; };
 		17C620CE59FF8DAD029BD6DB /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 015AE5A8B5FB8B171B34FD9B /* Localizable.xcstrings */; };
 		18547DFCFF92039200422D99 /* GS3Transport in Frameworks */ = {isa = PBXBuildFile; productRef = 9BD053E9E2482A4DF749F1BC /* GS3Transport */; };
 		1BD5EF2CC6DEAB38AA7AC2C9 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 860607D7CABFC1DCB652CAE8 /* HistoryView.swift */; };
+		1BF94CCC65C237F400445C72 /* FuelingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 656BBC6B356424ED01B62A5C /* FuelingView.swift */; };
 		2180F84F9A632C8BD78BEB55 /* Integrations in Frameworks */ = {isa = PBXBuildFile; productRef = 67DE8DC36AEDDAE5D84B6DDD /* Integrations */; };
+		22FB8A1D82E6E44903F30D43 /* WorkoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 624C211ABA31163598C2C265 /* WorkoutView.swift */; };
 		279867D011F2F2B3ED5C1F49 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3776611985DB564BF1E3EC5E /* Assets.xcassets */; };
 		3112B5FDC7B10EC2E0A7F499 /* SugarmanStore in Frameworks */ = {isa = PBXBuildFile; productRef = 375AFB438175197FEB7F5409 /* SugarmanStore */; };
 		311FFA08D56DBCE6DF7C34C7 /* ForegroundGS3SessionBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC5257F916946C521956A61B /* ForegroundGS3SessionBridge.swift */; };
+		32BE21F247BF960A65076A56 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3776611985DB564BF1E3EC5E /* Assets.xcassets */; };
 		36723C2EA4A5201A9B819C64 /* SensorOnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000D344B1531771A82196E8E /* SensorOnboardingView.swift */; };
+		38F266F75AE17DE2E58C7A03 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29BED539403ADB33595539AE /* DashboardView.swift */; };
+		3B2F680A22443E47D108D1AE /* GS3Transport in Frameworks */ = {isa = PBXBuildFile; productRef = 0F54958F160F02B5B6C6C373 /* GS3Transport */; };
+		3E7CB545F3803FFE8AC5EF8A /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 015AE5A8B5FB8B171B34FD9B /* Localizable.xcstrings */; };
+		4210AE5C6932FD01CD3B013A /* SensorOwnership in Frameworks */ = {isa = PBXBuildFile; productRef = C7A47036ADC02F17DD6BCE03 /* SensorOwnership */; };
+		4652CFF78AE7544266154C5E /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F1463176FB0AB503E0DBC95 /* RootView.swift */; };
 		49FEDAFEF5F23DA7FD82079F /* GS3Protocol in Frameworks */ = {isa = PBXBuildFile; productRef = E9EB7D6D79BE31130E3A86B9 /* GS3Protocol */; };
 		4F3EAF6A77D5002026D89A18 /* DataMatrixCameraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3488762722113D1DF2E2D318 /* DataMatrixCameraView.swift */; };
 		560BC0BADE45D27FAC05D341 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29BED539403ADB33595539AE /* DashboardView.swift */; };
 		5AB576F431822FF1828D7CFA /* SensorOwnership in Frameworks */ = {isa = PBXBuildFile; productRef = 7E8B64029D6BD24F1A302D50 /* SensorOwnership */; };
+		624555F9F302675C3DAF4C73 /* DeviceTestProvisioningSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C91B80E38A6B0F30FC5BA2F /* DeviceTestProvisioningSection.swift */; };
+		70ACFF5FBCB1714DD6ED3052 /* Integrations in Frameworks */ = {isa = PBXBuildFile; productRef = EAD93EBE638021E98704BB34 /* Integrations */; };
 		74735FDEB0F1627C9F14766B /* GS3DeveloperProbe in Frameworks */ = {isa = PBXBuildFile; productRef = AA164286726B3EF92D3AAE1C /* GS3DeveloperProbe */; };
 		78E8C92384E18DBC9C515A18 /* SugarmanDomain in Frameworks */ = {isa = PBXBuildFile; productRef = ADE13AEECE159CEFFE400572 /* SugarmanDomain */; };
+		7A3339A58F11CBD32E22675E /* ActiveSessionBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15DF313DF9367CC3CEA50640 /* ActiveSessionBanner.swift */; };
+		7EEA0EE53C2AC605578EA65E /* DataMatrixCameraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3488762722113D1DF2E2D318 /* DataMatrixCameraView.swift */; };
 		7F15A41C2BF5312E05733725 /* WorkoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 624C211ABA31163598C2C265 /* WorkoutView.swift */; };
 		837CABEF38C1FB95E82266F5 /* GS3Protocol in Frameworks */ = {isa = PBXBuildFile; productRef = 5391074AF6B3847D8D21EB21 /* GS3Protocol */; };
 		868FDCD491194DAE71D42360 /* V3ProbeBluetoothRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9DEBFFC56BDC6FB81519643 /* V3ProbeBluetoothRuntime.swift */; };
 		8C55E464E39F9A14F9E321F3 /* NoDosingBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F709C40FC939809818D7ADF /* NoDosingBanner.swift */; };
 		8E05CC2263526ED24ACD9FE7 /* ProbeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60D75ABFD67CB22CB7D4C18B /* ProbeView.swift */; };
+		8ED86A0AEB8E274402518168 /* AccountBinding in Frameworks */ = {isa = PBXBuildFile; productRef = 1A663E90A429605A1E565651 /* AccountBinding */; };
+		935EF8FAD536DD113B2011DE /* SugarmanApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4704D8B1664BAC86165C699F /* SugarmanApp.swift */; };
 		99A5B09163915D3FB6532C55 /* DiagnosticProbeSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2EE7DEAE55777159E636FBD /* DiagnosticProbeSession.swift */; };
 		9CD79405070151AA125610EB /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F1463176FB0AB503E0DBC95 /* RootView.swift */; };
+		9E6E58485EEC842AF8EB8E2D /* GS3Protocol in Frameworks */ = {isa = PBXBuildFile; productRef = D160C18AD47C04C556994EA4 /* GS3Protocol */; };
+		9FEA5F925193DB6A14980AC2 /* NoDosingBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F709C40FC939809818D7ADF /* NoDosingBanner.swift */; };
+		A3EE9E4BF2642B9D472B90C3 /* SafetyEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 2682BE8D6FCE365BCCAA471F /* SafetyEngine */; };
+		B1A68B3AD78A74A2EE80A515 /* SugarmanDomain in Frameworks */ = {isa = PBXBuildFile; productRef = 8315F3675E38C87BD98440E0 /* SugarmanDomain */; };
 		B2FC75E9F9317D3F50202930 /* SafetyEngine in Frameworks */ = {isa = PBXBuildFile; productRef = A9114B2D0C315218CD65C655 /* SafetyEngine */; };
 		B38DA06F640C94A46D153927 /* SugarmanProbeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA4F6CD684BA19A9D21C9C65 /* SugarmanProbeApp.swift */; };
+		B4582411C3B055051A9517B8 /* SugarmanDiagnostics in Frameworks */ = {isa = PBXBuildFile; productRef = AC88843AE5EFCB19CD37AB6B /* SugarmanDiagnostics */; };
+		B6ADB2D8260077121F557995 /* GS3DeviceProvisioning in Frameworks */ = {isa = PBXBuildFile; productRef = 06147D6013644C5A118A2565 /* GS3DeviceProvisioning */; };
+		B81DE0655CBA983E0C8E7C5A /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 860607D7CABFC1DCB652CAE8 /* HistoryView.swift */; };
 		C415BCB114E2A449B39CC652 /* ProbeAppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD93DE80D8823F077A698FBA /* ProbeAppModel.swift */; };
 		D0CD0CAD05AD3E611AE84928 /* SensorOnboarding in Frameworks */ = {isa = PBXBuildFile; productRef = F705304B1A41ECB50B19865E /* SensorOnboarding */; };
 		D5095075A1A49CBC804F65F7 /* FuelingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 656BBC6B356424ED01B62A5C /* FuelingView.swift */; };
+		D5AD979760659516BCF4B266 /* SensorOnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000D344B1531771A82196E8E /* SensorOnboardingView.swift */; };
 		DAE2954C63A3A8ABC2A4E9A9 /* AccountBinding in Frameworks */ = {isa = PBXBuildFile; productRef = 6816F1F47828A1F57E5EE72A /* AccountBinding */; };
+		DAFDD1859204923EF7E6C59C /* ForegroundGS3SessionBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC5257F916946C521956A61B /* ForegroundGS3SessionBridge.swift */; };
+		DB99391AB425A41FC0785CCC /* DiagnosticProbeSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2EE7DEAE55777159E636FBD /* DiagnosticProbeSession.swift */; };
+		DBABA50C0F7BF0C8C27F8C65 /* SensorOnboarding in Frameworks */ = {isa = PBXBuildFile; productRef = E5C682ACDC44433C83C42DC0 /* SensorOnboarding */; };
+		E0705F959641E06BB7FA75C0 /* SugarmanStore in Frameworks */ = {isa = PBXBuildFile; productRef = F0E612B31C6AE1F0DAA6AE44 /* SugarmanStore */; };
 		E15309AE01C533808742A893 /* SugarmanApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4704D8B1664BAC86165C699F /* SugarmanApp.swift */; };
 		E957FF0A866DAEBEE78F454D /* PrivacyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D62AEF0933A5D37DBD9819B /* PrivacyView.swift */; };
 		F31E6F71459357BB609CA8AE /* ActiveSessionBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15DF313DF9367CC3CEA50640 /* ActiveSessionBanner.swift */; };
@@ -50,16 +78,18 @@
 		3488762722113D1DF2E2D318 /* DataMatrixCameraView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataMatrixCameraView.swift; sourceTree = "<group>"; };
 		3776611985DB564BF1E3EC5E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		4704D8B1664BAC86165C699F /* SugarmanApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SugarmanApp.swift; sourceTree = "<group>"; };
+		4C91B80E38A6B0F30FC5BA2F /* DeviceTestProvisioningSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceTestProvisioningSection.swift; sourceTree = "<group>"; };
 		5D62AEF0933A5D37DBD9819B /* PrivacyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyView.swift; sourceTree = "<group>"; };
 		60D75ABFD67CB22CB7D4C18B /* ProbeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProbeView.swift; sourceTree = "<group>"; };
 		624C211ABA31163598C2C265 /* WorkoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutView.swift; sourceTree = "<group>"; };
 		656BBC6B356424ED01B62A5C /* FuelingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FuelingView.swift; sourceTree = "<group>"; };
 		6D7D5408CC201C89747826BF /* Sugarman.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Sugarman.entitlements; sourceTree = "<group>"; };
 		805EFD4E6C63AC4FA9C59EB9 /* SugarmanProbe.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SugarmanProbe.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		839B94F533B13BD3AE2E1DEA /* sugarman-gs3-device-provisioning */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "sugarman-gs3-device-provisioning"; path = .; sourceTree = SOURCE_ROOT; };
 		860607D7CABFC1DCB652CAE8 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
 		9F709C40FC939809818D7ADF /* NoDosingBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoDosingBanner.swift; sourceTree = "<group>"; };
 		AC96B54C5A9982635D8FAA25 /* DevelopmentTeam.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = DevelopmentTeam.xcconfig; sourceTree = "<group>"; };
-		BF74DB52FA25D6BED9C37F44 /* sugarman */ = {isa = PBXFileReference; lastKnownFileType = folder; name = sugarman; path = .; sourceTree = SOURCE_ROOT; };
+		B4267C7DE28C61725933287C /* SugarmanDeviceTest.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SugarmanDeviceTest.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CA4F6CD684BA19A9D21C9C65 /* SugarmanProbeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SugarmanProbeApp.swift; sourceTree = "<group>"; };
 		CD93DE80D8823F077A698FBA /* ProbeAppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProbeAppModel.swift; sourceTree = "<group>"; };
 		D9DEBFFC56BDC6FB81519643 /* V3ProbeBluetoothRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = V3ProbeBluetoothRuntime.swift; sourceTree = "<group>"; };
@@ -97,6 +127,24 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B3B5D9F03D887502ABDDA0C4 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B1A68B3AD78A74A2EE80A515 /* SugarmanDomain in Frameworks */,
+				9E6E58485EEC842AF8EB8E2D /* GS3Protocol in Frameworks */,
+				3B2F680A22443E47D108D1AE /* GS3Transport in Frameworks */,
+				B6ADB2D8260077121F557995 /* GS3DeviceProvisioning in Frameworks */,
+				DBABA50C0F7BF0C8C27F8C65 /* SensorOnboarding in Frameworks */,
+				8ED86A0AEB8E274402518168 /* AccountBinding in Frameworks */,
+				E0705F959641E06BB7FA75C0 /* SugarmanStore in Frameworks */,
+				A3EE9E4BF2642B9D472B90C3 /* SafetyEngine in Frameworks */,
+				70ACFF5FBCB1714DD6ED3052 /* Integrations in Frameworks */,
+				B4582411C3B055051A9517B8 /* SugarmanDiagnostics in Frameworks */,
+				4210AE5C6932FD01CD3B013A /* SensorOwnership in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -117,6 +165,7 @@
 				3776611985DB564BF1E3EC5E /* Assets.xcassets */,
 				29BED539403ADB33595539AE /* DashboardView.swift */,
 				3488762722113D1DF2E2D318 /* DataMatrixCameraView.swift */,
+				4C91B80E38A6B0F30FC5BA2F /* DeviceTestProvisioningSection.swift */,
 				E2EE7DEAE55777159E636FBD /* DiagnosticProbeSession.swift */,
 				EC5257F916946C521956A61B /* ForegroundGS3SessionBridge.swift */,
 				656BBC6B356424ED01B62A5C /* FuelingView.swift */,
@@ -148,7 +197,7 @@
 		3935FB384078684757B5D8ED /* Packages */ = {
 			isa = PBXGroup;
 			children = (
-				BF74DB52FA25D6BED9C37F44 /* sugarman */,
+				839B94F533B13BD3AE2E1DEA /* sugarman-gs3-device-provisioning */,
 			);
 			name = Packages;
 			sourceTree = "<group>";
@@ -157,6 +206,7 @@
 			isa = PBXGroup;
 			children = (
 				E6EE39F377CDFD5147B0BA60 /* Sugarman.app */,
+				B4267C7DE28C61725933287C /* SugarmanDeviceTest.app */,
 				805EFD4E6C63AC4FA9C59EB9 /* SugarmanProbe.app */,
 			);
 			name = Products;
@@ -211,6 +261,36 @@
 			productReference = E6EE39F377CDFD5147B0BA60 /* Sugarman.app */;
 			productType = "com.apple.product-type.application";
 		};
+		A1CAC1EB00C435BD847350B7 /* SugarmanDeviceTest */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B58F97A9FB9F380346BEE44D /* Build configuration list for PBXNativeTarget "SugarmanDeviceTest" */;
+			buildPhases = (
+				7DFFECB40412757CCC9145B3 /* Sources */,
+				F1BEFC888D4E100A343B249C /* Resources */,
+				B3B5D9F03D887502ABDDA0C4 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SugarmanDeviceTest;
+			packageProductDependencies = (
+				8315F3675E38C87BD98440E0 /* SugarmanDomain */,
+				D160C18AD47C04C556994EA4 /* GS3Protocol */,
+				0F54958F160F02B5B6C6C373 /* GS3Transport */,
+				06147D6013644C5A118A2565 /* GS3DeviceProvisioning */,
+				E5C682ACDC44433C83C42DC0 /* SensorOnboarding */,
+				1A663E90A429605A1E565651 /* AccountBinding */,
+				F0E612B31C6AE1F0DAA6AE44 /* SugarmanStore */,
+				2682BE8D6FCE365BCCAA471F /* SafetyEngine */,
+				EAD93EBE638021E98704BB34 /* Integrations */,
+				AC88843AE5EFCB19CD37AB6B /* SugarmanDiagnostics */,
+				C7A47036ADC02F17DD6BCE03 /* SensorOwnership */,
+			);
+			productName = SugarmanDeviceTest;
+			productReference = B4267C7DE28C61725933287C /* SugarmanDeviceTest.app */;
+			productType = "com.apple.product-type.application";
+		};
 		EEB58151DCD2991CD693A1F1 /* SugarmanProbe */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 8C902D4DFF65734BA8E6203C /* Build configuration list for PBXNativeTarget "SugarmanProbe" */;
@@ -245,6 +325,10 @@
 						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
+					A1CAC1EB00C435BD847350B7 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
 					EEB58151DCD2991CD693A1F1 = {
 						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
@@ -269,6 +353,7 @@
 			projectRoot = "";
 			targets = (
 				366A36D7DA44EAA9CC9323F4 /* Sugarman */,
+				A1CAC1EB00C435BD847350B7 /* SugarmanDeviceTest */,
 				EEB58151DCD2991CD693A1F1 /* SugarmanProbe */,
 			);
 		};
@@ -284,9 +369,39 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		F1BEFC888D4E100A343B249C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				32BE21F247BF960A65076A56 /* Assets.xcassets in Resources */,
+				3E7CB545F3803FFE8AC5EF8A /* Localizable.xcstrings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		7DFFECB40412757CCC9145B3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7A3339A58F11CBD32E22675E /* ActiveSessionBanner.swift in Sources */,
+				38F266F75AE17DE2E58C7A03 /* DashboardView.swift in Sources */,
+				7EEA0EE53C2AC605578EA65E /* DataMatrixCameraView.swift in Sources */,
+				624555F9F302675C3DAF4C73 /* DeviceTestProvisioningSection.swift in Sources */,
+				DB99391AB425A41FC0785CCC /* DiagnosticProbeSession.swift in Sources */,
+				DAFDD1859204923EF7E6C59C /* ForegroundGS3SessionBridge.swift in Sources */,
+				1BF94CCC65C237F400445C72 /* FuelingView.swift in Sources */,
+				B81DE0655CBA983E0C8E7C5A /* HistoryView.swift in Sources */,
+				9FEA5F925193DB6A14980AC2 /* NoDosingBanner.swift in Sources */,
+				12724BCD612662109738652C /* PrivacyView.swift in Sources */,
+				4652CFF78AE7544266154C5E /* RootView.swift in Sources */,
+				D5AD979760659516BCF4B266 /* SensorOnboardingView.swift in Sources */,
+				935EF8FAD536DD113B2011DE /* SugarmanApp.swift in Sources */,
+				22FB8A1D82E6E44903F30D43 /* WorkoutView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		922B24DDF5FDC5188344E121 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -294,6 +409,7 @@
 				F31E6F71459357BB609CA8AE /* ActiveSessionBanner.swift in Sources */,
 				560BC0BADE45D27FAC05D341 /* DashboardView.swift in Sources */,
 				4F3EAF6A77D5002026D89A18 /* DataMatrixCameraView.swift in Sources */,
+				002EFC6ED59C2E7037C2B4E2 /* DeviceTestProvisioningSection.swift in Sources */,
 				99A5B09163915D3FB6532C55 /* DiagnosticProbeSession.swift in Sources */,
 				311FFA08D56DBCE6DF7C34C7 /* ForegroundGS3SessionBridge.swift in Sources */,
 				D5095075A1A49CBC804F65F7 /* FuelingView.swift in Sources */,
@@ -463,6 +579,58 @@
 			};
 			name = Debug;
 		};
+		71D195F5E32878FFE8DF5CEB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CODE_SIGN_ENTITLEMENTS = Apps/SugarmanDeviceTest/SugarmanDeviceTest.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Apps/SugarmanDeviceTest/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = app.sugarman.ios.devicetest;
+				PRODUCT_NAME = "Sugarman Device Test";
+				SDKROOT = iphoneos;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) SUGARMAN_DEVICE_TEST";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		9874C712DF0CE28B66551092 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CODE_SIGN_ENTITLEMENTS = Apps/SugarmanDeviceTest/SugarmanDeviceTest.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Apps/SugarmanDeviceTest/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = app.sugarman.ios.devicetest;
+				PRODUCT_NAME = "Sugarman Device Test";
+				SDKROOT = iphoneos;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) SUGARMAN_DEVICE_TEST";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
 		AD123E43C1EA37C8F28F1258 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -582,6 +750,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
+		B58F97A9FB9F380346BEE44D /* Build configuration list for PBXNativeTarget "SugarmanDeviceTest" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9874C712DF0CE28B66551092 /* Debug */,
+				71D195F5E32878FFE8DF5CEB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
@@ -592,9 +769,25 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		06147D6013644C5A118A2565 /* GS3DeviceProvisioning */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = GS3DeviceProvisioning;
+		};
 		0A8CB8EC5B8B728EAA009209 /* SensorOwnership */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SensorOwnership;
+		};
+		0F54958F160F02B5B6C6C373 /* GS3Transport */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = GS3Transport;
+		};
+		1A663E90A429605A1E565651 /* AccountBinding */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = AccountBinding;
+		};
+		2682BE8D6FCE365BCCAA471F /* SafetyEngine */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SafetyEngine;
 		};
 		375AFB438175197FEB7F5409 /* SugarmanStore */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -620,6 +813,10 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = SensorOwnership;
 		};
+		8315F3675E38C87BD98440E0 /* SugarmanDomain */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SugarmanDomain;
+		};
 		9BD053E9E2482A4DF749F1BC /* GS3Transport */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = GS3Transport;
@@ -632,13 +829,37 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = GS3DeveloperProbe;
 		};
+		AC88843AE5EFCB19CD37AB6B /* SugarmanDiagnostics */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SugarmanDiagnostics;
+		};
 		ADE13AEECE159CEFFE400572 /* SugarmanDomain */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SugarmanDomain;
 		};
+		C7A47036ADC02F17DD6BCE03 /* SensorOwnership */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SensorOwnership;
+		};
+		D160C18AD47C04C556994EA4 /* GS3Protocol */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = GS3Protocol;
+		};
+		E5C682ACDC44433C83C42DC0 /* SensorOnboarding */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SensorOnboarding;
+		};
 		E9EB7D6D79BE31130E3A86B9 /* GS3Protocol */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = GS3Protocol;
+		};
+		EAD93EBE638021E98704BB34 /* Integrations */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Integrations;
+		};
+		F0E612B31C6AE1F0DAA6AE44 /* SugarmanStore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SugarmanStore;
 		};
 		F705304B1A41ECB50B19865E /* SensorOnboarding */ = {
 			isa = XCSwiftPackageProductDependency;

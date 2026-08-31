@@ -52,6 +52,15 @@ dependencies. See [docs/UPSTREAMS.md](docs/UPSTREAMS.md).
   path without a separately reviewed device-only artifact. The concrete
   adapter/coordinator are package-only; their public factory always installs the
   real shared process owner and bounded reconnect scheduler.
+- A separately signed `SugarmanDeviceTest` target reuses the normal Sugarman UI,
+  store, safety projection, and production coordinator without linking the
+  historical one-shot Probe. Its dedicated provisioning module accepts one
+  strict private JSON document after installation, normalizes it into a
+  when-unlocked, this-device-only Keychain item, and prepares only a local
+  already-active `.live` / `.v3AES` session. Import is Bluetooth-inert. Every
+  app process starts unarmed, and only a separate in-app confirmation installs
+  the typed factory and begins the managed foreground lifecycle. The release
+  `Sugarman` target does not link this module.
 - The production foreground lifecycle requires one shared App Group process
   lease, repeats subscription/authentication/history on every connection, uses
   bounded single-flight reconnect, establishes a durable sensor-time anchor
@@ -89,6 +98,7 @@ dependencies. See [docs/UPSTREAMS.md](docs/UPSTREAMS.md).
 | `Sources/GS3DeveloperProbe` | Typed, one-shot already-active V3 probe state machine and device-only private-material store |
 | `Sources/GS3Transport` | Read-only BLE diagnostics plus the typed known-peer foreground coordinator and adapter |
 | `Sources/GS3Session` | Pure foreground ownership/reconnect/history lifecycle reducer |
+| `Sources/GS3DeviceProvisioning` | Strict device-only import, Keychain normalization, local live-session preparation, and typed production-controller construction for the isolated Device Test target |
 | `Sources/SensorOwnership` | Payload-free cross-process App Group file lease |
 | `Sources/SensorOnboarding` | Bounded package/NDEF parser interfaces |
 | `Sources/AccountBinding` | Manual legitimate owner ID only |
@@ -98,6 +108,7 @@ dependencies. See [docs/UPSTREAMS.md](docs/UPSTREAMS.md).
 | `Sources/SugarmanDiagnostics` | Read-only GATT probe, redacted GATT export, BTSnoop analyzer |
 | `Apps/Sugarman` | SwiftUI iOS application shell |
 | `Apps/SugarmanProbe` | Separate foreground-only developer handover application; not linked by `Sugarman` |
+| `Apps/SugarmanDeviceTest` | Signing metadata for the isolated normal-app production-lifecycle test target |
 | `upstream/` | Pinned research references — not build inputs |
 
 ## Build and test
@@ -113,6 +124,12 @@ iOS application (iOS 26.0, Xcode 26):
 ```sh
 xcodegen generate
 xcodebuild -scheme Sugarman -destination 'generic/platform=iOS Simulator' -configuration Debug build CODE_SIGNING_ALLOWED=NO
+
+# Explicitly isolated production-lifecycle test target; importing remains inert.
+CC="$PWD/Scripts/xcode-clang-wrapper.sh" xcodebuild \
+  -scheme SugarmanDeviceTest \
+  -destination 'generic/platform=iOS Simulator' \
+  -configuration Debug build CODE_SIGNING_ALLOWED=NO
 ```
 
 Or open `Sugarman.xcodeproj` in Xcode and run the `Sugarman` scheme on an iOS 26

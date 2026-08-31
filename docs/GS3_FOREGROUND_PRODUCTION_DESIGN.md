@@ -23,6 +23,14 @@ cannot construct or run the adapter. A separately reviewed signed artifact and
 fresh physical authorization remain mandatory before this code contacts a
 sensor.
 
+The isolated `SugarmanDeviceTest` target supplies that test boundary without
+changing the release bootstrap. It links a dedicated strict private-import
+module, stores normalized material only in a when-unlocked this-device-only
+Keychain item, and begins every process unarmed. Import prepares local
+already-active session metadata but cannot start Bluetooth. Only a separate
+in-app arm confirmation installs the existing typed factory. See
+[`GS3_DEVICE_TEST_PROVISIONING.md`](GS3_DEVICE_TEST_PROVISIONING.md).
+
 ## Evidence ledger
 
 ### Verified facts
@@ -121,7 +129,9 @@ exact artifact must prove, with fresh owner confirmation:
   and
 - official Android handback still succeeds without binding or activation.
 
-No physical action is authorized by this design.
+No physical action is authorized by this design or by provisioning/import
+alone. Every exact artifact and each physical test action still requires fresh
+owner confirmation.
 
 ## Architecture
 
@@ -275,7 +285,9 @@ typed failure. The release bootstrap currently configures no controller. Thus
 the existing stale/disconnected UI is integrated without turning this host
 slice into an implicitly enabled sensor path. Even in reducer phase `live`, the
 unresolved native state mapping keeps decoded samples `questionable`, so the
-dashboard cannot label them current.
+dashboard cannot label them current. The isolated Device Test target can
+install that same bridge only after an explicit process-local arm confirmation;
+the release target does not link its provisioning module.
 
 ### Payload-free observability
 

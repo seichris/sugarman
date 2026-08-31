@@ -448,13 +448,14 @@ def check_no_write_api() -> None:
 def check_sensor_ownership_and_foreground_slice() -> None:
     group = "group.app.sugarman.sensor-owner"
     project = (ROOT / "project.yml").read_text(encoding="utf-8", errors="replace")
-    if project.count(group) != 2:
-        error("both iOS targets must declare the same sensor-owner App Group")
-    if project.count("product: SensorOwnership") != 2:
-        error("both iOS targets must link the shared SensorOwnership product")
+    if project.count(group) != 3:
+        error("all three iOS targets must declare the same sensor-owner App Group")
+    if project.count("product: SensorOwnership") != 3:
+        error("all three iOS targets must link the shared SensorOwnership product")
 
     for relative in (
         "Apps/Sugarman/Sugarman.entitlements",
+        "Apps/SugarmanDeviceTest/SugarmanDeviceTest.entitlements",
         "Apps/SugarmanProbe/SugarmanProbe.entitlements",
     ):
         path = ROOT / relative
@@ -614,7 +615,39 @@ def check_sensor_ownership_and_foreground_slice() -> None:
 
     app_body = app.read_text(encoding="utf-8", errors="replace")
     if app_body.count("installForegroundSessionFactory(") != 1:
-        error("normal-app bootstrap must not install a live foreground-session factory")
+        error("normal app must retain exactly one typed factory-install method")
+    if "#if SUGARMAN_DEVICE_TEST\nimport GS3DeviceProvisioning\n#endif" not in app_body:
+        error("device-test provisioning import must remain compile-time guarded")
+    report_slice = app_body.split("var redactedDeviceTestReport: String", 1)
+    if len(report_slice) != 2:
+        error("missing payload-free device-test report boundary")
+    else:
+        report_body = report_slice[1].split(
+            "func refreshDeviceTestProvisioningAvailability()", 1
+        )[0]
+        if "deviceTestStatus" in report_body:
+            error("shareable device-test report must not include arbitrary UI status")
+    import_slice = app_body.split("func importDeviceTestProvisioning(", 1)
+    arm_slice = app_body.split("func armDeviceTest()", 1)
+    if len(import_slice) != 2 or len(arm_slice) != 2:
+        error("missing explicit device-test import and arm boundaries")
+    else:
+        inert_import_body = import_slice[1].split("func armDeviceTest()", 1)[0]
+        for forbidden in (
+            "installForegroundSessionFactory(",
+            "enterForeground()",
+            "makeController(",
+        ):
+            if forbidden in inert_import_body:
+                error(f"private import must remain Bluetooth-inert: {forbidden}")
+        arm_body = arm_slice[1].split("func stopDeviceTest()", 1)[0]
+        for required in (
+            "installForegroundSessionFactory",
+            "provisioning.makeController",
+            "foregroundSessionBridge.enterForeground()",
+        ):
+            if required not in arm_body:
+                error(f"explicit device-test arm boundary missing: {required}")
     main_app_body = "\n".join(
         path.read_text(encoding="utf-8", errors="replace")
         for path in sorted((ROOT / "Apps/Sugarman").glob("*.swift"))
@@ -626,6 +659,79 @@ def check_sensor_ownership_and_foreground_slice() -> None:
     ):
         if forbidden in main_app_body:
             error(f"normal-app release sources provision forbidden live surface: {forbidden}")
+
+    release_target = project.split("  Sugarman:\n", 1)[1].split(
+        "  SugarmanDeviceTest:\n", 1
+    )[0]
+    device_test_target = project.split("  SugarmanDeviceTest:\n", 1)[1].split(
+        "  SugarmanProbe:\n", 1
+    )[0]
+    if "GS3DeviceProvisioning" in release_target:
+        error("release Sugarman target must not link device-only provisioning")
+    for required in (
+        "product: GS3DeviceProvisioning",
+        "SUGARMAN_DEVICE_TEST",
+        "PRODUCT_BUNDLE_IDENTIFIER: app.sugarman.ios.devicetest",
+    ):
+        if required not in device_test_target:
+            error(f"device-test target missing isolation boundary: {required}")
+
+    provisioning_root = ROOT / "Sources/GS3DeviceProvisioning"
+    if not provisioning_root.is_dir():
+        error("missing device-only GS3 provisioning module")
+    else:
+        provisioning_body = "\n".join(
+            path.read_text(encoding="utf-8", errors="replace")
+            for path in sorted(provisioning_root.glob("*.swift"))
+        )
+        for required in (
+            "DeviceOnlyGS3Provisioning",
+            "KeychainGS3DeviceProvisioningStore",
+            "kSecAttrAccessibleWhenUnlockedThisDeviceOnly",
+            "kSecAttrSynchronizable",
+            "query[kSecReturnData as String] = true",
+            "GS3DeviceProvisioningDocument",
+            "unexpectedDocumentField",
+            "replacementRequiresDeletion",
+            "GS3ForegroundSessionFactory.makeKnownPeripheralController(",
+            "captureBackedStart: CaptureBackedHistoryStart(",
+            "StoredGS3DeviceProvisioning(peripheral: redacted",
+        ):
+            if required not in provisioning_body:
+                error(f"device-only provisioning missing boundary: {required}")
+        for forbidden in (
+            "import CoreBluetooth",
+            ".writeValue(",
+            "scanForPeripherals(",
+            "activateSensor(",
+            "resetSensor(",
+            "writeSecretKey(",
+            "bindAccountOnSensor(",
+            "baseQuery(returnData:",
+        ):
+            if forbidden in provisioning_body:
+                error(f"device-only provisioning contains forbidden surface: {forbidden}")
+
+    package_text = (ROOT / "Package.swift").read_text(
+        encoding="utf-8", errors="replace"
+    )
+    if '.library(name: "GS3DeviceProvisioning"' not in package_text:
+        error("device-only provisioning must remain a separate package product")
+
+    device_test_view = ROOT / "Apps/Sugarman/DeviceTestProvisioningSection.swift"
+    if not device_test_view.is_file():
+        error("missing compile-time guarded device-test provisioning UI")
+    else:
+        view_body = device_test_view.read_text(encoding="utf-8", errors="replace")
+        for required in (
+            "#if SUGARMAN_DEVICE_TEST",
+            "Importing material does not start Bluetooth",
+            "showArmConfirmation",
+            "Arm managed foreground test",
+            "Share redacted lifecycle report",
+        ):
+            if required not in view_body:
+                error(f"device-test UI missing explicit safety boundary: {required}")
 
 def check_private_evidence_gitignore() -> None:
     gi = ROOT / ".gitignore"

@@ -92,6 +92,83 @@ targets:
         product: SensorOwnership
     scheme:
       testTargets: []
+  SugarmanDeviceTest:
+    type: application
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: Apps/Sugarman
+        excludes:
+          - Info.plist
+          - Sugarman.entitlements
+    resources:
+      - path: Apps/Sugarman/Localizable.xcstrings
+    info:
+      path: Apps/SugarmanDeviceTest/Info.plist
+      properties:
+        CFBundleDisplayName: Sugarman Device Test
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UIBackgroundModes:
+          - bluetooth-central
+        LSSupportsOpeningDocumentsInPlace: true
+        NSBluetoothAlwaysUsageDescription: Sugarman Device Test runs an explicitly armed managed foreground connection to one owned, already-active glucose sensor.
+        NSBluetoothPeripheralUsageDescription: Sugarman Device Test runs an explicitly armed managed foreground connection to one owned, already-active glucose sensor.
+        NFCReaderUsageDescription: Sugarman Device Test can read an owned sensor tag to store a redacted identity. Scanning does not activate or bind the sensor.
+        com.apple.developer.nfc.readersession.formats:
+          - NDEF
+        NSCameraUsageDescription: Sugarman Device Test can scan a package Data Matrix to store a redacted identity. Scanning does not send sensor commands.
+        NSHealthShareUsageDescription: Sugarman Device Test can read workouts you choose to share. HealthKit glucose writes remain disabled.
+        NSHealthUpdateUsageDescription: HealthKit glucose writes are disabled in Sugarman Device Test.
+    entitlements:
+      path: Apps/SugarmanDeviceTest/SugarmanDeviceTest.entitlements
+      properties:
+        com.apple.developer.nfc.readersession.formats:
+          - NDEF
+        com.apple.security.application-groups:
+          - group.app.sugarman.sensor-owner
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.sugarman.ios.devicetest
+        PRODUCT_NAME: Sugarman Device Test
+        INFOPLIST_FILE: Apps/SugarmanDeviceTest/Info.plist
+        GENERATE_INFOPLIST_FILE: false
+        CODE_SIGN_ENTITLEMENTS: Apps/SugarmanDeviceTest/SugarmanDeviceTest.entitlements
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: false
+        SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: false
+        ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: YES
+        SWIFT_EMIT_LOC_STRINGS: YES
+        LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) SUGARMAN_DEVICE_TEST
+    dependencies:
+      - package: Sugarman
+        product: SugarmanDomain
+      - package: Sugarman
+        product: GS3Protocol
+      - package: Sugarman
+        product: GS3Transport
+      - package: Sugarman
+        product: GS3DeviceProvisioning
+      - package: Sugarman
+        product: SensorOnboarding
+      - package: Sugarman
+        product: AccountBinding
+      - package: Sugarman
+        product: SugarmanStore
+      - package: Sugarman
+        product: SafetyEngine
+      - package: Sugarman
+        product: Integrations
+      - package: Sugarman
+        product: SugarmanDiagnostics
+      - package: Sugarman
+        product: SensorOwnership
+    scheme:
+      testTargets: []
   SugarmanProbe:
     type: application
     platform: iOS

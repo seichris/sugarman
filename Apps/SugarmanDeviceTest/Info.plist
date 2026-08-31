@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Sugarman Device Test</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
+	<key>NFCReaderUsageDescription</key>
+	<string>Sugarman Device Test can read an owned sensor tag to store a redacted identity. Scanning does not activate or bind the sensor.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Sugarman Device Test runs an explicitly armed managed foreground connection to one owned, already-active glucose sensor.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>Sugarman Device Test runs an explicitly armed managed foreground connection to one owned, already-active glucose sensor.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Sugarman Device Test can scan a package Data Matrix to store a redacted identity. Scanning does not send sensor commands.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Sugarman Device Test can read workouts you choose to share. HealthKit glucose writes remain disabled.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>HealthKit glucose writes are disabled in Sugarman Device Test.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>bluetooth-central</string>
+	</array>
+	<key>UILaunchScreen</key>
+	<dict/>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>com.apple.developer.nfc.readersession.formats</key>
+	<array>
+		<string>NDEF</string>
+	</array>
+</dict>
+</plist>
