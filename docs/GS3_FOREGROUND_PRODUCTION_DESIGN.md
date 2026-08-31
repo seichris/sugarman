@@ -31,6 +31,15 @@ already-active session metadata but cannot start Bluetooth. Only a separate
 in-app arm confirmation installs the existing typed factory. See
 [`GS3_DEVICE_TEST_PROVISIONING.md`](GS3_DEVICE_TEST_PROVISIONING.md).
 
+When only the historical Probe JSON is available, the Device Test target now
+has a separate provisioning-only bridge. It validates that exact schema in
+memory, then an explicitly confirmed, shared-owner, ten-second adapter scans
+for the exact private local name and stores one unique CoreBluetooth UUID. That
+adapter cannot connect or access GATT and is not part of the foreground
+transport. Zero or multiple matches fail closed, and the UUID remains absent
+from UI, reports, diagnostics, and logs. The production adapter still retrieves
+only the resulting known peripheral and never scans.
+
 ## Evidence ledger
 
 ### Verified facts

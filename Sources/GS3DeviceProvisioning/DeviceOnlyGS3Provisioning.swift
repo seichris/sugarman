@@ -46,21 +46,26 @@ public struct GS3DeviceProvisioningSummary:
 public actor DeviceOnlyGS3Provisioning {
     private let persistence: any GS3DeviceProvisioningPersisting
     private let uuidGenerator: @Sendable () -> UUID
+    private let requestTokenGenerator: @Sendable () -> UUID
     private var sessionOrdinal: UInt64 = 0
+    private var pendingProbeBridge: PendingGS3ProbeBridge?
     private var operationInProgress = false
     private var operationWaiters: [CheckedContinuation<Void, Never>] = []
 
     public init() {
         self.persistence = KeychainGS3DeviceProvisioningStore()
         self.uuidGenerator = { UUID() }
+        self.requestTokenGenerator = { UUID() }
     }
 
     package init(
         persistence: any GS3DeviceProvisioningPersisting,
-        uuidGenerator: @escaping @Sendable () -> UUID = { UUID() }
+        uuidGenerator: @escaping @Sendable () -> UUID = { UUID() },
+        requestTokenGenerator: @escaping @Sendable () -> UUID = { UUID() }
     ) {
         self.persistence = persistence
         self.uuidGenerator = uuidGenerator
+        self.requestTokenGenerator = requestTokenGenerator
     }
 
     public func summary() async throws -> GS3DeviceProvisioningSummary? {
@@ -111,9 +116,81 @@ public actor DeviceOnlyGS3Provisioning {
         try await ensureLocalSession(for: record, in: store)
     }
 
+    /// Strictly validates an existing one-shot Probe JSON document and keeps
+    /// only its normalized material in process memory for one scan-only
+    /// provisioning attempt. This method performs no Bluetooth operation and
+    /// does not persist the raw document.
+    public func prepareProbeBridgeImport(
+        _ data: Data,
+        linkedSensorID: UUID,
+        in store: any SugarmanStoring
+    ) async throws -> GS3ProbeBridgeScanRequest {
+        await acquireOperationGate()
+        defer { releaseOperationGate() }
+        guard try loadRecord() == nil else {
+            throw GS3DeviceProvisioningError.replacementRequiresDeletion
+        }
+        guard pendingProbeBridge == nil else {
+            throw GS3DeviceProvisioningError.probeBridgeAlreadyPrepared
+        }
+        let document = try GS3ProbeProvisioningDocument(importJSONData: data)
+        try await requireIdentity(linkedSensorID, in: store)
+        let request = GS3ProbeBridgeScanRequest(
+            token: requestTokenGenerator(),
+            expectedPeripheralName: document.expectedPeripheralName
+        )
+        pendingProbeBridge = PendingGS3ProbeBridge(
+            request: request,
+            document: document,
+            linkedSensorID: linkedSensorID
+        )
+        return request
+    }
+
+    /// Completes the in-memory Probe bridge after a separate scan-only adapter
+    /// returns exactly one matching CoreBluetooth identifier. No connection or
+    /// transport controller is created or started here.
+    public func completeProbeBridgeImport(
+        request: GS3ProbeBridgeScanRequest,
+        peripheralID: UUID,
+        into store: any SugarmanStoring
+    ) async throws {
+        await acquireOperationGate()
+        defer { releaseOperationGate() }
+        guard let pendingProbeBridge else {
+            throw GS3DeviceProvisioningError.probeBridgeNotPrepared
+        }
+        guard pendingProbeBridge.request.token == request.token else {
+            throw GS3DeviceProvisioningError.staleProbeBridgeRequest
+        }
+        guard try loadRecord() == nil else {
+            throw GS3DeviceProvisioningError.replacementRequiresDeletion
+        }
+        try await requireIdentity(pendingProbeBridge.linkedSensorID, in: store)
+        let record = try StoredGS3DeviceProvisioning(
+            probeDocument: pendingProbeBridge.document,
+            peripheralID: peripheralID,
+            sessionID: uuidGenerator(),
+            sensorID: pendingProbeBridge.linkedSensorID
+        )
+        try persistence.replace(with: record.encodedForStorage())
+        self.pendingProbeBridge = nil
+        try await ensureLocalSession(for: record, in: store)
+    }
+
+    /// Clears only process-memory material prepared from the Probe JSON.
+    /// Existing final Keychain provisioning, sessions, and samples are not
+    /// changed.
+    public func discardProbeBridgeImport() async {
+        await acquireOperationGate()
+        defer { releaseOperationGate() }
+        pendingProbeBridge = nil
+    }
+
     public func delete() async throws {
         await acquireOperationGate()
         defer { releaseOperationGate() }
+        pendingProbeBridge = nil
         try persistence.delete()
     }
 
@@ -211,6 +288,21 @@ public actor DeviceOnlyGS3Provisioning {
             throw GS3DeviceProvisioningError.persistence
         }
     }
+
+    private func requireIdentity(
+        _ linkedSensorID: UUID,
+        in store: any SugarmanStoring
+    ) async throws {
+        let identities: [SensorIdentity]
+        do {
+            identities = try await store.identities()
+        } catch {
+            throw GS3DeviceProvisioningError.persistence
+        }
+        guard identities.contains(where: { $0.id == linkedSensorID }) else {
+            throw GS3DeviceProvisioningError.linkedIdentityUnavailable
+        }
+    }
 }
 
 package struct StoredGS3DeviceProvisioning:
@@ -245,6 +337,24 @@ package struct StoredGS3DeviceProvisioning:
         self.registeredBlock = document.registeredBlock
         self.algorithmKey = document.algorithmKey
         self.algorithmInitializationVector = document.algorithmInitializationVector
+        _ = try activeSessionMaterial()
+    }
+
+    package init(
+        probeDocument: GS3ProbeProvisioningDocument,
+        peripheralID: UUID,
+        sessionID: UUID,
+        sensorID: UUID
+    ) throws {
+        self.peripheralID = peripheralID
+        self.sessionID = sessionID
+        self.sensorID = sensorID
+        self.captureBackedStart = probeDocument.captureBackedStart
+        self.sensorAddress = probeDocument.sensorAddress
+        self.authenticationID = probeDocument.authenticationID
+        self.registeredBlock = probeDocument.registeredBlock
+        self.algorithmKey = probeDocument.algorithmKey
+        self.algorithmInitializationVector = probeDocument.algorithmInitializationVector
         _ = try activeSessionMaterial()
     }
 

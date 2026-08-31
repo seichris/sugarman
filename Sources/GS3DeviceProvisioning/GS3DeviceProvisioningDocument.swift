@@ -18,6 +18,12 @@ public enum GS3DeviceProvisioningError: Error, Sendable, Equatable {
     case linkedIdentityUnavailable
     case sessionConflict
     case replacementRequiresDeletion
+    case invalidProbePeripheralName
+    case probeBridgeAlreadyPrepared
+    case probeBridgeNotPrepared
+    case staleProbeBridgeRequest
+    case probeBridgePeripheralNotFound
+    case probeBridgePeripheralAmbiguous
     case keychain(OSStatus)
     case persistence
 }
@@ -49,6 +55,18 @@ extension GS3DeviceProvisioningError: LocalizedError {
             "The linked local sensor session conflicts with the provisioned live V3 session."
         case .replacementRequiresDeletion:
             "Delete the existing private device-test material before provisioning another sensor."
+        case .invalidProbePeripheralName:
+            "The Probe JSON must contain one bounded expected peripheral name for scan-only provisioning."
+        case .probeBridgeAlreadyPrepared:
+            "Discard the pending Probe JSON before preparing another scan-only provisioning attempt."
+        case .probeBridgeNotPrepared:
+            "Import the existing Probe JSON before starting scan-only provisioning."
+        case .staleProbeBridgeRequest:
+            "The scan-only provisioning request is no longer current. Import the Probe JSON again."
+        case .probeBridgePeripheralNotFound:
+            "The bounded provisioning scan did not find the expected owned sensor."
+        case .probeBridgePeripheralAmbiguous:
+            "The bounded provisioning scan found more than one matching peripheral and failed closed."
         case .keychain(let status):
             "Private device-test Keychain operation failed with status \(status)."
         case .persistence:

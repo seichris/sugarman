@@ -57,10 +57,14 @@ dependencies. See [docs/UPSTREAMS.md](docs/UPSTREAMS.md).
   historical one-shot Probe. Its dedicated provisioning module accepts one
   strict private JSON document after installation, normalizes it into a
   when-unlocked, this-device-only Keychain item, and prepares only a local
-  already-active `.live` / `.v3AES` session. Import is Bluetooth-inert. Every
-  app process starts unarmed, and only a separate in-app confirmation installs
-  the typed factory and begins the managed foreground lifecycle. The release
-  `Sugarman` target does not link this module.
+  already-active `.live` / `.v3AES` session. It can alternatively validate the
+  historical Probe JSON in memory, then—behind another explicit confirmation—
+  run one ten-second, exact-name, shared-owner scan that stores the matching
+  CoreBluetooth UUID without connecting. Import is Bluetooth-inert, and the
+  scan-only adapter has no connect, GATT, subscription, command, or write API.
+  Every app process starts unarmed, and only a separate in-app confirmation
+  installs the typed factory and begins the managed foreground lifecycle. The
+  release `Sugarman` target does not link this module.
 - The production foreground lifecycle requires one shared App Group process
   lease, repeats subscription/authentication/history on every connection, uses
   bounded single-flight reconnect, establishes a durable sensor-time anchor

@@ -263,6 +263,271 @@ struct GS3DeviceProvisioningTests {
         }
     }
 
+    @Test func probeBridgeImportIsStrictAndMatchesOnlyTheExactPrivateName() throws {
+        let document = try GS3ProbeProvisioningDocument(
+            importJSONData: Data(syntheticProbeJSON().utf8)
+        )
+        let request = GS3ProbeBridgeScanRequest(
+            token: UUID(uuidString: "90000000-2000-3000-4000-500000000001")!,
+            expectedPeripheralName: document.expectedPeripheralName
+        )
+
+        #expect(request.matches(localName: "Synthetic-owned-probe"))
+        #expect(!request.matches(localName: "synthetic-owned-probe"))
+        #expect(!request.matches(localName: "Synthetic-owned-probe "))
+        #expect(!request.matches(localName: nil))
+        #expect(document.captureBackedStart == 0x1234)
+    }
+
+    @Test func probeBridgeImportRejectsUnknownFieldsMissingNameAndInvalidBounds() {
+        let extraField = syntheticProbeJSON().replacingOccurrences(
+            of: "\"schemaVersion\":1,",
+            with: "\"schemaVersion\":1,\"connect\":true,"
+        )
+        #expect(throws: GS3DeviceProvisioningError.unexpectedDocumentField) {
+            try GS3ProbeProvisioningDocument(
+                importJSONData: Data(extraField.utf8)
+            )
+        }
+        #expect(throws: GS3DeviceProvisioningError.invalidProbePeripheralName) {
+            try GS3ProbeProvisioningDocument(
+                importJSONData: Data(syntheticProbeJSON(expectedName: nil).utf8)
+            )
+        }
+        #expect(throws: GS3DeviceProvisioningError.invalidProbePeripheralName) {
+            try GS3ProbeProvisioningDocument(
+                importJSONData: Data(syntheticProbeJSON(expectedName: "bad-name-é").utf8)
+            )
+        }
+        #expect(throws: GS3DeviceProvisioningError.invalidHistoryStart) {
+            try GS3ProbeProvisioningDocument(
+                importJSONData: Data(syntheticProbeJSON(historyStart: 65_536).utf8)
+            )
+        }
+        #expect(
+            throws: GS3DeviceProvisioningError.invalidLength(
+                field: "algorithmKeyHex",
+                expected: 16,
+                actual: 1
+            )
+        ) {
+            try GS3ProbeProvisioningDocument(
+                importJSONData: Data(syntheticProbeJSON(algorithmKeyHex: "40").utf8)
+            )
+        }
+    }
+
+    @Test func probeBridgeDiscoveryDeduplicatesCallbacksAndStaysPayloadFree() throws {
+        let token = UUID(uuidString: "90000000-2000-3000-4000-500000000002")!
+        let selected = UUID(uuidString: "90000000-2000-3000-4000-500000000003")!
+        let request = GS3ProbeBridgeScanRequest(
+            token: token,
+            expectedPeripheralName: "private-owned-sensor-name"
+        )
+        let document = try GS3ProbeProvisioningDocument(
+            importJSONData: Data(
+                syntheticProbeJSON(expectedName: "private-owned-sensor-name").utf8
+            )
+        )
+        let pending = PendingGS3ProbeBridge(
+            request: request,
+            document: document,
+            linkedSensorID: UUID(uuidString: "90000000-2000-3000-4000-500000000004")!
+        )
+        var accumulator = GS3ProbeBridgeDiscoveryAccumulator(request: request)
+        accumulator.observe(peripheralID: UUID(), localName: "someone-else")
+        accumulator.observe(
+            peripheralID: selected,
+            localName: "private-owned-sensor-name"
+        )
+        accumulator.observe(
+            peripheralID: selected,
+            localName: "private-owned-sensor-name"
+        )
+
+        #expect(try accumulator.selectedPeripheralID() == selected)
+        var text = ""
+        dump(request, to: &text)
+        dump(document, to: &text)
+        dump(pending, to: &text)
+        dump(accumulator, to: &text)
+        #expect(text.contains("redacted"))
+        #expect(!text.contains("private-owned-sensor-name"))
+        #expect(!text.contains(token.uuidString))
+        #expect(!text.contains(selected.uuidString))
+    }
+
+    @Test func probeBridgeDiscoveryFailsClosedForZeroOrMultipleMatches() {
+        let request = GS3ProbeBridgeScanRequest(
+            token: UUID(),
+            expectedPeripheralName: "Synthetic-owned-probe"
+        )
+        var none = GS3ProbeBridgeDiscoveryAccumulator(request: request)
+        none.observe(peripheralID: UUID(), localName: "other")
+        #expect(throws: GS3DeviceProvisioningError.probeBridgePeripheralNotFound) {
+            try none.selectedPeripheralID()
+        }
+
+        var multiple = GS3ProbeBridgeDiscoveryAccumulator(request: request)
+        for _ in 0..<100 {
+            multiple.observe(peripheralID: UUID(), localName: "Synthetic-owned-probe")
+        }
+        #expect(throws: GS3DeviceProvisioningError.probeBridgePeripheralAmbiguous) {
+            try multiple.selectedPeripheralID()
+        }
+    }
+
+    @Test func probeBridgePreparationIsBluetoothInertUntilUniqueScanCompletion() async throws {
+        let persistence = InMemoryProvisioningPersistence()
+        let sessionID = UUID(uuidString: "AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE")!
+        let token = UUID(uuidString: "90000000-2000-3000-4000-500000000004")!
+        let peripheralID = UUID(uuidString: "90000000-2000-3000-4000-500000000005")!
+        let service = DeviceOnlyGS3Provisioning(
+            persistence: persistence,
+            uuidGenerator: { sessionID },
+            requestTokenGenerator: { token }
+        )
+        let store = InMemorySugarmanStore()
+        let identity = syntheticIdentity()
+        try await store.insertIdentity(identity)
+
+        let request = try await service.prepareProbeBridgeImport(
+            Data(syntheticProbeJSON().utf8),
+            linkedSensorID: identity.id,
+            in: store
+        )
+        #expect(request.token == token)
+        #expect(persistence.data == nil)
+        #expect(try await store.allSessions().isEmpty)
+
+        try await service.completeProbeBridgeImport(
+            request: request,
+            peripheralID: peripheralID,
+            into: store
+        )
+
+        let stored = try StoredGS3DeviceProvisioning(
+            storedData: #require(persistence.data)
+        )
+        let sessions = try await store.allSessions()
+        #expect(stored.peripheralID == peripheralID)
+        #expect(stored.sessionID == sessionID)
+        #expect(stored.sensorID == identity.id)
+        #expect(stored.captureBackedStart == 0x1234)
+        #expect(sessions.count == 1)
+        #expect(sessions[0].id == sessionID)
+        #expect(sessions[0].connection == .disconnected)
+
+        try await service.importDocument(
+            Data(
+                syntheticJSON(
+                    peripheralID: peripheralID.uuidString,
+                    historyStart: 0x1235
+                ).utf8
+            ),
+            linkedSensorID: identity.id,
+            into: store
+        )
+        let updated = try StoredGS3DeviceProvisioning(
+            storedData: #require(persistence.data)
+        )
+        #expect(updated.sessionID == sessionID)
+        #expect(updated.captureBackedStart == 0x1235)
+        #expect(try await store.allSessions().count == 1)
+    }
+
+    @Test func probeBridgeRejectsStaleCompletionAndRequiresExplicitDiscard() async throws {
+        let persistence = InMemoryProvisioningPersistence()
+        let service = DeviceOnlyGS3Provisioning(
+            persistence: persistence,
+            requestTokenGenerator: {
+                UUID(uuidString: "90000000-2000-3000-4000-500000000006")!
+            }
+        )
+        let store = InMemorySugarmanStore()
+        let identity = syntheticIdentity()
+        try await store.insertIdentity(identity)
+        let request = try await service.prepareProbeBridgeImport(
+            Data(syntheticProbeJSON().utf8),
+            linkedSensorID: identity.id,
+            in: store
+        )
+
+        await #expect(throws: GS3DeviceProvisioningError.probeBridgeAlreadyPrepared) {
+            try await service.prepareProbeBridgeImport(
+                Data(syntheticProbeJSON().utf8),
+                linkedSensorID: identity.id,
+                in: store
+            )
+        }
+        let stale = GS3ProbeBridgeScanRequest(
+            token: UUID(),
+            expectedPeripheralName: "Synthetic-owned-probe"
+        )
+        await #expect(throws: GS3DeviceProvisioningError.staleProbeBridgeRequest) {
+            try await service.completeProbeBridgeImport(
+                request: stale,
+                peripheralID: UUID(),
+                into: store
+            )
+        }
+        #expect(persistence.data == nil)
+
+        await service.discardProbeBridgeImport()
+        await #expect(throws: GS3DeviceProvisioningError.probeBridgeNotPrepared) {
+            try await service.completeProbeBridgeImport(
+                request: request,
+                peripheralID: UUID(),
+                into: store
+            )
+        }
+    }
+
+    @Test func existingManagedProvisioningBlocksProbeBridgeReplacement() async throws {
+        let service = DeviceOnlyGS3Provisioning(
+            persistence: InMemoryProvisioningPersistence()
+        )
+        let store = InMemorySugarmanStore()
+        let identity = syntheticIdentity()
+        try await store.insertIdentity(identity)
+        try await service.importDocument(
+            Data(syntheticJSON().utf8),
+            linkedSensorID: identity.id,
+            into: store
+        )
+
+        await #expect(throws: GS3DeviceProvisioningError.replacementRequiresDeletion) {
+            try await service.prepareProbeBridgeImport(
+                Data(syntheticProbeJSON().utf8),
+                linkedSensorID: identity.id,
+                in: store
+            )
+        }
+    }
+
+    @Test func deleteAlsoClearsPendingProbeBridgeMaterial() async throws {
+        let service = DeviceOnlyGS3Provisioning(
+            persistence: InMemoryProvisioningPersistence()
+        )
+        let store = InMemorySugarmanStore()
+        let identity = syntheticIdentity()
+        try await store.insertIdentity(identity)
+        let request = try await service.prepareProbeBridgeImport(
+            Data(syntheticProbeJSON().utf8),
+            linkedSensorID: identity.id,
+            in: store
+        )
+
+        try await service.delete()
+        await #expect(throws: GS3DeviceProvisioningError.probeBridgeNotPrepared) {
+            try await service.completeProbeBridgeImport(
+                request: request,
+                peripheralID: UUID(),
+                into: store
+            )
+        }
+    }
+
     @Test func storedMaterialSummaryDumpAndReflectionArePayloadFree() async throws {
         let persistence = InMemoryProvisioningPersistence()
         let service = DeviceOnlyGS3Provisioning(persistence: persistence)
@@ -316,6 +581,17 @@ struct GS3DeviceProvisioningTests {
     ) -> String {
         """
         {"schemaVersion":\(schemaVersion),"peripheralIdentifier":"\(peripheralID)","sensorAddressHex":"\(sensorAddressHex)","authenticationIDHex":"202122232425262728292a2b","registeredBlockHex":"303132333435363738393a3b3c3d3e3f","algorithmKeyHex":"404142434445464748494a4b4c4d4e4f","algorithmIVHex":"505152535455565758595a5b5c5d5e5f","effectiveDataStartIndex":\(historyStart)}
+        """
+    }
+
+    private func syntheticProbeJSON(
+        expectedName: String? = "Synthetic-owned-probe",
+        historyStart: UInt32 = 0x1234,
+        algorithmKeyHex: String = "404142434445464748494a4b4c4d4e4f"
+    ) -> String {
+        let encodedName = expectedName.map { "\"\($0)\"" } ?? "null"
+        return """
+        {"schemaVersion":1,"expectedPeripheralName":\(encodedName),"sensorAddressHex":"010203040506","authenticationIDHex":"202122232425262728292a2b","registeredBlockHex":"303132333435363738393a3b3c3d3e3f","algorithmKeyHex":"\(algorithmKeyHex)","algorithmIVHex":"505152535455565758595a5b5c5d5e5f","effectiveDataStartIndex":\(historyStart)}
         """
     }
 }

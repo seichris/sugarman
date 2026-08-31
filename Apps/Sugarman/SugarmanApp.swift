@@ -72,7 +72,13 @@ final class AppModel {
     var deviceTestLifecycleLines: [String]
     var deviceTestAuthenticationAcknowledgementCount: Int
     var deviceTestHistoryAcknowledgementCount: Int
+    var hasDeviceTestProbeBridgePending: Bool
+    var isDeviceTestProbeBridgeScanning: Bool
     @ObservationIgnored private let deviceTestProvisioning: DeviceOnlyGS3Provisioning
+    @ObservationIgnored private let deviceTestProbeBridgeScanner:
+        DeviceTestProbeProvisioningScanner
+    @ObservationIgnored private var deviceTestProbeBridgeRequest:
+        GS3ProbeBridgeScanRequest?
     private var currentScenePhase: ScenePhase
 #endif
 
@@ -126,7 +132,11 @@ final class AppModel {
         self.deviceTestLifecycleLines = []
         self.deviceTestAuthenticationAcknowledgementCount = 0
         self.deviceTestHistoryAcknowledgementCount = 0
+        self.hasDeviceTestProbeBridgePending = false
+        self.isDeviceTestProbeBridgeScanning = false
         self.deviceTestProvisioning = DeviceOnlyGS3Provisioning()
+        self.deviceTestProbeBridgeScanner = DeviceTestProbeProvisioningScanner()
+        self.deviceTestProbeBridgeRequest = nil
         self.currentScenePhase = .inactive
 #endif
     }
@@ -200,8 +210,14 @@ final class AppModel {
             // must not churn ownership or manufacture a reconnect.
             break
         case .background:
+#if SUGARMAN_DEVICE_TEST
+            deviceTestProbeBridgeScanner.cancel()
+#endif
             await foregroundSessionBridge.leaveForeground()
         @unknown default:
+#if SUGARMAN_DEVICE_TEST
+            deviceTestProbeBridgeScanner.cancel()
+#endif
             await foregroundSessionBridge.leaveForeground()
         }
         await refresh()
@@ -275,8 +291,9 @@ final class AppModel {
             if summary != nil, !isDeviceTestArmed {
                 deviceTestStatus = "Private material is available in this device's Keychain."
             } else if summary == nil {
-                deviceTestStatus =
-                    "Import private material after storing an owned sensor identity."
+                deviceTestStatus = hasDeviceTestProbeBridgePending
+                    ? "Probe material is validated in memory. Run the separately confirmed scan-only provisioning lookup."
+                    : "Import private material after storing an owned sensor identity."
             }
         } catch {
             hasDeviceTestProvisioning = false
@@ -316,12 +333,100 @@ final class AppModel {
         }
     }
 
+    func prepareDeviceTestProbeBridge(
+        from url: URL,
+        linkedSensorID: UUID
+    ) async {
+        guard !isDeviceTestArmed,
+              !hasDeviceTestProvisioning,
+              !isDeviceTestProbeBridgeScanning else {
+            deviceTestStatus =
+                "Stop the managed foreground session before preparing Probe material."
+            return
+        }
+        let accessed = url.startAccessingSecurityScopedResource()
+        defer {
+            if accessed { url.stopAccessingSecurityScopedResource() }
+        }
+        do {
+            var data = try Data(contentsOf: url, options: [.mappedIfSafe])
+            defer {
+                if !data.isEmpty { data.resetBytes(in: 0..<data.count) }
+            }
+            let request = try await deviceTestProvisioning.prepareProbeBridgeImport(
+                data,
+                linkedSensorID: linkedSensorID,
+                in: primaryStore
+            )
+            deviceTestProbeBridgeRequest = request
+            hasDeviceTestProbeBridgePending = true
+            deviceTestStatus =
+                "Existing Probe material validated in memory. No Bluetooth action has started."
+        } catch {
+            deviceTestStatus = error.localizedDescription
+        }
+    }
+
+    func runDeviceTestProbeBridgeScan() async {
+        guard currentScenePhase == .active else {
+            deviceTestStatus =
+                "Keep Sugarman Device Test in the foreground for scan-only provisioning."
+            return
+        }
+        guard !isDeviceTestArmed,
+              !hasDeviceTestProvisioning,
+              !isDeviceTestProbeBridgeScanning,
+              let request = deviceTestProbeBridgeRequest else {
+            return
+        }
+        isDeviceTestProbeBridgeScanning = true
+        deviceTestStatus =
+            "Scanning only for the exact Probe name; no peripheral connection or sensor command is allowed."
+        do {
+            let peripheralID = try await deviceTestProbeBridgeScanner.scan(
+                matching: request
+            )
+            try await deviceTestProvisioning.completeProbeBridgeImport(
+                request: request,
+                peripheralID: peripheralID,
+                into: primaryStore
+            )
+            deviceTestProbeBridgeRequest = nil
+            hasDeviceTestProbeBridgePending = false
+            isDeviceTestProbeBridgeScanning = false
+            try await refreshFromStore()
+            await refreshDeviceTestProvisioningAvailability()
+            deviceTestStatus =
+                "Known peripheral stored in this device's Keychain. No connection or sensor command was sent."
+        } catch {
+            isDeviceTestProbeBridgeScanning = false
+            deviceTestStatus = error.localizedDescription
+        }
+    }
+
+    func cancelDeviceTestProbeBridgeScan() {
+        guard isDeviceTestProbeBridgeScanning else { return }
+        deviceTestProbeBridgeScanner.cancel()
+    }
+
+    func discardDeviceTestProbeBridge() async {
+        deviceTestProbeBridgeScanner.cancel()
+        await deviceTestProvisioning.discardProbeBridgeImport()
+        deviceTestProbeBridgeRequest = nil
+        hasDeviceTestProbeBridgePending = false
+        isDeviceTestProbeBridgeScanning = false
+        deviceTestStatus =
+            "Pending Probe material discarded. Importing or scanning is required before arming."
+    }
+
     func armDeviceTest() async {
         guard !isSyntheticDemo else {
             deviceTestStatus = "Exit synthetic demo mode before arming the device test."
             return
         }
-        guard hasDeviceTestProvisioning, !isDeviceTestArmed else { return }
+        guard hasDeviceTestProvisioning,
+              !isDeviceTestArmed,
+              !isDeviceTestProbeBridgeScanning else { return }
         let provisioning = deviceTestProvisioning
         let liveStore = primaryStore
         deviceTestLifecycleLines = []
@@ -356,11 +461,15 @@ final class AppModel {
     }
 
     func deleteDeviceTestProvisioning() async {
+        deviceTestProbeBridgeScanner.cancel()
         await stopDeviceTest()
         do {
             try await deviceTestProvisioning.delete()
             hasDeviceTestProvisioning = false
             deviceTestLinkedSensorID = nil
+            deviceTestProbeBridgeRequest = nil
+            hasDeviceTestProbeBridgePending = false
+            isDeviceTestProbeBridgeScanning = false
             deviceTestLifecycleLines = []
             deviceTestAuthenticationAcknowledgementCount = 0
             deviceTestHistoryAcknowledgementCount = 0
@@ -495,10 +604,14 @@ final class AppModel {
 
     func deleteAllLocalData() async throws {
 #if SUGARMAN_DEVICE_TEST
+        deviceTestProbeBridgeScanner.cancel()
         await stopDeviceTest()
         try await deviceTestProvisioning.delete()
         hasDeviceTestProvisioning = false
         deviceTestLinkedSensorID = nil
+        deviceTestProbeBridgeRequest = nil
+        hasDeviceTestProbeBridgePending = false
+        isDeviceTestProbeBridgeScanning = false
 #endif
         try await primaryStore.deleteAll()
         store = primaryStore

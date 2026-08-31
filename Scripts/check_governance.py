@@ -212,6 +212,9 @@ def check_no_write_api() -> None:
         ROOT / "Sources/GS3DeveloperProbe",
     }
     probe_adapter = ROOT / "Apps/SugarmanProbe/V3ProbeBluetoothRuntime.swift"
+    provisioning_scanner = (
+        ROOT / "Apps/Sugarman/DeviceTestProbeProvisioningScanner.swift"
+    )
     production_adapter = (
         ROOT / "Sources/GS3Transport/GS3ForegroundCoreBluetoothTransport.swift"
     )
@@ -232,7 +235,7 @@ def check_no_write_api() -> None:
             if (
                 "import CoreBluetooth" in text
                 and not path.is_relative_to(ROOT / "Sources/GS3Transport")
-                and path != probe_adapter
+                and path not in {probe_adapter, provisioning_scanner}
             ):
                 error(f"CoreBluetooth must remain confined to GS3Transport: {rel}")
             if any(path.is_relative_to(root) for root in guarded_protocol_roots):
@@ -334,6 +337,42 @@ def check_no_write_api() -> None:
                 error(f"production adapter contains forbidden surface: {forbidden}")
         if body.count("guard phase != .disconnecting else { return }") < 2:
             error("production adapter must ignore write/value callbacks while disconnecting")
+
+    if not provisioning_scanner.is_file():
+        error("missing device-test Probe JSON scan-only provisioning adapter")
+    else:
+        body = provisioning_scanner.read_text(encoding="utf-8", errors="replace")
+        for required in (
+            "#if SUGARMAN_DEVICE_TEST",
+            "GS3ProbeBridgeDiscoveryAccumulator",
+            "SharedSensorOwnerLease.acquire()",
+            "scanWindowSeconds: TimeInterval = 10",
+            "scanForPeripherals(",
+            "CBCentralManagerScanOptionAllowDuplicatesKey: true",
+            "central?.stopScan()",
+            "ownerLease?.release()",
+        ):
+            if required not in body:
+                error(f"scan-only provisioning adapter missing boundary: {required}")
+        if body.count("scanForPeripherals(") != 1:
+            error("scan-only provisioning adapter must contain exactly one scan site")
+        for forbidden in (
+            ".connect(",
+            "cancelPeripheralConnection(",
+            "retrievePeripherals(",
+            "discoverServices(",
+            "discoverCharacteristics(",
+            "setNotifyValue(",
+            ".writeValue(",
+            "writeCharacteristic(",
+            "activateSensor(",
+            "bindAccountOnSensor(",
+            "resetSensor(",
+            "writeSecretKey(",
+            "CBCentralManagerOptionRestoreIdentifierKey",
+        ):
+            if forbidden in body:
+                error(f"scan-only provisioning adapter contains forbidden surface: {forbidden}")
 
     active_material = ROOT / "Sources/GS3Protocol/V3ActiveSessionMaterial.swift"
     if not active_material.is_file():
@@ -484,6 +523,7 @@ def check_sensor_ownership_and_foreground_slice() -> None:
 
     for relative in (
         "Apps/Sugarman/DiagnosticProbeSession.swift",
+        "Apps/Sugarman/DeviceTestProbeProvisioningScanner.swift",
         "Apps/SugarmanProbe/V3ProbeBluetoothRuntime.swift",
     ):
         path = ROOT / relative
@@ -726,6 +766,8 @@ def check_sensor_ownership_and_foreground_slice() -> None:
         for required in (
             "#if SUGARMAN_DEVICE_TEST",
             "Importing material does not start Bluetooth",
+            "Use existing Sugarman Probe JSON",
+            "Scan only; do not connect",
             "showArmConfirmation",
             "Arm managed foreground test",
             "Share redacted lifecycle report",

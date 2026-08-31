@@ -7,10 +7,17 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct DeviceTestProvisioningSection: View {
+    private enum ImportKind {
+        case managedProvisioning
+        case existingProbe
+    }
+
     @Environment(AppModel.self) private var model
     @State private var selectedIdentityID: UUID?
     @State private var showImporter = false
+    @State private var importKind = ImportKind.managedProvisioning
     @State private var showArmConfirmation = false
+    @State private var showProbeBridgeScanConfirmation = false
     @State private var showDeleteConfirmation = false
 
     var body: some View {
@@ -45,14 +52,58 @@ struct DeviceTestProvisioningSection: View {
                 LabeledContent("Linked sensor", value: identityLabel(linked))
             }
 
-            Button("Import private provisioning JSON", systemImage: "lock.doc") {
+            Button("Import managed provisioning JSON", systemImage: "lock.doc") {
+                importKind = .managedProvisioning
                 showImporter = true
             }
             .disabled(
                 selectedIdentityID == nil
                     || model.hasDeviceTestProvisioning
                     || model.isDeviceTestArmed
+                    || model.hasDeviceTestProbeBridgePending
+                    || model.isDeviceTestProbeBridgeScanning
             )
+
+            if !model.hasDeviceTestProvisioning {
+                Button(
+                    "Use existing Sugarman Probe JSON",
+                    systemImage: "arrow.triangle.2.circlepath.doc.on.clipboard"
+                ) {
+                    importKind = .existingProbe
+                    showImporter = true
+                }
+                .disabled(
+                    selectedIdentityID == nil
+                        || model.isDeviceTestArmed
+                        || model.hasDeviceTestProbeBridgePending
+                        || model.isDeviceTestProbeBridgeScanning
+                )
+            }
+
+            if model.hasDeviceTestProbeBridgePending {
+                LabeledContent(
+                    "Probe JSON handoff",
+                    value: model.isDeviceTestProbeBridgeScanning
+                        ? "Scanning only"
+                        : "Ready in memory"
+                )
+                if model.isDeviceTestProbeBridgeScanning {
+                    ProgressView()
+                    Button("Stop provisioning scan", role: .cancel) {
+                        model.cancelDeviceTestProbeBridgeScan()
+                    }
+                } else {
+                    Button(
+                        "Run one scan-only provisioning lookup",
+                        systemImage: "dot.radiowaves.left.and.right"
+                    ) {
+                        showProbeBridgeScanConfirmation = true
+                    }
+                    Button("Discard pending Probe material", role: .destructive) {
+                        Task { await model.discardDeviceTestProbeBridge() }
+                    }
+                }
+            }
 
             if model.hasDeviceTestProvisioning {
                 if model.isDeviceTestArmed {
@@ -116,14 +167,39 @@ struct DeviceTestProvisioningSection: View {
             case .success(let urls):
                 guard let url = urls.first, let selectedIdentityID else { return }
                 Task {
-                    await model.importDeviceTestProvisioning(
-                        from: url,
-                        linkedSensorID: selectedIdentityID
-                    )
+                    switch importKind {
+                    case .managedProvisioning:
+                        await model.importDeviceTestProvisioning(
+                            from: url,
+                            linkedSensorID: selectedIdentityID
+                        )
+                    case .existingProbe:
+                        await model.prepareDeviceTestProbeBridge(
+                            from: url,
+                            linkedSensorID: selectedIdentityID
+                        )
+                    }
                 }
             case .failure:
                 model.deviceTestStatus = "Private provisioning file selection failed closed."
             }
+        }
+        .confirmationDialog(
+            "Run one scan-only provisioning lookup?",
+            isPresented: $showProbeBridgeScanConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Scan only; do not connect") {
+                Task { await model.runDeviceTestProbeBridgeScan() }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(
+                "First stop the normal Sugarman app and Sugarman Probe. This holds "
+                    + "the shared process-owner lease and scans for ten seconds using "
+                    + "the exact private name from the Probe JSON. It does not connect, "
+                    + "discover GATT, subscribe, authenticate, request history, or write."
+            )
         }
         .confirmationDialog(
             "Arm the managed foreground GS3 test?",
