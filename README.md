@@ -43,13 +43,22 @@ dependencies. See [docs/UPSTREAMS.md](docs/UPSTREAMS.md).
 - Offline-first; no cloud backend and no CloudKit in the initial product.
 - First live UI always shows reading age, stale/disconnected state, and the
   no-dosing notice.
-- The normal `Sugarman` target cannot represent a live sensor command: its live
-  request enum is empty, codec factory fails closed, and transport has no write
-  API.
-- The production foreground lifecycle core is host-testable but not yet wired
-  to a live writer. It requires one shared App Group process lease, repeats
-  subscription/authentication/history intent per connection, uses bounded
-  single-flight reconnect, and commits overlapping history atomically. See the
+- The legacy normal-app request enum remains empty, its generic codec factory
+  remains fail closed, and the read-only diagnostic transport still has no
+  write API. A separate reviewed foreground adapter can retrieve one known
+  peripheral and execute only package-scoped typed `0xE2` authentication and
+  `0x39` effective-data requests, both with response. The release bootstrap
+  installs no factory or active-session material, so it cannot instantiate that
+  path without a separately reviewed device-only artifact. The concrete
+  adapter/coordinator are package-only; their public factory always installs the
+  real shared process owner and bounded reconnect scheduler.
+- The production foreground lifecycle requires one shared App Group process
+  lease, repeats subscription/authentication/history on every connection, uses
+  bounded single-flight reconnect, establishes a durable sensor-time anchor
+  with its cadence/revision, and commits overlapping history atomically. The
+  reducer, coordinator,
+  persistence, ownership, and privacy boundaries are host-tested; CoreBluetooth
+  reconnect and timestamp behavior remain physical gates. See the
   [foreground production design](docs/GS3_FOREGROUND_PRODUCTION_DESIGN.md).
 - A separate, foreground-only `SugarmanProbe` developer target can perform one
   tightly bounded already-active handover attempt: subscribe to FF31, transmit
@@ -78,8 +87,8 @@ dependencies. See [docs/UPSTREAMS.md](docs/UPSTREAMS.md).
 | `Sources/SugarmanDomain` | Pure domain types and product copy |
 | `Sources/GS3Protocol` | Fail-closed live interfaces plus isolated offline V3 authentication and glucose codecs |
 | `Sources/GS3DeveloperProbe` | Typed, one-shot already-active V3 probe state machine and device-only private-material store |
-| `Sources/GS3Transport` | BLE state machine and testable central abstraction |
-| `Sources/GS3Session` | Foreground ownership/reconnect/history lifecycle reducer; no live adapter |
+| `Sources/GS3Transport` | Read-only BLE diagnostics plus the typed known-peer foreground coordinator and adapter |
+| `Sources/GS3Session` | Pure foreground ownership/reconnect/history lifecycle reducer |
 | `Sources/SensorOwnership` | Payload-free cross-process App Group file lease |
 | `Sources/SensorOnboarding` | Bounded package/NDEF parser interfaces |
 | `Sources/AccountBinding` | Manual legitimate owner ID only |

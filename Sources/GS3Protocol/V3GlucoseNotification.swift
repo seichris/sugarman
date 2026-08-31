@@ -121,11 +121,12 @@ public struct V3GlucoseBatch: Sendable, Equatable {
     }
 }
 
-/// Offline-only decoder for encrypted V3 `0x32` glucose notifications.
+/// Side-effect-free decoder for encrypted V3 glucose notifications.
 ///
-/// This type is not connected to `GS3CodecFactory` or `GS3Transport`. It
-/// cannot scan, connect, subscribe, authenticate, activate, or write to a
-/// sensor. Its input must come from a caller-controlled offline source.
+/// This type remains outside `GS3CodecFactory` and has no scan, connection,
+/// subscription, activation, or write capability. The package-scoped
+/// active-session wrapper may supply frames received by the guarded known-peer
+/// transport; offline callers remain supported.
 public enum V3OfflineGlucoseNotificationDecoder: Sendable {
     public static let evidenceRevision =
         "owned-mainland-gs3-v3-glucose-source-map-2026-08-30"

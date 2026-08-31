@@ -212,13 +212,20 @@ def check_no_write_api() -> None:
         ROOT / "Sources/GS3DeveloperProbe",
     }
     probe_adapter = ROOT / "Apps/SugarmanProbe/V3ProbeBluetoothRuntime.swift"
+    production_adapter = (
+        ROOT / "Sources/GS3Transport/GS3ForegroundCoreBluetoothTransport.swift"
+    )
+    allowed_characteristic_writers = {probe_adapter, production_adapter}
     for base in (ROOT / "Sources", ROOT / "Apps"):
         if not base.is_dir():
             continue
         for path in base.rglob("*.swift"):
             text = path.read_text(encoding="utf-8", errors="replace")
             rel = path.relative_to(ROOT).as_posix()
-            if characteristic_write.search(text) and path != probe_adapter:
+            if (
+                characteristic_write.search(text)
+                and path not in allowed_characteristic_writers
+            ):
                 error(f"forbidden characteristic-write API in {rel}")
             if live_cmd.search(text):
                 error(f"live sensor command API in {rel}")
@@ -268,6 +275,89 @@ def check_no_write_api() -> None:
         ):
             if forbidden in body:
                 error(f"developer probe adapter contains forbidden surface: {forbidden}")
+
+    if not production_adapter.is_file():
+        error("missing typed production foreground CoreBluetooth adapter")
+    else:
+        body = production_adapter.read_text(encoding="utf-8", errors="replace")
+        if body.count(".writeValue(") != 1:
+            error("production adapter must contain exactly one characteristic write site")
+        for required in (
+            "connectKnownPeripheral()",
+            "retrievePeripherals(",
+            "withIdentifiers: [peripheralID]",
+            'CBUUID(string: "FF30")',
+            'CBUUID(string: "FF31")',
+            'CBUUID(string: "FF32")',
+            "V3ActiveSessionMaterial",
+            "public enum GS3ForegroundSessionFactory",
+            "makeKnownPeripheralController(",
+            "material.authenticationFrame()",
+            "material.effectiveDataFrame(",
+            "authenticationWriteCallCount == 0",
+            "effectiveDataWriteCallCount == 0",
+            "self.phase == .authenticated",
+            "private var queuedHistoryPlan: HistoryRequestPlan?",
+            "authenticationWriteCallCount == 1",
+            "effectiveDataWriteCallCount == 1",
+            "!historyControlAcknowledged",
+            "effectiveDataWriteAcknowledged",
+            "emitHistoryReadyIfPossibleLocked()",
+            "guard historyReadyEmitted else",
+            "found.state == .disconnected",
+            "scheduleResponseTimeoutLocked(after: operationTimeout)",
+            "code == 0x01",
+            "detail == 0x00",
+            "type: .withResponse",
+            "self.queue = DispatchQueue(label: Self.queueLabel)",
+            "scheduleDisconnectCompletionTimeoutLocked()",
+            "self.central === central",
+            "self.notificationCharacteristic === characteristic",
+            "self.transmissionCharacteristic === characteristic",
+            "GS3ForegroundCoreBluetoothTransport(state: redacted)",
+            "CustomReflectable",
+            "failLocked(.protocolViolation)",
+        ):
+            if required not in body:
+                error(f"production adapter missing strict boundary: {required}")
+        for forbidden in (
+            "scanForPeripherals",
+            ".withoutResponse",
+            "CBCentralManagerOptionRestoreIdentifierKey",
+            "writeCharacteristic",
+            "activateSensor(",
+            "bindAccountOnSensor(",
+            "resetSensor(",
+            "writeSecretKey(",
+        ):
+            if forbidden in body:
+                error(f"production adapter contains forbidden surface: {forbidden}")
+        if body.count("guard phase != .disconnecting else { return }") < 2:
+            error("production adapter must ignore write/value callbacks while disconnecting")
+
+    active_material = ROOT / "Sources/GS3Protocol/V3ActiveSessionMaterial.swift"
+    if not active_material.is_file():
+        error("missing opaque active-session material boundary")
+    else:
+        body = active_material.read_text(encoding="utf-8", errors="replace")
+        for required in (
+            "package func authenticationFrame()",
+            "package func effectiveDataFrame(",
+            "package func decodeControl(",
+            "package func decodeGlucose(",
+            "CustomReflectable",
+        ):
+            if required not in body:
+                error(f"active-session material missing boundary: {required}")
+        for forbidden in (
+            "public func authenticationFrame(",
+            "public func effectiveDataFrame(",
+            "public func decodeControl(",
+            "public func decodeGlucose(",
+            "import CoreBluetooth",
+        ):
+            if forbidden in body:
+                error(f"active-session material exposes forbidden surface: {forbidden}")
 
     probe_machine = ROOT / "Sources/GS3DeveloperProbe/V3DeveloperHandoverProbe.swift"
     if not probe_machine.is_file():
@@ -436,6 +526,106 @@ def check_sensor_ownership_and_foreground_slice() -> None:
     ):
         if forbidden in session_body:
             error(f"foreground GS3 slice contains forbidden live surface: {forbidden}")
+
+    transport_root = ROOT / "Sources/GS3Transport"
+    production_body = "\n".join(
+        path.read_text(encoding="utf-8", errors="replace")
+        for path in sorted(transport_root.glob("GS3Foreground*.swift"))
+    )
+    for required in (
+        "SharedGS3SensorOwnershipProvider()",
+        "SharedSensorOwnerLease.acquire()",
+        "package func receive(_ event: GS3ForegroundTransportEvent)",
+        "establishingTimeAnchor:",
+        "inferredTimeMappingRevision",
+        "validateDurableTimeline(for: session)",
+        "store.setConnection(",
+        "foregroundStopRequested",
+        "effectStartsNewForegroundWork(",
+        "bufferingPolicy: .bufferingOldest(256)",
+        "for await event in events",
+        "case .dropped:",
+        "clearBufferedRecordsOnSuccess: true",
+        "UInt16(exactly: plan.startingIndex)",
+        "quality: .questionable",
+    ):
+        if required not in production_body:
+            error(f"foreground production integration missing boundary: {required}")
+
+    coordinator_path = transport_root / "GS3ForegroundSessionCoordinator.swift"
+    coordinator_body = coordinator_path.read_text(encoding="utf-8", errors="replace")
+    if "public init(" in coordinator_body:
+        error("foreground coordinator construction must remain package-scoped")
+    if coordinator_body.count("package init(") < 2:
+        error("foreground coordinator test injection must remain package-scoped")
+    if "quality: .ok" in coordinator_body:
+        error("unverified V3 state flags must not produce current-quality samples")
+    for required in (
+        "GS3ForegroundSessionCoordinator(state: redacted)",
+        "CustomDebugStringConvertible, CustomReflectable",
+    ):
+        if required not in coordinator_body:
+            error(f"foreground coordinator diagnostics missing redaction: {required}")
+
+    foreground_api_body = (
+        transport_root / "GS3ForegroundTransport.swift"
+    ).read_text(encoding="utf-8", errors="replace")
+    for required in (
+        "CustomDebugStringConvertible, CustomReflectable",
+        'children: ["event": description]',
+    ):
+        if required not in foreground_api_body:
+            error(f"foreground transport diagnostics missing redaction: {required}")
+
+    anchor_path = ROOT / "Sources/SugarmanDomain/SensorTimeAnchor.swift"
+    anchor_body = anchor_path.read_text(encoding="utf-8", errors="replace")
+    for required in (
+        "sampleIntervalSeconds: TimeInterval",
+        "mappingRevision: String",
+        "public init(from decoder: any Decoder) throws",
+        '"sampleIntervalSeconds": "redacted"',
+        '"mappingRevision": "redacted"',
+    ):
+        if required not in anchor_body:
+            error(f"durable time anchor missing boundary: {required}")
+
+    app = ROOT / "Apps/Sugarman/SugarmanApp.swift"
+    bridge = ROOT / "Apps/Sugarman/ForegroundGS3SessionBridge.swift"
+    if not bridge.is_file():
+        error("missing normal-app foreground session bridge")
+    else:
+        bridge_body = bridge.read_text(encoding="utf-8", errors="replace")
+        for required in (
+            "private var factory: Factory?",
+            "func enterForeground() async throws",
+            "func leaveForeground() async",
+            "await starting.controller.foregroundEnded()",
+            "await active.controller.foregroundEnded()",
+        ):
+            if required not in bridge_body:
+                error(f"normal-app foreground bridge missing boundary: {required}")
+        for forbidden in (
+            "V3ActiveSessionMaterial(",
+            "GS3ForegroundCoreBluetoothTransport(",
+            "import CoreBluetooth",
+        ):
+            if forbidden in bridge_body:
+                error(f"normal-app foreground bridge contains provisioned live surface: {forbidden}")
+
+    app_body = app.read_text(encoding="utf-8", errors="replace")
+    if app_body.count("installForegroundSessionFactory(") != 1:
+        error("normal-app bootstrap must not install a live foreground-session factory")
+    main_app_body = "\n".join(
+        path.read_text(encoding="utf-8", errors="replace")
+        for path in sorted((ROOT / "Apps/Sugarman").glob("*.swift"))
+    )
+    for forbidden in (
+        "V3ActiveSessionMaterial(",
+        "GS3ForegroundCoreBluetoothTransport(",
+        "GS3ForegroundSessionFactory.makeKnownPeripheralController(",
+    ):
+        if forbidden in main_app_body:
+            error(f"normal-app release sources provision forbidden live surface: {forbidden}")
 
 def check_private_evidence_gitignore() -> None:
     gi = ROOT / ".gitignore"

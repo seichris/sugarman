@@ -30,14 +30,16 @@ public actor InMemorySugarmanStore: SugarmanStoring {
 
     public func commitSamples(
         _ incomingSamples: [GlucoseSample],
-        sessionID: UUID
+        sessionID: UUID,
+        establishingTimeAnchor: SensorTimeAnchor?
     ) async throws -> SampleBatchCommitResult {
         guard var session = sessions[sessionID] else { throw StoreError.notFound }
         let existing = samples.values.filter { $0.sessionID == sessionID }
         let plan = try SampleBatchCommitPlanner.makePlan(
             session: session,
             existingSamples: existing,
-            incomingSamples: incomingSamples
+            incomingSamples: incomingSamples,
+            establishingTimeAnchor: establishingTimeAnchor
         )
 
         // All validation happens before this copy-on-commit mutation so a
@@ -48,6 +50,9 @@ public actor InMemorySugarmanStore: SugarmanStoring {
         }
         session.lastReceivedIndex = plan.result.lastReceivedIndex
         session.lastCommittedIndex = plan.result.lastCommittedIndex
+        if session.sensorTimeAnchor == nil {
+            session.sensorTimeAnchor = establishingTimeAnchor
+        }
         samples = nextSamples
         sessions[sessionID] = session
         return plan.result
@@ -106,6 +111,17 @@ public actor InMemorySugarmanStore: SugarmanStoring {
     public func updateSession(_ session: SensorSession) async throws {
         guard sessions[session.id] != nil else { throw StoreError.notFound }
         sessions[session.id] = session
+    }
+
+    public func setConnection(
+        _ connection: ConnectionState,
+        sessionID: UUID
+    ) async throws {
+        guard var session = sessions[sessionID] else {
+            throw StoreError.notFound
+        }
+        session.connection = connection
+        sessions[sessionID] = session
     }
 
     public func session(id: UUID) async throws -> SensorSession? {

@@ -30,6 +30,44 @@ struct SugarmanDomainTests {
         #expect(sample.milligramsPerDeciliter == 100)
     }
 
+    @Test func sensorTimeAnchorPersistsItsMappingAndRejectsInvalidValues() throws {
+        let timestamp = Date(timeIntervalSince1970: 1_800_000_000)
+        let anchor = try SensorTimeAnchor(
+            sensorIndex: 42,
+            timestamp: timestamp,
+            sampleIntervalSeconds: 60,
+            mappingRevision: "synthetic-test-v1"
+        )
+        #expect(try anchor.timestamp(for: 40) == timestamp.addingTimeInterval(-120))
+        #expect(try anchor.timestamp(for: 43) == timestamp.addingTimeInterval(60))
+
+        let encoded = try JSONEncoder().encode(anchor)
+        #expect(try JSONDecoder().decode(SensorTimeAnchor.self, from: encoded) == anchor)
+        #expect(throws: SensorTimeAnchorError.invalidSampleInterval) {
+            try SensorTimeAnchor(
+                sensorIndex: 42,
+                timestamp: timestamp,
+                sampleIntervalSeconds: .nan,
+                mappingRevision: "synthetic-test-v1"
+            )
+        }
+        #expect(throws: SensorTimeAnchorError.invalidMappingRevision) {
+            try SensorTimeAnchor(
+                sensorIndex: 42,
+                timestamp: timestamp,
+                sampleIntervalSeconds: 60,
+                mappingRevision: " "
+            )
+        }
+
+        var dumped = ""
+        dump(anchor, to: &dumped)
+        let diagnostics = "\(anchor) \(String(reflecting: anchor)) \(dumped)"
+        #expect(!diagnostics.contains("1800000000"))
+        #expect(!diagnostics.contains("42"))
+        #expect(!diagnostics.contains("synthetic-test-v1"))
+    }
+
     @Test func identityStoresRedactedSerialOnly() {
         let identity = SensorIdentity(redactedSerial: "A…Z/11")
         #expect(identity.redactedSerial == "A…Z/11")

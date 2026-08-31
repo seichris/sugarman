@@ -2124,6 +2124,18 @@
           }
         }
       }
+    },
+    "live.session_start_failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Live sensor access stopped before connecting. No sensor command was sent."
+          }
+        }
+      },
+      "comment": "Payload-free foreground session startup failure"
     }
   },
   "version": "1.1"

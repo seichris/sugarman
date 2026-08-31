@@ -29,7 +29,16 @@ let package = Package(
     targets: [
         .target(name: "SugarmanDomain"),
         .target(name: "GS3Protocol", dependencies: ["SugarmanDomain"]),
-        .target(name: "GS3Transport", dependencies: ["SugarmanDomain"]),
+        .target(
+            name: "GS3Transport",
+            dependencies: [
+                "SugarmanDomain",
+                "GS3Protocol",
+                "GS3Session",
+                "SensorOwnership",
+                "SugarmanStore",
+            ]
+        ),
         .target(
             name: "GS3Session",
             dependencies: ["SugarmanDomain", "SugarmanStore"]
@@ -51,7 +60,16 @@ let package = Package(
         ),
         .testTarget(name: "SugarmanDomainTests", dependencies: ["SugarmanDomain"]),
         .testTarget(name: "GS3ProtocolTests", dependencies: ["GS3Protocol", "SugarmanDomain"]),
-        .testTarget(name: "GS3TransportTests", dependencies: ["GS3Transport"]),
+        .testTarget(
+            name: "GS3TransportTests",
+            dependencies: [
+                "GS3Transport",
+                "GS3Protocol",
+                "GS3Session",
+                "SugarmanDomain",
+                "SugarmanStore",
+            ]
+        ),
         .testTarget(
             name: "GS3SessionTests",
             dependencies: ["GS3Session", "SafetyEngine", "SugarmanDomain", "SugarmanStore"]

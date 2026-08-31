@@ -102,12 +102,12 @@ public struct V3AuthenticationInputs:
     }
 }
 
-/// Offline-only V3 authentication encoder.
+/// Side-effect-free V3 authentication encoder.
 ///
-/// This type is deliberately not connected to `GS3ProtocolRequest`,
-/// `GS3CodecFactory`, or `GS3Transport`. The live request surface remains empty
-/// until an owned official-app replay vector matches and a separate physical
-/// write is explicitly approved.
+/// This type remains outside `GS3ProtocolRequest` and `GS3CodecFactory` and has
+/// no transport capability. The package-scoped active-session wrapper may use
+/// it to form the one reviewed typed authentication frame for the guarded
+/// known-peer adapter.
 public enum V3OfflineAuthenticationCodec: Sendable {
     public static let evidenceRevision = "owned-mainland-gs3-v3-source-map-2026-08-30"
 

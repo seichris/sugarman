@@ -91,6 +91,7 @@ public enum GS3ForegroundInput: Sendable, Equatable {
     case notificationSubscriptionEnabled
     case authenticationAccepted
     case authenticationRejected
+    case protocolViolation
     case historyPlanLoaded(HistoryRequestPlan)
     case historyRequestDurablyPrepared(HistoryRequestPlan)
     case historyAcknowledged
@@ -116,6 +117,7 @@ extension GS3ForegroundInput: CustomStringConvertible {
         case .notificationSubscriptionEnabled: "notificationSubscriptionEnabled"
         case .authenticationAccepted: "authenticationAccepted"
         case .authenticationRejected: "authenticationRejected"
+        case .protocolViolation: "protocolViolation"
         case .historyPlanLoaded: "historyPlanLoaded(index: redacted)"
         case .historyRequestDurablyPrepared: "historyRequestDurablyPrepared(index: redacted)"
         case .historyAcknowledged: "historyAcknowledged"
@@ -134,7 +136,7 @@ extension GS3ForegroundInput: CustomStringConvertible {
 /// Pure effects. No case carries a packet body, sensor identifier, private
 /// material, arbitrary raw write, activation, binding, reset, or secret-key
 /// operation. Authentication and history are typed integration intents only;
-/// the normal app still has no adapter capable of executing them.
+/// a separately guarded transport decides whether they can be executed.
 public enum GS3ForegroundEffect: Sendable, Equatable {
     case acquireOwnership
     case releaseOwnership
@@ -329,6 +331,19 @@ public struct GS3ForegroundSessionMachine:
                 elapsed: elapsed
             )
 
+        case .protocolViolation:
+            if isConnectionPhase(phase) {
+                return stopAfterTerminalFailure(
+                    reason: .protocolViolation,
+                    elapsed: elapsed
+                )
+            }
+            if phase == .acquiringOwnership || phase == .backoff {
+                return [record(.integrityFailure, elapsed: elapsed)]
+                    + stop(.integrityFailure, elapsed: elapsed)
+            }
+            return invalidTransition()
+
         case .historyPlanLoaded(let plan):
             guard phase == .loadingHistoryPlan else { return invalidTransition() }
             pendingHistoryPlan = plan
@@ -382,8 +397,13 @@ public struct GS3ForegroundSessionMachine:
             ]
 
         case .persistenceFailed:
-            guard isConnectionPhase(phase) else { return invalidTransition() }
-            return stopAfterPersistenceFailure(elapsed: elapsed)
+            if isConnectionPhase(phase) {
+                return stopAfterPersistenceFailure(elapsed: elapsed)
+            }
+            if phase == .acquiringOwnership || phase == .backoff {
+                return stop(.persistenceFailure, elapsed: elapsed)
+            }
+            return invalidTransition()
 
         case .transportDisconnected:
             guard phase == .disconnecting else {

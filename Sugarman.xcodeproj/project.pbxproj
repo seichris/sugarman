@@ -13,6 +13,7 @@
 		2180F84F9A632C8BD78BEB55 /* Integrations in Frameworks */ = {isa = PBXBuildFile; productRef = 67DE8DC36AEDDAE5D84B6DDD /* Integrations */; };
 		279867D011F2F2B3ED5C1F49 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3776611985DB564BF1E3EC5E /* Assets.xcassets */; };
 		3112B5FDC7B10EC2E0A7F499 /* SugarmanStore in Frameworks */ = {isa = PBXBuildFile; productRef = 375AFB438175197FEB7F5409 /* SugarmanStore */; };
+		311FFA08D56DBCE6DF7C34C7 /* ForegroundGS3SessionBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC5257F916946C521956A61B /* ForegroundGS3SessionBridge.swift */; };
 		36723C2EA4A5201A9B819C64 /* SensorOnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000D344B1531771A82196E8E /* SensorOnboardingView.swift */; };
 		49FEDAFEF5F23DA7FD82079F /* GS3Protocol in Frameworks */ = {isa = PBXBuildFile; productRef = E9EB7D6D79BE31130E3A86B9 /* GS3Protocol */; };
 		4F3EAF6A77D5002026D89A18 /* DataMatrixCameraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3488762722113D1DF2E2D318 /* DataMatrixCameraView.swift */; };
@@ -64,6 +65,7 @@
 		D9DEBFFC56BDC6FB81519643 /* V3ProbeBluetoothRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = V3ProbeBluetoothRuntime.swift; sourceTree = "<group>"; };
 		E2EE7DEAE55777159E636FBD /* DiagnosticProbeSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticProbeSession.swift; sourceTree = "<group>"; };
 		E6EE39F377CDFD5147B0BA60 /* Sugarman.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Sugarman.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		EC5257F916946C521956A61B /* ForegroundGS3SessionBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundGS3SessionBridge.swift; sourceTree = "<group>"; };
 		F628625178EE8285CEC183DE /* SugarmanProbe.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SugarmanProbe.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -116,6 +118,7 @@
 				29BED539403ADB33595539AE /* DashboardView.swift */,
 				3488762722113D1DF2E2D318 /* DataMatrixCameraView.swift */,
 				E2EE7DEAE55777159E636FBD /* DiagnosticProbeSession.swift */,
+				EC5257F916946C521956A61B /* ForegroundGS3SessionBridge.swift */,
 				656BBC6B356424ED01B62A5C /* FuelingView.swift */,
 				860607D7CABFC1DCB652CAE8 /* HistoryView.swift */,
 				015AE5A8B5FB8B171B34FD9B /* Localizable.xcstrings */,
@@ -292,6 +295,7 @@
 				560BC0BADE45D27FAC05D341 /* DashboardView.swift in Sources */,
 				4F3EAF6A77D5002026D89A18 /* DataMatrixCameraView.swift in Sources */,
 				99A5B09163915D3FB6532C55 /* DiagnosticProbeSession.swift in Sources */,
+				311FFA08D56DBCE6DF7C34C7 /* ForegroundGS3SessionBridge.swift in Sources */,
 				D5095075A1A49CBC804F65F7 /* FuelingView.swift in Sources */,
 				1BD5EF2CC6DEAB38AA7AC2C9 /* HistoryView.swift in Sources */,
 				8C55E464E39F9A14F9E321F3 /* NoDosingBanner.swift in Sources */,

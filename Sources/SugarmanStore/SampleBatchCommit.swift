@@ -68,13 +68,73 @@ enum SampleBatchCommitPlanner {
     static func makePlan(
         session: SensorSession,
         existingSamples: [GlucoseSample],
-        incomingSamples: [GlucoseSample]
+        incomingSamples: [GlucoseSample],
+        establishingTimeAnchor: SensorTimeAnchor? = nil
     ) throws -> SampleBatchMutationPlan {
         guard incomingSamples.allSatisfy({ $0.sessionID == session.id }) else {
             throw StoreError.sampleSessionMismatch
         }
         guard session.lastRequestedIndex != nil else {
             throw StoreError.historyRequestNotPrepared
+        }
+
+        if let durableAnchor = session.sensorTimeAnchor,
+           let establishingTimeAnchor,
+           durableAnchor != establishingTimeAnchor {
+            throw StoreError.conflictingTimeAnchor
+        }
+        let effectiveAnchor = session.sensorTimeAnchor ?? establishingTimeAnchor
+        if session.protocolVariant == .v3AES,
+           session.sensorTimeAnchor == nil,
+           !existingSamples.isEmpty {
+            throw StoreError.missingTimeAnchor
+        }
+        if session.protocolVariant == .v3AES,
+           let durableAnchor = session.sensorTimeAnchor {
+            let storedIndices = Set(existingSamples.map(\.sensorIndex))
+            guard let requested = session.lastRequestedIndex,
+                  let highest = storedIndices.max(),
+                  session.lastReceivedIndex == highest,
+                  session.lastCommittedIndex == contiguousCommittedIndex(
+                      startingAt: requested,
+                      storedIndices: storedIndices
+                  ),
+                  existingSamples.contains(where: {
+                      $0.sensorIndex == durableAnchor.sensorIndex
+                          && $0.sensorTimestamp == durableAnchor.timestamp
+                  }) else {
+                throw StoreError.incompleteTimeAnchor
+            }
+            for sample in existingSamples {
+                guard sample.sensorTimestamp == (try durableAnchor.timestamp(
+                    for: sample.sensorIndex
+                )) else {
+                    throw StoreError.sampleTimestampDoesNotMatchAnchor
+                }
+            }
+        }
+        if session.protocolVariant == .v3AES,
+           !incomingSamples.isEmpty,
+           effectiveAnchor == nil {
+            throw StoreError.missingTimeAnchor
+        }
+        if session.sensorTimeAnchor == nil,
+           let establishingTimeAnchor,
+           !incomingSamples.contains(where: {
+               $0.sensorIndex == establishingTimeAnchor.sensorIndex
+                   && $0.sensorTimestamp == establishingTimeAnchor.timestamp
+           }) {
+            throw StoreError.timeAnchorRequiresMatchingSample
+        }
+        if let effectiveAnchor {
+            for sample in incomingSamples {
+                let expected = try effectiveAnchor.timestamp(
+                    for: sample.sensorIndex
+                )
+                guard sample.sensorTimestamp == expected else {
+                    throw StoreError.sampleTimestampDoesNotMatchAnchor
+                }
+            }
         }
 
         var recordsByIndex: [UInt32: GlucoseSample] = [:]
@@ -186,5 +246,19 @@ enum SampleBatchCommitPlanner {
             gapRangeCount += 1
         }
         return (lastCommitted, gapRangeCount)
+    }
+
+    private static func contiguousCommittedIndex(
+        startingAt start: UInt32,
+        storedIndices: Set<UInt32>
+    ) -> UInt32? {
+        var index = start
+        var committed: UInt32?
+        while storedIndices.contains(index) {
+            committed = index
+            guard index != .max else { break }
+            index += 1
+        }
+        return committed
     }
 }
