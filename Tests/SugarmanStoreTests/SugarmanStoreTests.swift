@@ -93,6 +93,19 @@ struct SugarmanStoreTests {
         #expect(try await store.fuelingEvents().isEmpty)
     }
 
+    @Test func workoutPlansPersistUniquelyAndDelete() async throws {
+        let store = InMemorySugarmanStore()
+        let plan = WorkoutPlanCatalog.dayOne150KmRide
+        try await store.insertWorkoutPlan(plan)
+        await #expect(throws: StoreError.duplicateWorkout(plan.id)) {
+            try await store.insertWorkoutPlan(plan)
+        }
+        let listed = try await store.workoutPlans()
+        #expect(listed == [plan])
+        try await store.deleteWorkoutPlan(id: plan.id)
+        #expect(try await store.workoutPlans().isEmpty)
+    }
+
     @Test func deleteSessionRemovesMatchingFuelingKeepsUnscoped() async throws {
         let store = InMemorySugarmanStore()
         let sessionA = UUID()
@@ -218,6 +231,17 @@ struct SwiftDataSugarmanStoreTests {
         }
         try await reopened.insertSample(makeSample(session: session, index: 2))
         #expect(try await reopened.samples(sessionID: session).count == 2)
+    }
+
+    @Test func workoutPlanRoundTripsThroughSwiftData() async throws {
+        guard #available(iOS 26, macOS 26, *) else { return }
+        let container = try SwiftDataSugarmanStore.makeContainer(inMemory: true)
+        let store = SwiftDataSugarmanStore(modelContainer: container)
+        let plan = WorkoutPlanCatalog.dayOne150KmRide
+        try await store.insertWorkoutPlan(plan)
+        let loaded = try await store.workoutPlans()
+        #expect(loaded == [plan])
+        #expect(loaded.first?.phases[1].floorMgdl == 80)
     }
 }
 #endif

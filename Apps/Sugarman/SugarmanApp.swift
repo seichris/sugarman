@@ -49,6 +49,9 @@ final class AppModel {
     var sessions: [SensorSession]
     var fuelingEvents: [FuelingEvent]
     var workouts: [WorkoutContext]
+    var workoutPlans: [WorkoutPlan]
+    var selectedWorkoutPlanID: UUID?
+    var selectedWorkoutPhaseID: UUID?
     var identities: [SensorIdentity]
     var ownerAccountID: OwnerAccountID?
     var exporter: VersionedDataExporter
@@ -89,6 +92,9 @@ final class AppModel {
         self.sessions = []
         self.fuelingEvents = []
         self.workouts = []
+        self.workoutPlans = []
+        self.selectedWorkoutPlanID = nil
+        self.selectedWorkoutPhaseID = nil
         self.identities = []
         self.ownerAccountID = nil
         self.exporter = VersionedDataExporter()
@@ -117,11 +123,22 @@ final class AppModel {
         )
     }
 
+    var selectedWorkoutPlan: WorkoutPlan? {
+        guard let selectedWorkoutPlanID else { return nil }
+        return workoutPlans.first { $0.id == selectedWorkoutPlanID }
+    }
+
+    var selectedWorkoutPhaseTarget: WorkoutPhaseTarget? {
+        guard let plan = selectedWorkoutPlan, let selectedWorkoutPhaseID else { return nil }
+        return plan.phases.first { $0.id == selectedWorkoutPhaseID }
+    }
+
     func refresh() async {
         samples = (try? await store.allSamples()) ?? []
         sessions = (try? await store.allSessions()) ?? []
         fuelingEvents = (try? await store.fuelingEvents()) ?? []
         workouts = (try? await store.workouts()) ?? []
+        workoutPlans = (try? await store.workoutPlans()) ?? []
         identities = (try? await store.identities()) ?? []
         if samples.contains(where: { $0.decoderRevision == SyntheticDemoCatalog.decoderRevision }) {
             isSyntheticDemo = true
@@ -137,6 +154,18 @@ final class AppModel {
         } else {
             latestSample = nil
         }
+
+        guard let selectedWorkoutPlanID,
+              let plan = workoutPlans.first(where: { $0.id == selectedWorkoutPlanID }) else {
+            self.selectedWorkoutPlanID = nil
+            self.selectedWorkoutPhaseID = nil
+            return
+        }
+        if let selectedWorkoutPhaseID,
+           plan.phases.contains(where: { $0.id == selectedWorkoutPhaseID }) {
+            return
+        }
+        self.selectedWorkoutPhaseID = plan.phases.first?.id
     }
 
     func loadDemo(_ scenario: SyntheticDemoScenario) async throws {
@@ -187,6 +216,54 @@ final class AppModel {
     func deleteFueling(_ id: UUID) async {
         try? await store.deleteFueling(id: id)
         await refresh()
+    }
+
+    func addWorkoutPlan(_ plan: WorkoutPlan) async {
+        guard plan.isValid else { return }
+        try? await store.insertWorkoutPlan(plan)
+        await refresh()
+        selectWorkoutPlan(plan.id)
+    }
+
+    func updateWorkoutPlan(_ plan: WorkoutPlan) async {
+        guard plan.isValid else { return }
+        try? await store.updateWorkoutPlan(plan)
+        await refresh()
+        selectWorkoutPlan(plan.id)
+    }
+
+    func addCodexTwoDayRide() async {
+        let existingIDs = Set(workoutPlans.map(\.id))
+        for plan in WorkoutPlanCatalog.twoDay150KmRide where !existingIDs.contains(plan.id) {
+            try? await store.insertWorkoutPlan(plan)
+        }
+        await refresh()
+        if let first = WorkoutPlanCatalog.twoDay150KmRide.first {
+            selectWorkoutPlan(first.id)
+        }
+    }
+
+    func deleteWorkoutPlan(_ id: UUID) async {
+        try? await store.deleteWorkoutPlan(id: id)
+        if selectedWorkoutPlanID == id {
+            selectedWorkoutPlanID = nil
+            selectedWorkoutPhaseID = nil
+        }
+        await refresh()
+    }
+
+    func selectWorkoutPlan(_ id: UUID) {
+        guard let plan = workoutPlans.first(where: { $0.id == id }) else { return }
+        selectedWorkoutPlanID = id
+        if selectedWorkoutPhaseID == nil || !plan.phases.contains(where: { $0.id == selectedWorkoutPhaseID }) {
+            selectedWorkoutPhaseID = plan.phases.first?.id
+        }
+    }
+
+    func selectWorkoutPhase(_ id: UUID) {
+        guard let plan = selectedWorkoutPlan,
+              plan.phases.contains(where: { $0.id == id }) else { return }
+        selectedWorkoutPhaseID = id
     }
 
     func chooseSession(_ id: UUID) async {
@@ -272,5 +349,7 @@ final class AppModel {
         demoScenario = nil
         demoSessionID = nil
         selectedSessionID = nil
+        selectedWorkoutPlanID = nil
+        selectedWorkoutPhaseID = nil
     }
 }

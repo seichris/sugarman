@@ -67,6 +67,23 @@ struct SugarmanDomainTests {
         #expect(scoped.sessionID != nil)
     }
 
+    @Test func workoutPlanCatalogStoresTwoDayReferenceBands() {
+        let plans = WorkoutPlanCatalog.twoDay150KmRide
+        #expect(plans.count == 2)
+        #expect(plans[0].name == "150 km bike — Day 1")
+        #expect(plans[1].name == "150 km bike — Day 2")
+        #expect(plans.allSatisfy { $0.isValid })
+        #expect(plans[0].phases.map(\.phase) == [.preWorkout, .duringWorkout, .postWorkout, .overnight])
+        #expect(plans[1].phases.map(\.phase) == [.preWorkout, .duringWorkout, .postWorkout])
+
+        let during = plans[0].phases[1]
+        #expect(during.lowerMgdl == 90)
+        #expect(during.upperMgdl == 150)
+        #expect(during.floorMgdl == 80)
+        #expect(during.lowerValue(in: .millimolesPerLiter) == 5.0)
+        #expect(during.upperValue(in: .millimolesPerLiter) == 150.0 / 18.0)
+    }
+
     @Test func syntheticDemoCatalogIsLabeledAndDrivesSafetyStates() {
         let now = Date(timeIntervalSince1970: 1_700_000_000)
         for scenario in SyntheticDemoScenario.allCases {

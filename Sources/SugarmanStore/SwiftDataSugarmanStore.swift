@@ -149,6 +149,40 @@ public final class WorkoutContextRecord {
 
 @available(iOS 26, macOS 26, *)
 @Model
+public final class WorkoutPlanRecord {
+    #Unique<WorkoutPlanRecord>([\.planID])
+    public var planID: UUID
+    public var name: String
+    public var activityType: String
+    /// Phase targets are value data, encoded as JSON so the store can keep the
+    /// domain model independent from SwiftData relationships and migrations.
+    public var phasesData: Data
+    public var notes: String?
+    public var createdAt: Date
+
+    public init(from plan: WorkoutPlan) {
+        self.planID = plan.id
+        self.name = plan.name
+        self.activityType = plan.activityType
+        self.phasesData = (try? JSONEncoder().encode(plan.phases)) ?? Data()
+        self.notes = plan.notes
+        self.createdAt = plan.createdAt
+    }
+
+    public func domainValue() -> WorkoutPlan {
+        WorkoutPlan(
+            id: planID,
+            name: name,
+            activityType: activityType,
+            phases: (try? JSONDecoder().decode([WorkoutPhaseTarget].self, from: phasesData)) ?? [],
+            notes: notes,
+            createdAt: createdAt
+        )
+    }
+}
+
+@available(iOS 26, macOS 26, *)
+@Model
 public final class SensorIdentityRecord {
     #Unique<SensorIdentityRecord>([\.identityID])
     public var identityID: UUID
@@ -199,6 +233,7 @@ public actor SwiftDataSugarmanStore: SugarmanStoring {
             SensorSessionRecord.self,
             FuelingEventRecord.self,
             WorkoutContextRecord.self,
+            WorkoutPlanRecord.self,
             SensorIdentityRecord.self,
         ])
         let configuration: ModelConfiguration
@@ -230,6 +265,7 @@ public actor SwiftDataSugarmanStore: SugarmanStoring {
             SensorSessionRecord.self,
             FuelingEventRecord.self,
             WorkoutContextRecord.self,
+            WorkoutPlanRecord.self,
             SensorIdentityRecord.self,
         ])
         let configuration = ModelConfiguration(
@@ -383,6 +419,7 @@ public actor SwiftDataSugarmanStore: SugarmanStoring {
         try modelContext.delete(model: GlucoseSampleRecord.self)
         try modelContext.delete(model: FuelingEventRecord.self)
         try modelContext.delete(model: WorkoutContextRecord.self)
+        try modelContext.delete(model: WorkoutPlanRecord.self)
         try modelContext.delete(model: SensorIdentityRecord.self)
         try modelContext.save()
     }
@@ -440,6 +477,59 @@ public actor SwiftDataSugarmanStore: SugarmanStoring {
     public func workouts() async throws -> [WorkoutContext] {
         let records = try modelContext.fetch(FetchDescriptor<WorkoutContextRecord>())
         return records.map { $0.domainValue() }.sorted { $0.start < $1.start }
+    }
+
+    public func insertWorkoutPlan(_ plan: WorkoutPlan) async throws {
+        let id = plan.id
+        let existing = try modelContext.fetch(
+            FetchDescriptor<WorkoutPlanRecord>(
+                predicate: #Predicate { $0.planID == id }
+            )
+        )
+        if !existing.isEmpty {
+            throw StoreError.duplicateWorkout(id)
+        }
+        modelContext.insert(WorkoutPlanRecord(from: plan))
+        try modelContext.save()
+    }
+
+    public func workoutPlans() async throws -> [WorkoutPlan] {
+        let records = try modelContext.fetch(FetchDescriptor<WorkoutPlanRecord>())
+        return records.map { $0.domainValue() }.sorted { lhs, rhs in
+            if lhs.createdAt != rhs.createdAt {
+                return lhs.createdAt < rhs.createdAt
+            }
+            return lhs.id.uuidString < rhs.id.uuidString
+        }
+    }
+
+    public func updateWorkoutPlan(_ plan: WorkoutPlan) async throws {
+        let id = plan.id
+        guard let record = try modelContext.fetch(
+            FetchDescriptor<WorkoutPlanRecord>(
+                predicate: #Predicate { $0.planID == id }
+            )
+        ).first else {
+            throw StoreError.notFound
+        }
+        record.name = plan.name
+        record.activityType = plan.activityType
+        record.phasesData = (try? JSONEncoder().encode(plan.phases)) ?? Data()
+        record.notes = plan.notes
+        record.createdAt = plan.createdAt
+        try modelContext.save()
+    }
+
+    public func deleteWorkoutPlan(id: UUID) async throws {
+        let records = try modelContext.fetch(
+            FetchDescriptor<WorkoutPlanRecord>(
+                predicate: #Predicate { $0.planID == id }
+            )
+        )
+        for record in records {
+            modelContext.delete(record)
+        }
+        try modelContext.save()
     }
 
     public func insertIdentity(_ identity: SensorIdentity) async throws {
