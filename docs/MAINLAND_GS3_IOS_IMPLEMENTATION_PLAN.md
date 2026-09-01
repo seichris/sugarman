@@ -1,6 +1,6 @@
 # Mainland China SiBionics GS3 support for Sugarman
 
-- Status: P1/P2 and one-value already-active iPhone interoperability passed for one owned sensor on 2026-08-30; official Android handback also passed. Five-reading durability, zero-quarantine behavior, and iPhone reconnect remain incomplete. The normal app's live writer remains fail closed. The host-testable foreground ownership/reconnect/history slice is specified in [`GS3_FOREGROUND_PRODUCTION_DESIGN.md`](GS3_FOREGROUND_PRODUCTION_DESIGN.md); a separately reviewed typed adapter and fresh physical confirmation still gate any normal-app sensor write. Fresh activation remains unresolved.
+- Status: P1/P2 and one-value already-active iPhone interoperability passed for one owned sensor on 2026-08-30; official Android handback also passed. Five-reading durability, zero-unknown-command behavior, iPhone reconnect, timestamp parity, native state mapping, and sensor-index wrap remain incomplete. The production branch now contains a host-testable ownership/reconnect/history coordinator and a typed, known-peer foreground CoreBluetooth adapter, but the normal release bootstrap installs no controller factory or active-session material. Decoded values remain `questionable` until state mapping is physically verified. A signed exact artifact and fresh physical confirmation still gate any execution. See [`GS3_FOREGROUND_PRODUCTION_DESIGN.md`](GS3_FOREGROUND_PRODUCTION_DESIGN.md). Fresh activation remains unresolved.
 - Date: 2026-08-28
 - Product: Sugarman — glucose monitoring and fueling insight for endurance athletes
 
@@ -451,28 +451,34 @@ Pure Swift, deterministic protocol implementation:
 
 Use explicit variants such as `.v120RC4`, `.v3AES`, and `.unknown`. The `.v3AES`
 classification is present only because its primary evidence and source map now
-exist; it remains live-unimplemented until owned replay parity and the physical
-write gate pass. Unknown firmware must fail closed before an authentication or
-activation write.
+exist. Its already-active typed foreground path is implemented but remains
+disabled in the release bootstrap and physically unvalidated for reconnect and
+durability. Unknown firmware must fail closed before authentication; no
+activation write exists.
 
 #### `GS3Transport`
 
-Own one `CBCentralManager` on a dedicated serial queue and expose typed events
-to higher layers:
+The implemented M3 foreground adapter owns one `CBCentralManager` on a dedicated
+serial queue and exposes typed events to higher layers:
 
-- service-filtered foreground/background scanning using observed advertisements;
-- known-peripheral retrieval by CoreBluetooth UUID;
+- known-peripheral retrieval by one caller-supplied CoreBluetooth UUID, with no
+  scan API;
 - service/characteristic discovery and notification subscription;
 - one in-flight command at a time;
-- timeout, cancellation, reconnect, and exponential backoff with jitter;
-- state preservation/restoration under one stable restoration identifier;
-- rediscovery/resubscription after restoration;
-- `maximumWriteValueLength(for:)` rather than an Android MTU request;
+- operation/response timeout and controlled cancellation;
+- reducer-owned bounded single-flight foreground reconnect;
+- rediscovery, resubscription, reauthentication, and one history request on
+  every new connection;
+- exactly one package-scoped typed `0xE2` and one package-scoped typed `0x39`
+  command per connection, both written with response;
 - no audio background mode and no raw-frame production logging.
+
+Service-filtered scanning, jitter, state restoration, and a stable restoration
+identifier remain M5 work after the foreground physical gates pass.
 
 Transport state machine:
 
-`idle -> scanning -> connecting -> discovering -> subscribed -> authenticating -> binding -> synchronizing -> live -> backoff/ended`
+`idle -> owner -> connecting -> discovering -> subscribed -> authenticating -> synchronizing -> live -> backoff/ended`
 
 Only idempotent steps may retry automatically. Binding mutation, activation,
 reset, secret-key, and lifecycle commands require explicit policy approval.
@@ -757,18 +763,24 @@ pass. No live activation/reset command exists yet.
 
 ### M3 — same-owner handover proof
 
-The current software-only foreground slice implements process ownership,
-deterministic reconnect sequencing, per-connection subscribe/auth/history
-intents, atomic overlap/deduplication, and fail-closed UI projection. It does not
-implement or authorize the live CoreBluetooth adapter, binding, background
-restoration, or a physical run. See
+The current foreground slice implements process ownership, deterministic
+reconnect sequencing, per-connection subscribe/auth/history, a typed known-peer
+CoreBluetooth adapter, atomic time-anchor (including cadence/revision),
+overlap/deduplication persistence, and
+fail-closed UI projection. The release bootstrap provides no material or
+controller factory, and no adapter instance has been physically run. Binding,
+scanning, background restoration, and physical validation remain out of scope.
+See
 [`GS3_FOREGROUND_PRODUCTION_DESIGN.md`](GS3_FOREGROUND_PRODUCTION_DESIGN.md).
 
 Deliverables:
 
-- foreground CoreBluetooth transport;
-- scan/connect/discover/subscribe/authenticate/bind path;
-- durable sensor-index storage and history backfill;
+- typed foreground known-peer CoreBluetooth transport (implemented; physical
+  gate pending);
+- connect/discover/subscribe/reauthenticate/history path without scan or bind
+  (implemented; physical gate pending);
+- durable sensor-index/time-anchor storage, including the mapping revision, and
+  history backfill (host-tested; physical gate pending);
 - live dashboard showing connection and reading age;
 - release-back-to-official-app test.
 

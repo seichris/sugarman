@@ -16,7 +16,8 @@ public struct UnavailableSugarmanStore: SugarmanStoring {
     }
     public func commitSamples(
         _: [GlucoseSample],
-        sessionID _: UUID
+        sessionID _: UUID,
+        establishingTimeAnchor _: SensorTimeAnchor?
     ) async throws -> SampleBatchCommitResult {
         try unavailable()
     }
@@ -27,6 +28,10 @@ public struct UnavailableSugarmanStore: SugarmanStoring {
     public func allSamples() async throws -> [GlucoseSample] { try unavailable() }
     public func insertSession(_: SensorSession) async throws { try unavailable() }
     public func updateSession(_: SensorSession) async throws { try unavailable() }
+    public func setConnection(
+        _: ConnectionState,
+        sessionID _: UUID
+    ) async throws { try unavailable() }
     public func session(id _: UUID) async throws -> SensorSession? { try unavailable() }
     public func allSessions() async throws -> [SensorSession] { try unavailable() }
     public func delete(sessionID _: UUID) async throws { try unavailable() }

@@ -455,6 +455,36 @@ struct GS3ProtocolTests {
         )
     }
 
+    @Test func activeSessionMaterialExposesOnlyTwoTypedFramesAndRejectsIndexWrap() throws {
+        let material = try syntheticActiveSessionMaterial()
+        #expect(try material.authenticationFrame().byteCount == 38)
+        #expect(try material.effectiveDataFrame(startingIndex: 123).byteCount == 7)
+        #expect(throws: GS3ProtocolError.v3EffectiveDataStartIndexOutOfRange) {
+            try material.effectiveDataFrame(startingIndex: UInt32(UInt16.max) + 1)
+        }
+    }
+
+    @Test func activeSessionMaterialDiagnosticsRevealOnlyByteCounts() throws {
+        let material = try syntheticActiveSessionMaterial()
+        let text = "\(material) \(String(reflecting: material))"
+        for secret in ["010203040506", "202122232425", "303132333435", "404142434445"] {
+            #expect(!text.localizedCaseInsensitiveContains(secret))
+        }
+        #expect(text.contains("addressBytes: 6"))
+        #expect(text.contains("algorithmKeyBytes: 16"))
+        #expect(!text.contains("[1, 2, 3"))
+    }
+
+    private func syntheticActiveSessionMaterial() throws -> V3ActiveSessionMaterial {
+        try V3ActiveSessionMaterial(
+            sensorAddress: Array(1...6),
+            authenticationID: Array(0x20...0x2B),
+            registeredBlock: Array(0x30...0x3F),
+            algorithmKey: syntheticAlgorithmKey,
+            algorithmInitializationVector: syntheticAlgorithmInitializationVector
+        )
+    }
+
     private struct SyntheticGlucoseRecord {
         let rawTemperature: UInt16
         let rawDump: UInt16

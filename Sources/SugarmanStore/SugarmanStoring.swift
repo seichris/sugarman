@@ -17,6 +17,11 @@ public enum StoreError: Error, Sendable, Equatable {
     case conflictingSample(SampleKey)
     case historyRequestNotPrepared
     case historyRequestWouldSkipCommittedCursor
+    case conflictingTimeAnchor
+    case missingTimeAnchor
+    case timeAnchorRequiresMatchingSample
+    case sampleTimestampDoesNotMatchAnchor
+    case incompleteTimeAnchor
 }
 
 extension StoreError: LocalizedError {
@@ -46,6 +51,16 @@ extension StoreError: LocalizedError {
             "The history request was not durably prepared before samples arrived."
         case .historyRequestWouldSkipCommittedCursor:
             "The history request would skip the durable backfill cursor."
+        case .conflictingTimeAnchor:
+            "The incoming sensor-time anchor conflicts with durable state."
+        case .missingTimeAnchor:
+            "A V3 sample batch requires a durable sensor-time anchor."
+        case .timeAnchorRequiresMatchingSample:
+            "A new sensor-time anchor requires its matching sample in the same transaction."
+        case .sampleTimestampDoesNotMatchAnchor:
+            "A decoded sample timestamp does not match the durable sensor-time anchor."
+        case .incompleteTimeAnchor:
+            "Stored sensor-time anchor data is incomplete."
         }
     }
 }
@@ -59,9 +74,12 @@ public protocol SugarmanStoring: Sendable {
     /// Atomically inserts a decoded batch and advances the session's received
     /// and contiguous committed cursors. Existing equivalent keys are counted
     /// as duplicates; conflicting values fail closed without a partial commit.
+    /// A first live batch may establish the session's time anchor in the same
+    /// transaction so a crash cannot persist samples without their mapping.
     func commitSamples(
         _ samples: [GlucoseSample],
-        sessionID: UUID
+        sessionID: UUID,
+        establishingTimeAnchor: SensorTimeAnchor?
     ) async throws -> SampleBatchCommitResult
 
     func insertSample(_ sample: GlucoseSample) async throws
@@ -71,6 +89,12 @@ public protocol SugarmanStoring: Sendable {
     func allSamples() async throws -> [GlucoseSample]
     func insertSession(_ session: SensorSession) async throws
     func updateSession(_ session: SensorSession) async throws
+    /// Atomically updates only the UI connection projection, preserving
+    /// concurrently persisted lifecycle, cursor, and time-anchor fields.
+    func setConnection(
+        _ connection: ConnectionState,
+        sessionID: UUID
+    ) async throws
     func session(id: UUID) async throws -> SensorSession?
     func allSessions() async throws -> [SensorSession]
     func delete(sessionID: UUID) async throws
@@ -83,4 +107,17 @@ public protocol SugarmanStoring: Sendable {
     func workouts() async throws -> [WorkoutContext]
     func insertIdentity(_ identity: SensorIdentity) async throws
     func identities() async throws -> [SensorIdentity]
+}
+
+extension SugarmanStoring {
+    public func commitSamples(
+        _ samples: [GlucoseSample],
+        sessionID: UUID
+    ) async throws -> SampleBatchCommitResult {
+        try await commitSamples(
+            samples,
+            sessionID: sessionID,
+            establishingTimeAnchor: nil
+        )
+    }
 }

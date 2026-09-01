@@ -6,6 +6,18 @@ import Testing
 import SugarmanDomain
 @testable import SugarmanStore
 
+private func testTimeAnchor(
+    index: UInt32,
+    timestamp: Date
+) throws -> SensorTimeAnchor {
+    try SensorTimeAnchor(
+        sensorIndex: index,
+        timestamp: timestamp,
+        sampleIntervalSeconds: 60,
+        mappingRevision: "synthetic-test-v1"
+    )
+}
+
 #if canImport(SwiftData)
 import SwiftData
 #endif
@@ -89,6 +101,35 @@ struct SugarmanStoreTests {
         #expect(try await store.session(id: session.id) == updated)
         await #expect(throws: StoreError.notFound) {
             try await store.updateSession(SensorSession(sensorID: UUID()))
+        }
+    }
+
+    @Test func atomicConnectionProjectionPreservesDurableSessionFields() async throws {
+        let store = InMemorySugarmanStore()
+        let anchor = try testTimeAnchor(
+            index: 42,
+            timestamp: Date(timeIntervalSince1970: 1_800_000_000)
+        )
+        let session = SensorSession(
+            id: UUID(),
+            sensorID: UUID(),
+            lastRequestedIndex: 40,
+            lastReceivedIndex: 42,
+            lastCommittedIndex: 42,
+            sensorTimeAnchor: anchor,
+            protocolVariant: .v3AES,
+            lifecycle: .live,
+            connection: .disconnected
+        )
+        try await store.insertSession(session)
+
+        try await store.setConnection(.subscribed, sessionID: session.id)
+
+        var expected = session
+        expected.connection = .subscribed
+        #expect(try await store.session(id: session.id) == expected)
+        await #expect(throws: StoreError.notFound) {
+            try await store.setConnection(.connected, sessionID: UUID())
         }
     }
 
@@ -299,6 +340,147 @@ struct SugarmanStoreTests {
             #expect(!text.contains("424200"))
         }
     }
+
+    @Test func firstTimeAnchorAndSamplesCommitAtomicallyAndConflictsFailClosed() async throws {
+        let store = InMemorySugarmanStore()
+        let sessionID = UUID()
+        try await store.insertSession(SensorSession(id: sessionID, sensorID: UUID()))
+        try await store.prepareHistoryRequest(sessionID: sessionID, startingAt: 10)
+        let anchor = try testTimeAnchor(
+            index: 11,
+            timestamp: Date(timeIntervalSince1970: 1_800_000_000)
+        )
+        var first = makeSample(session: sessionID, index: 10)
+        first.sensorTimestamp = try anchor.timestamp(for: 10)
+        var second = makeSample(session: sessionID, index: 11)
+        second.sensorTimestamp = anchor.timestamp
+
+        await #expect(throws: StoreError.timeAnchorRequiresMatchingSample) {
+            try await store.commitSamples(
+                [],
+                sessionID: sessionID,
+                establishingTimeAnchor: anchor
+            )
+        }
+        #expect(try await store.session(id: sessionID)?.sensorTimeAnchor == nil)
+
+        let committed = try await store.commitSamples(
+            [first, second],
+            sessionID: sessionID,
+            establishingTimeAnchor: anchor
+        )
+        #expect(committed.lastCommittedIndex == 11)
+        #expect(try await store.session(id: sessionID)?.sensorTimeAnchor == anchor)
+
+        let conflicting = try testTimeAnchor(
+            index: 11,
+            timestamp: anchor.timestamp.addingTimeInterval(1)
+        )
+        await #expect(throws: StoreError.conflictingTimeAnchor) {
+            try await store.commitSamples(
+                [],
+                sessionID: sessionID,
+                establishingTimeAnchor: conflicting
+            )
+        }
+        var wrongTimestamp = makeSample(session: sessionID, index: 12)
+        wrongTimestamp.sensorTimestamp = anchor.timestamp
+        await #expect(throws: StoreError.sampleTimestampDoesNotMatchAnchor) {
+            try await store.commitSamples([wrongTimestamp], sessionID: sessionID)
+        }
+        #expect(try await store.samples(sessionID: sessionID) == [first, second])
+        let text = "\(anchor) \(String(reflecting: anchor))"
+        #expect(!text.contains("1800000000"))
+        #expect(!text.contains("11"))
+    }
+
+    @Test func v3BatchCannotCommitWithoutATimeAnchor() async throws {
+        let store = InMemorySugarmanStore()
+        let sessionID = UUID()
+        try await store.insertSession(
+            SensorSession(
+                id: sessionID,
+                sensorID: UUID(),
+                protocolVariant: .v3AES,
+                lifecycle: .live
+            )
+        )
+        try await store.prepareHistoryRequest(sessionID: sessionID, startingAt: 20)
+
+        await #expect(throws: StoreError.missingTimeAnchor) {
+            try await store.commitSamples(
+                [makeSample(session: sessionID, index: 20)],
+                sessionID: sessionID
+            )
+        }
+        #expect(try await store.samples(sessionID: sessionID).isEmpty)
+    }
+
+    @Test func v3CannotEstablishAnchorOverLegacyUnanchoredSamples() async throws {
+        let store = InMemorySugarmanStore()
+        let sessionID = UUID()
+        try await store.insertSession(
+            SensorSession(
+                id: sessionID,
+                sensorID: UUID(),
+                protocolVariant: .v3AES,
+                lifecycle: .live
+            )
+        )
+        try await store.insertSample(makeSample(session: sessionID, index: 19))
+        try await store.prepareHistoryRequest(sessionID: sessionID, startingAt: 20)
+        let anchor = try testTimeAnchor(
+            index: 20,
+            timestamp: Date(timeIntervalSince1970: 1_800_000_000)
+        )
+        var anchored = makeSample(session: sessionID, index: 20)
+        anchored.sensorTimestamp = anchor.timestamp
+
+        await #expect(throws: StoreError.missingTimeAnchor) {
+            try await store.commitSamples(
+                [anchored],
+                sessionID: sessionID,
+                establishingTimeAnchor: anchor
+            )
+        }
+        #expect(try await store.session(id: sessionID)?.sensorTimeAnchor == nil)
+        #expect(try await store.samples(sessionID: sessionID).map(\.sensorIndex) == [19])
+    }
+
+    @Test func v3CommitRejectsCorruptDurableCursorBeforeMutation() async throws {
+        let store = InMemorySugarmanStore()
+        let sessionID = UUID()
+        let anchor = try testTimeAnchor(
+            index: 102,
+            timestamp: Date(timeIntervalSince1970: 1_800_000_000)
+        )
+        try await store.insertSession(
+            SensorSession(
+                id: sessionID,
+                sensorID: UUID(),
+                lastRequestedIndex: 100,
+                lastReceivedIndex: 102,
+                lastCommittedIndex: 102,
+                sensorTimeAnchor: anchor,
+                protocolVariant: .v3AES,
+                lifecycle: .live
+            )
+        )
+        var first = makeSample(session: sessionID, index: 100)
+        first.sensorTimestamp = try anchor.timestamp(for: 100)
+        var gapped = makeSample(session: sessionID, index: 102)
+        gapped.sensorTimestamp = anchor.timestamp
+        try await store.insertSample(first)
+        try await store.insertSample(gapped)
+        var incoming = makeSample(session: sessionID, index: 103)
+        incoming.sensorTimestamp = try anchor.timestamp(for: 103)
+
+        await #expect(throws: StoreError.incompleteTimeAnchor) {
+            try await store.commitSamples([incoming], sessionID: sessionID)
+        }
+        #expect(try await store.sample(sessionID: sessionID, sensorIndex: 103) == nil)
+        #expect(try await store.session(id: sessionID)?.lastCommittedIndex == 102)
+    }
 }
 
 #if canImport(SwiftData)
@@ -314,7 +496,10 @@ struct SwiftDataSugarmanStoreTests {
         )
     }
 
-    func completeSession(id: UUID = UUID(), sensorID: UUID = UUID()) -> SensorSession {
+    func completeSession(
+        id: UUID = UUID(),
+        sensorID: UUID = UUID()
+    ) throws -> SensorSession {
         SensorSession(
             id: id,
             sensorID: sensorID,
@@ -326,6 +511,10 @@ struct SwiftDataSugarmanStoreTests {
             lastRequestedIndex: 10,
             lastReceivedIndex: 9,
             lastCommittedIndex: 8,
+            sensorTimeAnchor: try testTimeAnchor(
+                index: 8,
+                timestamp: Date(timeIntervalSince1970: 500)
+            ),
             protocolVariant: .v120RC4,
             lifecycle: .ended,
             connection: .disconnected,
@@ -378,7 +567,7 @@ struct SwiftDataSugarmanStoreTests {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let url = directory.appendingPathComponent("sugarman.store")
         let sensorID = UUID()
-        let session = completeSession(sensorID: sensorID)
+        let session = try completeSession(sensorID: sensorID)
         let identity = SensorIdentity(
             id: sensorID,
             productName: "GS3",
@@ -426,7 +615,7 @@ struct SwiftDataSugarmanStoreTests {
         guard #available(iOS 26, macOS 26, *) else { return }
         let container = try SwiftDataSugarmanStore.makeContainer(inMemory: true)
         let store = SwiftDataSugarmanStore(modelContainer: container)
-        var session = completeSession()
+        var session = try completeSession()
         let identity = SensorIdentity(
             id: UUID(),
             productName: "GS3",
@@ -528,6 +717,57 @@ struct SwiftDataSugarmanStoreTests {
         }
         #expect(try await store.sample(sessionID: sessionID, sensorIndex: 23) == nil)
         #expect(try await store.session(id: sessionID)?.lastCommittedIndex == 22)
+    }
+
+    @Test func swiftDataPersistsTimeAnchorWithItsFirstMappedBatch() async throws {
+        guard #available(iOS 26, macOS 26, *) else { return }
+        let container = try SwiftDataSugarmanStore.makeContainer(inMemory: true)
+        let store = SwiftDataSugarmanStore(modelContainer: container)
+        let sessionID = UUID()
+        try await store.insertSession(SensorSession(id: sessionID, sensorID: UUID()))
+        try await store.prepareHistoryRequest(sessionID: sessionID, startingAt: 30)
+        let anchor = try testTimeAnchor(
+            index: 30,
+            timestamp: Date(timeIntervalSince1970: 1_800_000_000)
+        )
+        var sample = makeSample(session: sessionID, index: 30)
+        sample.sensorTimestamp = anchor.timestamp
+
+        _ = try await store.commitSamples(
+            [sample],
+            sessionID: sessionID,
+            establishingTimeAnchor: anchor
+        )
+
+        #expect(try await store.session(id: sessionID)?.sensorTimeAnchor == anchor)
+        #expect(try await store.sample(sessionID: sessionID, sensorIndex: 30) == sample)
+    }
+
+    @Test func swiftDataConnectionProjectionPreservesOtherSessionFields() async throws {
+        guard #available(iOS 26, macOS 26, *) else { return }
+        let container = try SwiftDataSugarmanStore.makeContainer(inMemory: true)
+        let store = SwiftDataSugarmanStore(modelContainer: container)
+        let session = try completeSession()
+        try await store.insertSession(session)
+
+        try await store.setConnection(.connected, sessionID: session.id)
+
+        var expected = session
+        expected.connection = .connected
+        #expect(try await store.session(id: session.id) == expected)
+    }
+
+    @Test func swiftDataRejectsPartiallyStoredTimeAnchor() throws {
+        guard #available(iOS 26, macOS 26, *) else { return }
+        let record = SensorSessionRecord(
+            from: SensorSession(sensorID: UUID())
+        )
+        record.sensorTimeAnchorIndex = 10
+        record.sensorTimeAnchorTimestamp = Date(timeIntervalSince1970: 100)
+
+        #expect(throws: StoreError.incompleteTimeAnchor) {
+            try record.domainValue()
+        }
     }
 }
 #endif

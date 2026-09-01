@@ -29,6 +29,7 @@ public enum GS3ProtocolError: Error, Sendable, Equatable {
     case invalidV3ControlResponseLength(Int)
     case unsupportedV3ControlResponseCommand(UInt8)
     case invalidV3ControlResponseChecksum
+    case v3EffectiveDataStartIndexOutOfRange
 }
 
 extension GS3ProtocolError: CustomStringConvertible {
@@ -82,6 +83,8 @@ extension GS3ProtocolError: CustomStringConvertible {
             return "V3 control response command 0x\(String(command, radix: 16)) is unsupported."
         case .invalidV3ControlResponseChecksum:
             return "V3 control response failed its additive checksum."
+        case .v3EffectiveDataStartIndexOutOfRange:
+            return "The durable V3 history cursor cannot be represented by the verified request."
         }
     }
 }

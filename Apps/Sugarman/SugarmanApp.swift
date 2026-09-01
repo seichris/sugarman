@@ -15,11 +15,15 @@ import SwiftUI
 @main
 struct SugarmanApp: App {
     @State private var model = AppModel.bootstrapped()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environment(model)
+                .onChange(of: scenePhase, initial: true) { _, phase in
+                    Task { await model.handleScenePhase(phase) }
+                }
         }
     }
 }
@@ -56,6 +60,7 @@ final class AppModel {
     var exportFileWriter: PrivacyExportFileWriter
     var demoLoadError: String?
     var storeErrorMessage: String?
+    private var foregroundSessionBridge: ForegroundGS3SessionBridge
 
     static func bootstrapped() -> AppModel {
         let result = SugarmanStoreFactory.makePersistent()
@@ -98,6 +103,7 @@ final class AppModel {
         self.exportFileWriter = PrivacyExportFileWriter()
         self.demoLoadError = nil
         self.storeErrorMessage = initialStoreError
+        self.foregroundSessionBridge = ForegroundGS3SessionBridge()
     }
 
     func assessment(at now: Date = Date()) -> SafetyAssessment {
@@ -147,6 +153,49 @@ final class AppModel {
         } catch {
             // `refreshFromStore` preserves the last complete snapshot and
             // exposes the error through `storeErrorMessage`.
+        }
+    }
+
+    func handleScenePhase(_ phase: ScenePhase) async {
+        switch phase {
+        case .active:
+            do {
+                try await foregroundSessionBridge.enterForeground()
+            } catch {
+                // The bridge and coordinator expose only typed, redacted
+                // failures. Keep prior readings fail closed through the
+                // persisted disconnected projection.
+                storeErrorMessage = String(localized: "live.session_start_failed")
+            }
+        case .inactive:
+            // Transient foreground interruptions (for example, system UI)
+            // must not churn ownership or manufacture a reconnect.
+            break
+        case .background:
+            await foregroundSessionBridge.leaveForeground()
+        @unknown default:
+            await foregroundSessionBridge.leaveForeground()
+        }
+        await refresh()
+    }
+
+    func installForegroundSessionFactory(
+        _ factory: @escaping @Sendable (
+            GS3ForegroundSessionCallbacks
+        ) async throws -> any GS3ForegroundSessionControlling
+    ) {
+        let refresh: @Sendable () -> Void = { [weak self] in
+            Task { @MainActor [weak self] in
+                await self?.refresh()
+            }
+        }
+        let callbacks = GS3ForegroundSessionCallbacks(
+            onConnection: { _ in refresh() },
+            onSamplesCommitted: { _ in refresh() },
+            onFailure: { _ in refresh() }
+        )
+        foregroundSessionBridge.install {
+            try await factory(callbacks)
         }
     }
 

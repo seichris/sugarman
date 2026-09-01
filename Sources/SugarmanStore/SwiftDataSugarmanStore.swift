@@ -71,6 +71,10 @@ public final class SensorSessionRecord {
     public var lastRequestedIndex: Int64?
     public var lastReceivedIndex: Int64?
     public var lastCommittedIndex: Int64?
+    public var sensorTimeAnchorIndex: Int64?
+    public var sensorTimeAnchorTimestamp: Date?
+    public var sensorTimeAnchorIntervalSeconds: Double?
+    public var sensorTimeAnchorMappingRevision: String?
     public var sensorErrorCode: String?
 
     public init(from session: SensorSession) {
@@ -87,6 +91,14 @@ public final class SensorSessionRecord {
         self.lastRequestedIndex = session.lastRequestedIndex.map(Int64.init)
         self.lastReceivedIndex = session.lastReceivedIndex.map(Int64.init)
         self.lastCommittedIndex = session.lastCommittedIndex.map(Int64.init)
+        self.sensorTimeAnchorIndex = session.sensorTimeAnchor.map {
+            Int64($0.sensorIndex)
+        }
+        self.sensorTimeAnchorTimestamp = session.sensorTimeAnchor?.timestamp
+        self.sensorTimeAnchorIntervalSeconds = session.sensorTimeAnchor?
+            .sampleIntervalSeconds
+        self.sensorTimeAnchorMappingRevision = session.sensorTimeAnchor?
+            .mappingRevision
         self.sensorErrorCode = session.sensorErrorCode
     }
 
@@ -103,6 +115,14 @@ public final class SensorSessionRecord {
         lastRequestedIndex = session.lastRequestedIndex.map(Int64.init)
         lastReceivedIndex = session.lastReceivedIndex.map(Int64.init)
         lastCommittedIndex = session.lastCommittedIndex.map(Int64.init)
+        sensorTimeAnchorIndex = session.sensorTimeAnchor.map {
+            Int64($0.sensorIndex)
+        }
+        sensorTimeAnchorTimestamp = session.sensorTimeAnchor?.timestamp
+        sensorTimeAnchorIntervalSeconds = session.sensorTimeAnchor?
+            .sampleIntervalSeconds
+        sensorTimeAnchorMappingRevision = session.sensorTimeAnchor?
+            .mappingRevision
         sensorErrorCode = session.sensorErrorCode
     }
 
@@ -118,6 +138,7 @@ public final class SensorSessionRecord {
             lastRequestedIndex: try checkedIndex(lastRequestedIndex),
             lastReceivedIndex: try checkedIndex(lastReceivedIndex),
             lastCommittedIndex: try checkedIndex(lastCommittedIndex),
+            sensorTimeAnchor: try timeAnchor(),
             protocolVariant: ProtocolVariant(rawValue: protocolRaw) ?? .unknown,
             lifecycle: SensorLifecycleState(rawValue: lifecycleRaw) ?? .unknown,
             connection: ConnectionState(rawValue: connectionRaw) ?? .disconnected,
@@ -131,6 +152,34 @@ public final class SensorSessionRecord {
             throw StoreError.invalidSensorIndex(value)
         }
         return UInt32(value)
+    }
+
+    private func timeAnchor() throws -> SensorTimeAnchor? {
+        switch (
+            sensorTimeAnchorIndex,
+            sensorTimeAnchorTimestamp,
+            sensorTimeAnchorIntervalSeconds,
+            sensorTimeAnchorMappingRevision
+        ) {
+        case (nil, nil, nil, nil):
+            return nil
+        case (let index?, let timestamp?, let interval?, let revision?):
+            guard let checked = try checkedIndex(index) else {
+                throw StoreError.incompleteTimeAnchor
+            }
+            do {
+                return try SensorTimeAnchor(
+                    sensorIndex: checked,
+                    timestamp: timestamp,
+                    sampleIntervalSeconds: interval,
+                    mappingRevision: revision
+                )
+            } catch {
+                throw StoreError.incompleteTimeAnchor
+            }
+        default:
+            throw StoreError.incompleteTimeAnchor
+        }
     }
 }
 
@@ -365,7 +414,8 @@ public actor SwiftDataSugarmanStore: SugarmanStoring {
 
     public func commitSamples(
         _ incomingSamples: [GlucoseSample],
-        sessionID: UUID
+        sessionID: UUID,
+        establishingTimeAnchor: SensorTimeAnchor?
     ) async throws -> SampleBatchCommitResult {
         let sessionRecords = try modelContext.fetch(
             FetchDescriptor<SensorSessionRecord>(
@@ -383,7 +433,8 @@ public actor SwiftDataSugarmanStore: SugarmanStoring {
         let plan = try SampleBatchCommitPlanner.makePlan(
             session: session,
             existingSamples: existingSamples,
-            incomingSamples: incomingSamples
+            incomingSamples: incomingSamples,
+            establishingTimeAnchor: establishingTimeAnchor
         )
 
         for sample in plan.samplesToInsert {
@@ -391,6 +442,9 @@ public actor SwiftDataSugarmanStore: SugarmanStoring {
         }
         session.lastReceivedIndex = plan.result.lastReceivedIndex
         session.lastCommittedIndex = plan.result.lastCommittedIndex
+        if session.sensorTimeAnchor == nil {
+            session.sensorTimeAnchor = establishingTimeAnchor
+        }
         sessionRecord.update(from: session)
         do {
             try modelContext.save()
@@ -482,6 +536,25 @@ public actor SwiftDataSugarmanStore: SugarmanStoring {
         guard let record = records.first else { throw StoreError.notFound }
         record.update(from: session)
         try modelContext.save()
+    }
+
+    public func setConnection(
+        _ connection: ConnectionState,
+        sessionID: UUID
+    ) async throws {
+        let records = try modelContext.fetch(
+            FetchDescriptor<SensorSessionRecord>(
+                predicate: #Predicate { $0.sessionID == sessionID }
+            )
+        )
+        guard let record = records.first else { throw StoreError.notFound }
+        record.connectionRaw = connection.rawValue
+        do {
+            try modelContext.save()
+        } catch {
+            modelContext.rollback()
+            throw error
+        }
     }
 
     public func session(id: UUID) async throws -> SensorSession? {
