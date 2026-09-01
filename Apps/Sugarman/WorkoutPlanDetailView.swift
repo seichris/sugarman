@@ -34,6 +34,19 @@ struct WorkoutPlanDetailView: View {
         return model.samples
     }
 
+    private func phaseLabel(_ phase: WorkoutPhase) -> String {
+        switch phase {
+        case .preWorkout:
+            String(localized: "workout.phase.pre")
+        case .duringWorkout:
+            String(localized: "workout.phase.during")
+        case .postWorkout:
+            String(localized: "workout.phase.post")
+        case .overnight:
+            String(localized: "workout.phase.overnight")
+        }
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
@@ -52,7 +65,7 @@ struct WorkoutPlanDetailView: View {
                 }
 
                 if let selectedTarget {
-                    targetCard(selectedTarget)
+                    WorkoutPhaseTargetCard(target: selectedTarget)
                     WorkoutGlucoseChart(
                         samples: chartSamples,
                         target: selectedTarget,
@@ -103,8 +116,14 @@ struct WorkoutPlanDetailView: View {
             model.selectWorkoutPhase(newValue)
         }
     }
+}
 
-    private func targetCard(_ target: WorkoutPhaseTarget) -> some View {
+struct WorkoutPhaseTargetCard: View {
+    @Environment(AppModel.self) private var model
+
+    let target: WorkoutPhaseTarget
+
+    var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text(target.label)
@@ -114,7 +133,7 @@ struct WorkoutPlanDetailView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
-            Text(rangeText(target))
+            Text(rangeText)
                 .font(.title3.monospacedDigit())
             if let floor = target.floorMgdl {
                 Text(
@@ -134,7 +153,7 @@ struct WorkoutPlanDetailView: View {
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
     }
 
-    private func rangeText(_ target: WorkoutPhaseTarget) -> String {
+    private var rangeText: String {
         switch model.preferredUnit {
         case .milligramsPerDeciliter:
             return String(
