@@ -51,3 +51,8 @@ bugreport*.txt
 *.btsnoop
 *.btsnoop.log
 hci_snoop*.log
+
+# Private GS3 builder inputs and outputs
+gs3-private-profile*.json
+gs3-private-handover*.json
+v3-probe-material*.json
