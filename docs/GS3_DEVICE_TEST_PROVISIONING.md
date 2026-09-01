@@ -105,6 +105,13 @@ their contents, filenames, hashes, peripheral identifier, history start,
 packet bodies, or sensor identifiers to Git, issues, PRs, logs, fixtures, or
 shared diagnostics.
 
+The historical Probe JSON was not an official Android-app export. It was
+manually assembled from owner-controlled Android HCI/app evidence, offline
+analysis and private replay, plus sensor observations. Its privacy-safe
+field-by-field provenance and the remaining fresh-activation gap are documented
+in
+[`GS3_PRIVATE_HANDOVER_JSON_PROVENANCE.md`](GS3_PRIVATE_HANDOVER_JSON_PROVENANCE.md).
+
 ## Local session and controller boundary
 
 The import links material to an already stored redacted `SensorIdentity` using

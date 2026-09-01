@@ -64,7 +64,11 @@ dependencies. See [docs/UPSTREAMS.md](docs/UPSTREAMS.md).
   scan-only adapter has no connect, GATT, subscription, command, or write API.
   Every app process starts unarmed, and only a separate in-app confirmation
   installs the typed factory and begins the managed foreground lifecycle. The
-  release `Sugarman` target does not link this module.
+  release `Sugarman` target now links the ordinary provisioning and scan-only
+  products for the same explicit already-active-sensor onboarding, but does not
+  link the Device-Test-only link-loss surface. The historical private file was
+  manually assembled rather than exported by Android; see the
+  [handover JSON provenance](docs/GS3_PRIVATE_HANDOVER_JSON_PROVENANCE.md).
 - An isolated `SugarmanMacDeviceTest` target reuses the same typed controller,
   persistence, ownership, and payload-free diagnostics for faster Mac-side
   hardware iteration. Its exact-name scan resolves a Mac-local CoreBluetooth
