@@ -210,3 +210,46 @@ proceeds through history and live data. Final acceptance still requires a
 separately confirmed iPhone artifact and the complete durability matrix. This
 report authorizes no further build, launch, scan, connection, or hardware
 action.
+
+## First managed macOS history and live-reading pass
+
+The exact receive-only candidate at source commit
+`5ef4ad4921e15d7400c037ac34a95c9de9797fd6` was built with the
+`SugarmanMacDeviceTest` scheme. Its signed universal app manifest SHA-256 was
+`7c3b61d927d866966910974bbf3fbb276d83a21a4e09e44ea179a865d462ff9a`,
+and its bundle identifier remained `app.sugarman.macos.devicetest`. The
+signature and sandbox, Bluetooth, and App Group entitlements were verified
+before launch. No other local Sugarman process was running.
+
+The payload-free UI report established this order on one connection:
+
+1. one ownership acquisition, connection, subscription, authentication
+   request, authentication write acknowledgement, and exact authentication
+   acceptance;
+2. exactly one durably prepared history request and one history write
+   acknowledgement;
+3. exactly one observed preamble, with no protocol rejection, retry, or
+   reconnect;
+4. transition to `subscribed` / reducer phase `live`, which the coordinator can
+   reach only after committing a live notification;
+5. completion of the history overlap with 2,510 inserted samples, one
+   equivalent duplicate, and zero remaining gap ranges at 51 elapsed seconds;
+6. a later one-sample durable increase to 2,511 while still live at 72 elapsed
+   seconds; and
+7. an explicit stop at 107 elapsed seconds with the same final counts, followed
+   by process exit.
+
+This is the first physical Mac history and live-reading interoperability pass
+for the managed production lifecycle. It physically validates the combined
+transport-race and durable-coordinator preamble gate for this connection. It
+also confirms that the exact preamble event added no second request or retry.
+
+The report remains payload-free: it contains no sensor/peripheral identifier,
+private material, packet body, command byte, glucose value, record index,
+imported JSON content/hash, or arbitrary error text. The private provisioning
+remains in the Mac-specific this-device-only Keychain item.
+
+This run does not establish five consecutive live readings, unexpected-link-
+loss reconnect, iPhone parity, timestamp parity with the official app, native
+quality-state meaning, protocol completeness, or official-app handback after
+this specific run. Those remain separate physical gates.

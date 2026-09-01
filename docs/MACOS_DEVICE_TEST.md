@@ -15,10 +15,17 @@ and quit. The first run reproduced the iPhone's payload-free inbound-
 classification failure before the history-write acknowledgement. The next
 exact diagnostic run proved that the rejected frame reached the known,
 checksum-valid 24-byte observed-preamble branch after durable coordinator
-history intent but while the transport was still `authenticated`. It did not
-produce a glucose sample or pass durability. The official Android app then
-received a new reading and displayed history, establishing handback and sensor
-history availability only. See
+history intent but while the transport was still `authenticated`.
+
+The next exact artifact at commit `5ef4ad4` physically passed that race. It
+accepted one preamble after durable history intent, acknowledged the sole
+history write, committed history through zero remaining gaps, entered
+`subscribed` / reducer phase `live` after a committed live notification, and
+later durably increased its sample count while still live. It used no second
+request, retry, or reconnect, then stopped and exited cleanly. This is the first
+managed Mac history/live-reading pass. The earlier official Android handback
+establishes sensor/history availability only; handback after the successful Mac
+run remains open. See
 [`GS3_DEVICE_TEST_PHYSICAL_RESULT_2026-09-01.md`](GS3_DEVICE_TEST_PHYSICAL_RESULT_2026-09-01.md).
 Every future build and physical action remains separately gated.
 

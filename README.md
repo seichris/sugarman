@@ -105,14 +105,15 @@ dependencies. See [docs/UPSTREAMS.md](docs/UPSTREAMS.md).
   recognizes one exact checksum-valid 24-byte `0x36` as a payload-free observed
   preamble, with no added write, retry, data, or readiness semantics. See the
   [managed-run result](docs/GS3_DEVICE_TEST_PHYSICAL_RESULT_2026-09-01.md).
-- Exact Mac Device Test runs reproduced the typed iPhone ordering, then proved
-  the rejected frame was the known checksum-valid 24-byte preamble shape
-  overtaking history dispatch after durable coordinator intent. The next
-  receive-only policy uses both that narrow transport race window and the
-  coordinator's independent durable-request gate. It adds no command or retry;
-  every early, duplicate, late, malformed, or different unsupported frame
-  remains terminal. This is still host-only policy: Mac history/live reception,
-  five-reading durability, and final iPhone acceptance remain open.
+- Exact Mac Device Test runs reproduced the typed iPhone ordering, proved the
+  rejected frame was the known checksum-valid 24-byte preamble overtaking
+  history dispatch, and then physically passed the two-layer receive-only gate.
+  The successful run used one authentication write, one history write, and one
+  accepted preamble; committed history through zero remaining gaps; and entered
+  `live` only after committing a live notification. It added no command, retry,
+  or reconnect and stopped cleanly. Five-reading durability, unexpected-link-
+  loss reconnect, official-app handback for that run, and final iPhone
+  acceptance remain open.
 
 ## Repository layout
 

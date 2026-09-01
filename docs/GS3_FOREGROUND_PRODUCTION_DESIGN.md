@@ -106,6 +106,15 @@ only the resulting known peripheral and never scans.
 - After that Mac run stopped, the official Android app received a new reading
   and displayed history. This verifies handback plus sensor/history
   availability, not Mac history/live reception or durability.
+- The exact receive-only Mac artifact at commit `5ef4ad4` then completed the
+  same connection with one authentication write acknowledgement, one history
+  request and acknowledgement, one accepted preamble, no rejection/retry/
+  reconnect, durable history overlap, and reducer phase `live`. The transition
+  to `live` is possible only after a live notification is committed. The
+  payload-free count reached 2,510 inserted samples, one equivalent duplicate,
+  and zero gaps, then later increased by one while still live. The session was
+  explicitly stopped and the process exited. This is a Mac history and
+  live-reading interoperability pass, not final iPhone or durability proof.
 - Two earlier attempts stopped before FF31 subscription while both Sugarman
   processes were running; a Probe-only run reached live data. That sequence is
   observed, but it does not isolate process contention as the cause.
@@ -171,7 +180,9 @@ under `docs/evidence/`. The managed-run result is
    combined policy adds no payload, write, retry, reconnect, glucose,
    acknowledgement, or readiness semantics.
 
-These are reviewed policies, not claims of physical iPhone reconnect parity.
+The combined preamble policy is now physically interoperable for one managed
+Mac history/live connection. These remain reviewed policies rather than claims
+of physical iPhone reconnect or five-reading parity.
 
 ### Physical-test gates
 
