@@ -37,6 +37,17 @@ Keep a directory **outside** this Git worktree, for example:
   hashes.sha256
 ```
 
+The Device Test target may consume the existing Probe JSON through its
+scan-only provisioning bridge. The exact expected local name and resulting
+CoreBluetooth UUID remain device-only: do not place either in filenames,
+terminal output, logs, diagnostics, issue/PR text, or Git. The bridge never
+exports a converted JSON document.
+
+The macOS Device Test may consume the same private Probe JSON only through a
+user-selected read-only file URL and the shared zeroizing import buffer. Its
+scan result and normalized Keychain item are Mac-local and remain subject to
+the same no-filename, no-log, no-report, and no-Git rule.
+
 Record in the private inventory (P0): package UDI/GTIN/SKU/lot/expiry with
 full serials; Data Matrix and NDEF text; sensor state; official app
 package/version/signer/APK SHA-256; account region as visible to the owner;

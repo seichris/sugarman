@@ -4,6 +4,7 @@
 import Foundation
 import GS3DeveloperProbe
 import Observation
+import PrivateDocumentImport
 
 @Observable
 @MainActor
@@ -69,9 +70,11 @@ final class ProbeAppModel {
             if accessed { url.stopAccessingSecurityScopedResource() }
         }
         do {
-            var data = try Data(contentsOf: url, options: [.mappedIfSafe])
-            defer { data.resetBytes(in: 0..<data.count) }
-            let material = try V3ProbeMaterial(importJSONData: data)
+            let buffer = try PrivateDocumentImportBuffer(contentsOf: url)
+            defer { buffer.zeroize() }
+            let material = try buffer.withData { data in
+                try V3ProbeMaterial(importJSONData: data)
+            }
             try await materialStore.replace(with: material)
             hasMaterial = true
             expectedPeripheralName = material.expectedPeripheralName

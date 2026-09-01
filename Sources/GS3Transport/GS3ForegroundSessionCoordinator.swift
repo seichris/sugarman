@@ -217,6 +217,10 @@ package actor GS3ForegroundSessionCoordinator: GS3ForegroundSessionControlling {
             await advance(.authenticationRejected)
         case .historyWriteAcknowledged:
             callbacks.onCommandAcknowledged(.effectiveData)
+        case .historyPreambleObserved:
+            await advance(.historyPreambleObserved)
+        case .protocolRejected(let rejection):
+            await advance(.protocolRejectionObserved(rejection))
         case .historyAcknowledged:
             await advance(.historyAcknowledged)
             historyWasAcknowledged = machine.phase == .synchronizing
@@ -334,11 +338,13 @@ package actor GS3ForegroundSessionCoordinator: GS3ForegroundSessionControlling {
                 }
                 guard session.lifecycle == .live else {
                     callbacks.onFailure(.sessionNotLive)
+                    await recordProtocolRejection(.stateInvariant)
                     await advance(.protocolViolation)
                     return false
                 }
                 guard session.protocolVariant == .v3AES else {
                     callbacks.onFailure(.unsupportedProtocol)
+                    await recordProtocolRejection(.stateInvariant)
                     await advance(.protocolViolation)
                     return false
                 }
@@ -372,7 +378,10 @@ package actor GS3ForegroundSessionCoordinator: GS3ForegroundSessionControlling {
 
         case .requestHistory(let plan):
             guard UInt16(exactly: plan.startingIndex) != nil else {
-                await protocolViolation()
+                await protocolViolation(
+                    .requestInvariant,
+                    timingWindow: .historyRequestPreparing
+                )
                 return false
             }
             activeHistoryStart = plan.startingIndex
@@ -411,6 +420,7 @@ package actor GS3ForegroundSessionCoordinator: GS3ForegroundSessionControlling {
             if isActiveConnectionPhase(machine.phase)
                 || machine.phase == .acquiringOwnership
                 || machine.phase == .backoff {
+                await recordProtocolRejection(.stateInvariant)
                 await advance(.protocolViolation)
             }
             return false
@@ -420,7 +430,7 @@ package actor GS3ForegroundSessionCoordinator: GS3ForegroundSessionControlling {
 
     private func receive(batch: V3GlucoseBatch, receivedAt: Date) async {
         guard !batch.records.isEmpty, hasNoNativeWrap(batch.records) else {
-            await protocolViolation()
+            await protocolViolation(.stateInvariant)
             return
         }
 
@@ -429,14 +439,14 @@ package actor GS3ForegroundSessionCoordinator: GS3ForegroundSessionControlling {
             guard machine.phase == .requestingHistory
                     || machine.phase == .synchronizing
                     || machine.phase == .live else {
-                await protocolViolation()
+                await protocolViolation(.stateInvariant)
                 return
             }
             guard let activeHistoryStart,
                   batch.records.allSatisfy({
                       UInt32($0.index) >= activeHistoryStart
                   }) else {
-                await protocolViolation()
+                await protocolViolation(.stateInvariant)
                 return
             }
             if !historyWasAcknowledged {
@@ -445,7 +455,7 @@ package actor GS3ForegroundSessionCoordinator: GS3ForegroundSessionControlling {
                     source: batch.source,
                     receivedAt: receivedAt
                 ) else {
-                    await protocolViolation()
+                    await protocolViolation(.stateInvariant)
                     return
                 }
             } else if let anchor = sensorTimeAnchor {
@@ -467,7 +477,7 @@ package actor GS3ForegroundSessionCoordinator: GS3ForegroundSessionControlling {
                     source: batch.source,
                     receivedAt: receivedAt
                 ) else {
-                    await protocolViolation()
+                    await protocolViolation(.stateInvariant)
                     return
                 }
             }
@@ -475,7 +485,7 @@ package actor GS3ForegroundSessionCoordinator: GS3ForegroundSessionControlling {
         case .liveNotification:
             guard historyWasAcknowledged,
                   (machine.phase == .synchronizing || machine.phase == .live) else {
-                await protocolViolation()
+                await protocolViolation(.stateInvariant)
                 return
             }
             let live = batch.records.map {
@@ -488,7 +498,7 @@ package actor GS3ForegroundSessionCoordinator: GS3ForegroundSessionControlling {
             if let anchor = sensorTimeAnchor {
                 guard let first = batch.records.first,
                       UInt32(first.index) >= anchor.sensorIndex else {
-                    await protocolViolation()
+                    await protocolViolation(.stateInvariant)
                     return
                 }
                 await commit(
@@ -504,7 +514,7 @@ package actor GS3ForegroundSessionCoordinator: GS3ForegroundSessionControlling {
                       }) ?? true,
                       bufferedRecords.count <= configuration.maximumBufferedRecordCount
                         - live.count else {
-                    await protocolViolation()
+                    await protocolViolation(.stateInvariant)
                     return
                 }
                 let anchor: SensorTimeAnchor
@@ -518,7 +528,7 @@ package actor GS3ForegroundSessionCoordinator: GS3ForegroundSessionControlling {
                             .inferredTimeMappingRevision
                     )
                 } catch {
-                    await protocolViolation()
+                    await protocolViolation(.stateInvariant)
                     return
                 }
                 let records = bufferedRecords + live
@@ -675,9 +685,27 @@ package actor GS3ForegroundSessionCoordinator: GS3ForegroundSessionControlling {
         return committed
     }
 
-    private func protocolViolation() async {
+    private func protocolViolation(
+        _ origin: GS3ProtocolRejectionOrigin,
+        timingWindow: GS3ProtocolTimingWindow? = nil
+    ) async {
+        await recordProtocolRejection(origin, timingWindow: timingWindow)
         callbacks.onFailure(.protocolViolation)
         await advance(.protocolViolation)
+    }
+
+    private func recordProtocolRejection(
+        _ origin: GS3ProtocolRejectionOrigin,
+        timingWindow: GS3ProtocolTimingWindow? = nil
+    ) async {
+        await advance(
+            .protocolRejectionObserved(
+                GS3ProtocolRejection(
+                    origin: origin,
+                    timingWindow: timingWindow ?? protocolTimingWindow()
+                )
+            )
+        )
     }
 
     private func eventDeliveryOverflowed() async {
@@ -685,8 +713,35 @@ package actor GS3ForegroundSessionCoordinator: GS3ForegroundSessionControlling {
         eventDeliveryOverflowReported = true
         eventContinuation?.finish()
         eventTask?.cancel()
+        let rejection = GS3ProtocolRejection(
+            origin: .stateInvariant,
+            timingWindow: protocolTimingWindow()
+        )
+        await submit(.input(.protocolRejectionObserved(rejection)))
         callbacks.onFailure(.protocolViolation)
         await submit(.input(.protocolViolation))
+    }
+
+    private func protocolTimingWindow() -> GS3ProtocolTimingWindow {
+        switch machine.phase {
+        case .idle, .stopped:
+            .unavailable
+        case .acquiringOwnership, .connecting, .discoveringServices,
+             .discoveringCharacteristics, .subscribing, .backoff:
+            .connectionSetup
+        case .authenticating:
+            .authentication
+        case .loadingHistoryPlan:
+            .authenticated
+        case .preparingHistoryRequest:
+            .historyRequestPreparing
+        case .requestingHistory, .synchronizing:
+            .historyResponse
+        case .live:
+            .streaming
+        case .disconnecting:
+            .disconnecting
+        }
     }
 
     private func finishEventDelivery() {

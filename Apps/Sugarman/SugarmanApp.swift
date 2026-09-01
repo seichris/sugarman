@@ -2,6 +2,12 @@
 // Copyright (C) 2026 Sugarman contributors
 
 import AccountBinding
+#if SUGARMAN_DEVICE_TEST
+import GS3DeviceProvisioning
+import GS3DeviceTesting
+import GS3Session
+import PrivateDocumentImport
+#endif
 import GS3Transport
 import Integrations
 import Observation
@@ -60,7 +66,30 @@ final class AppModel {
     var exportFileWriter: PrivacyExportFileWriter
     var demoLoadError: String?
     var storeErrorMessage: String?
-    private var foregroundSessionBridge: ForegroundGS3SessionBridge
+    private var foregroundSessionBridge: GS3ForegroundSessionLifecycle
+#if SUGARMAN_DEVICE_TEST
+    var hasDeviceTestProvisioning: Bool
+    var deviceTestLinkedSensorID: UUID?
+    var isDeviceTestArmed: Bool
+    var deviceTestStatus: String
+    var deviceTestLifecycleLines: [String]
+    var deviceTestAuthenticationAcknowledgementCount: Int
+    var deviceTestHistoryAcknowledgementCount: Int
+    var deviceTestPhase: GS3ForegroundPhase
+    var isDeviceTestLinkLossInjectionPending: Bool
+    var hasDeviceTestProbeBridgePending: Bool
+    var isDeviceTestProbeBridgeScanning: Bool
+    @ObservationIgnored private let deviceTestProvisioning: DeviceOnlyGS3Provisioning
+    @ObservationIgnored private let deviceTestExternalOwnershipGate:
+        GS3DeviceTestExternalOwnershipGate
+    @ObservationIgnored private let deviceTestProbeBridgeScanner:
+        GS3ProbeProvisioningScanner
+    @ObservationIgnored private var deviceTestProbeBridgeRequest:
+        GS3ProbeBridgeScanRequest?
+    @ObservationIgnored private var managedDeviceTestController:
+        GS3ManagedForegroundDeviceTestController?
+    private var currentScenePhase: ScenePhase
+#endif
 
     static func bootstrapped() -> AppModel {
         let result = SugarmanStoreFactory.makePersistent()
@@ -103,7 +132,29 @@ final class AppModel {
         self.exportFileWriter = PrivacyExportFileWriter()
         self.demoLoadError = nil
         self.storeErrorMessage = initialStoreError
-        self.foregroundSessionBridge = ForegroundGS3SessionBridge()
+        self.foregroundSessionBridge = GS3ForegroundSessionLifecycle()
+#if SUGARMAN_DEVICE_TEST
+        let externalOwnershipGate = GS3DeviceTestExternalOwnershipGate()
+        self.hasDeviceTestProvisioning = false
+        self.deviceTestLinkedSensorID = nil
+        self.isDeviceTestArmed = false
+        self.deviceTestStatus = "Import private material after storing an owned sensor identity."
+        self.deviceTestLifecycleLines = []
+        self.deviceTestAuthenticationAcknowledgementCount = 0
+        self.deviceTestHistoryAcknowledgementCount = 0
+        self.deviceTestPhase = .idle
+        self.isDeviceTestLinkLossInjectionPending = false
+        self.hasDeviceTestProbeBridgePending = false
+        self.isDeviceTestProbeBridgeScanning = false
+        self.deviceTestProvisioning = DeviceOnlyGS3Provisioning()
+        self.deviceTestExternalOwnershipGate = externalOwnershipGate
+        self.deviceTestProbeBridgeScanner = GS3ProbeProvisioningScanner(
+            externalOwnershipGate: externalOwnershipGate
+        )
+        self.deviceTestProbeBridgeRequest = nil
+        self.managedDeviceTestController = nil
+        self.currentScenePhase = .inactive
+#endif
     }
 
     func assessment(at now: Date = Date()) -> SafetyAssessment {
@@ -157,6 +208,9 @@ final class AppModel {
     }
 
     func handleScenePhase(_ phase: ScenePhase) async {
+#if SUGARMAN_DEVICE_TEST
+        currentScenePhase = phase
+#endif
         switch phase {
         case .active:
             do {
@@ -172,8 +226,14 @@ final class AppModel {
             // must not churn ownership or manufacture a reconnect.
             break
         case .background:
+#if SUGARMAN_DEVICE_TEST
+            deviceTestProbeBridgeScanner.cancel()
+#endif
             await foregroundSessionBridge.leaveForeground()
         @unknown default:
+#if SUGARMAN_DEVICE_TEST
+            deviceTestProbeBridgeScanner.cancel()
+#endif
             await foregroundSessionBridge.leaveForeground()
         }
         await refresh()
@@ -189,15 +249,321 @@ final class AppModel {
                 await self?.refresh()
             }
         }
+#if SUGARMAN_DEVICE_TEST
+        let callbacks = makeDeviceTestCallbacks()
+#else
         let callbacks = GS3ForegroundSessionCallbacks(
             onConnection: { _ in refresh() },
             onSamplesCommitted: { _ in refresh() },
             onFailure: { _ in refresh() }
         )
+#endif
         foregroundSessionBridge.install {
             try await factory(callbacks)
         }
     }
+
+#if SUGARMAN_DEVICE_TEST
+    private func makeDeviceTestCallbacks() -> GS3ForegroundSessionCallbacks {
+        let refresh: @Sendable () -> Void = { [weak self] in
+            Task { @MainActor [weak self] in
+                await self?.refresh()
+            }
+        }
+        return GS3ForegroundSessionCallbacks(
+            onConnection: { _ in refresh() },
+            onLifecycleEvent: { [weak self] event in
+                Task { @MainActor [weak self] in
+                    self?.deviceTestPhase = event.phase
+                    if event.phase == .live {
+                        self?.isDeviceTestLinkLossInjectionPending = false
+                    }
+                    self?.recordDeviceTestLifecycle(event.description)
+                }
+            },
+            onSamplesCommitted: { _ in refresh() },
+            onCommandAcknowledged: { [weak self] command in
+                Task { @MainActor [weak self] in
+                    switch command {
+                    case .authentication:
+                        self?.deviceTestAuthenticationAcknowledgementCount += 1
+                    case .effectiveData:
+                        self?.deviceTestHistoryAcknowledgementCount += 1
+                    }
+                }
+            },
+            onFailure: { [weak self] failure in
+                refresh()
+                Task { @MainActor [weak self] in
+                    self?.deviceTestStatus =
+                        "Managed foreground session failed closed (\(failure.rawValue))."
+                }
+            }
+        )
+    }
+
+    var redactedDeviceTestReport: String {
+        ([
+            "Sugarman managed foreground device-test diagnostics",
+            "Packet bodies, arbitrary command bytes, sensor identifiers, private material, glucose values, record indexes, and imported JSON contents or hashes are omitted.",
+            "Authentication write acknowledgements: \(deviceTestAuthenticationAcknowledgementCount)",
+            "History write acknowledgements: \(deviceTestHistoryAcknowledgementCount)",
+            "",
+        ] + deviceTestLifecycleLines).joined(separator: "\n")
+    }
+
+    func refreshDeviceTestProvisioningAvailability() async {
+        do {
+            let summary = try await deviceTestProvisioning.summary()
+            hasDeviceTestProvisioning = summary != nil
+            deviceTestLinkedSensorID = summary?.linkedSensorID
+            if summary != nil, !isDeviceTestArmed {
+                deviceTestStatus = "Private material is available in this device's Keychain."
+            } else if summary == nil {
+                deviceTestStatus = hasDeviceTestProbeBridgePending
+                    ? "Probe material is validated in memory. Run the separately confirmed scan-only provisioning lookup."
+                    : "Import private material after storing an owned sensor identity."
+            }
+        } catch {
+            hasDeviceTestProvisioning = false
+            deviceTestLinkedSensorID = nil
+            deviceTestStatus = error.localizedDescription
+        }
+    }
+
+    func importDeviceTestProvisioning(
+        from url: URL,
+        linkedSensorID: UUID
+    ) async {
+        guard !isDeviceTestArmed else {
+            deviceTestStatus = "Stop the managed foreground session before importing material."
+            return
+        }
+        let accessed = url.startAccessingSecurityScopedResource()
+        defer {
+            if accessed { url.stopAccessingSecurityScopedResource() }
+        }
+        do {
+            let buffer = try PrivateDocumentImportBuffer(contentsOf: url)
+            defer { buffer.zeroize() }
+            try await buffer.withData { data in
+                try await deviceTestProvisioning.importDocument(
+                    data,
+                    linkedSensorID: linkedSensorID,
+                    into: primaryStore
+                )
+            }
+            try await refreshFromStore()
+            await refreshDeviceTestProvisioningAvailability()
+            deviceTestStatus =
+                "Private material imported. No Bluetooth action has started."
+        } catch {
+            deviceTestStatus = error.localizedDescription
+        }
+    }
+
+    func prepareDeviceTestProbeBridge(
+        from url: URL,
+        linkedSensorID: UUID
+    ) async {
+        guard !isDeviceTestArmed,
+              !hasDeviceTestProvisioning,
+              !isDeviceTestProbeBridgeScanning else {
+            deviceTestStatus =
+                "Stop the managed foreground session before preparing Probe material."
+            return
+        }
+        let accessed = url.startAccessingSecurityScopedResource()
+        defer {
+            if accessed { url.stopAccessingSecurityScopedResource() }
+        }
+        do {
+            let buffer = try PrivateDocumentImportBuffer(contentsOf: url)
+            defer { buffer.zeroize() }
+            let request = try await buffer.withData { data in
+                try await deviceTestProvisioning.prepareProbeBridgeImport(
+                    data,
+                    linkedSensorID: linkedSensorID,
+                    in: primaryStore
+                )
+            }
+            deviceTestProbeBridgeRequest = request
+            hasDeviceTestProbeBridgePending = true
+            deviceTestStatus =
+                "Existing Probe material validated in memory. No Bluetooth action has started."
+        } catch {
+            deviceTestStatus = error.localizedDescription
+        }
+    }
+
+    func runDeviceTestProbeBridgeScan() async {
+        defer { deviceTestExternalOwnershipGate.revoke() }
+        guard currentScenePhase == .active else {
+            deviceTestStatus =
+                "Keep Sugarman Device Test in the foreground for scan-only provisioning."
+            return
+        }
+        guard !isDeviceTestArmed,
+              !hasDeviceTestProvisioning,
+              !isDeviceTestProbeBridgeScanning,
+              let request = deviceTestProbeBridgeRequest else {
+            return
+        }
+        isDeviceTestProbeBridgeScanning = true
+        deviceTestStatus =
+            "Scanning only for the exact Probe name; no peripheral connection or sensor command is allowed."
+        do {
+            let peripheralID = try await deviceTestProbeBridgeScanner.scan(
+                matching: request
+            )
+            try await deviceTestProvisioning.completeProbeBridgeImport(
+                request: request,
+                peripheralID: peripheralID,
+                into: primaryStore
+            )
+            deviceTestProbeBridgeRequest = nil
+            hasDeviceTestProbeBridgePending = false
+            isDeviceTestProbeBridgeScanning = false
+            try await refreshFromStore()
+            await refreshDeviceTestProvisioningAvailability()
+            deviceTestStatus =
+                "Known peripheral stored in this device's Keychain. No connection or sensor command was sent."
+        } catch {
+            isDeviceTestProbeBridgeScanning = false
+            deviceTestStatus = error.localizedDescription
+        }
+    }
+
+    func confirmExclusiveAccessForDeviceTest() {
+        deviceTestExternalOwnershipGate.confirmExclusiveAccess()
+    }
+
+    func cancelDeviceTestProbeBridgeScan() {
+        guard isDeviceTestProbeBridgeScanning else { return }
+        deviceTestProbeBridgeScanner.cancel()
+    }
+
+    func discardDeviceTestProbeBridge() async {
+        deviceTestProbeBridgeScanner.cancel()
+        await deviceTestProvisioning.discardProbeBridgeImport()
+        deviceTestProbeBridgeRequest = nil
+        hasDeviceTestProbeBridgePending = false
+        isDeviceTestProbeBridgeScanning = false
+        deviceTestStatus =
+            "Pending Probe material discarded. Importing or scanning is required before arming."
+    }
+
+    func armDeviceTest() async {
+        guard !isSyntheticDemo else {
+            deviceTestExternalOwnershipGate.revoke()
+            deviceTestStatus = "Exit synthetic demo mode before arming the device test."
+            return
+        }
+        guard hasDeviceTestProvisioning,
+              !isDeviceTestArmed,
+              !isDeviceTestProbeBridgeScanning else {
+            deviceTestExternalOwnershipGate.revoke()
+            return
+        }
+        do {
+            try deviceTestExternalOwnershipGate.requireConfirmation()
+        } catch {
+            deviceTestExternalOwnershipGate.revoke()
+            deviceTestStatus = error.localizedDescription
+            return
+        }
+        let provisioning = deviceTestProvisioning
+        let liveStore = primaryStore
+        deviceTestLifecycleLines = []
+        deviceTestAuthenticationAcknowledgementCount = 0
+        deviceTestHistoryAcknowledgementCount = 0
+        deviceTestPhase = .idle
+        isDeviceTestLinkLossInjectionPending = false
+        let callbacks = makeDeviceTestCallbacks()
+        do {
+            let controller = try await provisioning.makeManagedForegroundDeviceTestController(
+                store: liveStore,
+                callbacks: callbacks
+            )
+            managedDeviceTestController = controller
+            foregroundSessionBridge.install { controller }
+        } catch {
+            deviceTestExternalOwnershipGate.revoke()
+            deviceTestStatus = error.localizedDescription
+            return
+        }
+        isDeviceTestArmed = true
+        deviceTestStatus = "Managed foreground session armed."
+        guard currentScenePhase == .active else { return }
+        do {
+            try await foregroundSessionBridge.enterForeground()
+        } catch {
+            isDeviceTestArmed = false
+            managedDeviceTestController = nil
+            deviceTestExternalOwnershipGate.revoke()
+            await foregroundSessionBridge.removeFactory()
+            deviceTestStatus = error.localizedDescription
+        }
+    }
+
+    func stopDeviceTest() async {
+        isDeviceTestArmed = false
+        deviceTestPhase = .stopped
+        isDeviceTestLinkLossInjectionPending = false
+        deviceTestExternalOwnershipGate.revoke()
+        await foregroundSessionBridge.removeFactory()
+        managedDeviceTestController = nil
+        if hasDeviceTestProvisioning {
+            deviceTestStatus =
+                "Managed foreground session stopped. Private material remains device-only."
+        }
+        await refresh()
+    }
+
+    func injectDeviceTestLinkLoss() async {
+        guard isDeviceTestArmed,
+              deviceTestPhase == .live,
+              !isDeviceTestLinkLossInjectionPending,
+              let managedDeviceTestController else { return }
+        isDeviceTestLinkLossInjectionPending = true
+        if await managedDeviceTestController.injectLinkLoss() {
+            deviceTestStatus =
+                "Injected one Device-Test-only link loss; awaiting bounded reconnect."
+        } else {
+            isDeviceTestLinkLossInjectionPending = false
+            deviceTestStatus =
+                "Link-loss injection was inert because the session was not live."
+        }
+    }
+
+    func deleteDeviceTestProvisioning() async {
+        deviceTestProbeBridgeScanner.cancel()
+        await stopDeviceTest()
+        do {
+            try await deviceTestProvisioning.delete()
+            hasDeviceTestProvisioning = false
+            deviceTestLinkedSensorID = nil
+            deviceTestProbeBridgeRequest = nil
+            hasDeviceTestProbeBridgePending = false
+            isDeviceTestProbeBridgeScanning = false
+            deviceTestLifecycleLines = []
+            deviceTestAuthenticationAcknowledgementCount = 0
+            deviceTestHistoryAcknowledgementCount = 0
+            deviceTestStatus = "Private device-test material deleted from this device."
+        } catch {
+            deviceTestStatus = error.localizedDescription
+        }
+    }
+
+    private func recordDeviceTestLifecycle(_ line: String) {
+        deviceTestLifecycleLines.append(line)
+        if deviceTestLifecycleLines.count > 128 {
+            deviceTestLifecycleLines.removeFirst(
+                deviceTestLifecycleLines.count - 128
+            )
+        }
+    }
+#endif
 
     func loadDemo(_ scenario: SyntheticDemoScenario) async throws {
         demoLoadError = nil
@@ -313,6 +679,16 @@ final class AppModel {
     }
 
     func deleteAllLocalData() async throws {
+#if SUGARMAN_DEVICE_TEST
+        deviceTestProbeBridgeScanner.cancel()
+        await stopDeviceTest()
+        try await deviceTestProvisioning.delete()
+        hasDeviceTestProvisioning = false
+        deviceTestLinkedSensorID = nil
+        deviceTestProbeBridgeRequest = nil
+        hasDeviceTestProbeBridgePending = false
+        isDeviceTestProbeBridgeScanning = false
+#endif
         try await primaryStore.deleteAll()
         store = primaryStore
         clearLivePresentation()

@@ -49,6 +49,166 @@ struct GS3SessionTests {
         #expect(machine.historyRequestCount == 1)
     }
 
+    @Test func oneObservedHistoryPreambleIsRecordedAndDuplicateFailsClosed() {
+        var machine = machine(at: .requestingHistory)
+
+        let observed = machine.send(
+            .historyPreambleObserved,
+            elapsedWholeSeconds: 12
+        )
+        #expect(machine.phase == .requestingHistory)
+        #expect(machine.historyPreambleCount == 1)
+        #expect(observed.contains {
+            if case .record(let event) = $0 {
+                return event.kind == .historyPreambleObserved
+                    && event.historyPreambleCount == 1
+            }
+            return false
+        })
+
+        #expect(
+            machine.send(.historyPreambleObserved)
+                == [.fail(.invalidTransition(from: .requestingHistory))]
+        )
+        #expect(machine.historyPreambleCount == 1)
+    }
+
+    @Test func observedHistoryPreambleCountResetsForReauthenticatedConnection() {
+        var machine = machine(at: .requestingHistory)
+        _ = machine.send(.historyPreambleObserved)
+        let disconnected = machine.send(.disconnected(.timeout))
+        let token = reconnectSchedule(in: disconnected)!.token
+        _ = machine.send(.reconnectDelayElapsed(token: token))
+
+        #expect(machine.phase == .connecting)
+        #expect(machine.historyPreambleCount == 0)
+        _ = machine.send(.connected)
+        _ = machine.send(.servicesDiscovered)
+        _ = machine.send(.characteristicsDiscovered)
+        _ = machine.send(.notificationSubscriptionEnabled)
+        _ = machine.send(.authenticationAccepted)
+        let plan = HistoryRequestPlan(
+            startingIndex: anchor.sensorIndex,
+            source: .captureBacked
+        )
+        _ = machine.send(.historyPlanLoaded(plan))
+        _ = machine.send(.historyRequestDurablyPrepared(plan))
+
+        #expect(machine.phase == .requestingHistory)
+        #expect(machine.send(.historyPreambleObserved).contains {
+            if case .record(let event) = $0 {
+                return event.kind == .historyPreambleObserved
+            }
+            return false
+        })
+        #expect(machine.historyPreambleCount == 1)
+    }
+
+    @Test func observedHistoryPreambleOutsideHistoryRequestFailsClosed() {
+        for phase in [
+            GS3ForegroundPhase.authenticating,
+            .loadingHistoryPlan,
+            .preparingHistoryRequest,
+            .synchronizing,
+            .live,
+        ] {
+            var machine = machine(at: phase)
+            #expect(
+                machine.send(.historyPreambleObserved)
+                    == [.fail(.invalidTransition(from: phase))]
+            )
+            #expect(machine.historyPreambleCount == 0)
+        }
+    }
+
+    @Test func protocolRejectionDiagnosticIsRecordedOncePerConnection() throws {
+        var machine = machine(at: .requestingHistory)
+        let rejection = GS3ProtocolRejection(
+            origin: .inboundClassification,
+            frameCategory: .notificationCandidate,
+            frameByteCount: 24,
+            timingWindow: .historyWritePending
+        )
+
+        let first = machine.send(
+            .protocolRejectionObserved(rejection),
+            elapsedWholeSeconds: 7
+        )
+        #expect(first.contains {
+            if case .record(let event) = $0 {
+                return event.kind == .protocolRejected
+                    && event.protocolRejection == rejection
+                    && event.elapsedWholeSeconds == 7
+            }
+            return false
+        })
+        #expect(machine.send(.protocolRejectionObserved(rejection)).isEmpty)
+
+        let disconnected = machine.send(.disconnected(.timeout))
+        let token = try #require(reconnectSchedule(in: disconnected)?.token)
+        _ = machine.send(.reconnectDelayElapsed(token: token))
+        #expect(machine.phase == .connecting)
+        #expect(machine.send(.protocolRejectionObserved(rejection)).contains {
+            if case .record(let event) = $0 {
+                return event.kind == .protocolRejected
+            }
+            return false
+        })
+    }
+
+    @Test func everyProtocolRejectionOriginIsTypedBoundedAndPayloadFree() {
+        #expect(GS3ProtocolFrameCategory.classify(byteCount: 0) == .missing)
+        #expect(GS3ProtocolFrameCategory.classify(byteCount: 5) == .controlCandidate)
+        #expect(GS3ProtocolFrameCategory.classify(byteCount: 24) == .notificationCandidate)
+        #expect(GS3ProtocolFrameCategory.classify(byteCount: 3) == .other)
+
+        for origin in GS3ProtocolRejectionOrigin.allCases {
+            let rejection = GS3ProtocolRejection(
+                origin: origin,
+                frameCategory: .notificationCandidate,
+                frameByteCount: Int.max,
+                timingWindow: .historyWritePending
+            )
+            var dumped = ""
+            dump(rejection, to: &dumped)
+            let text = "\(rejection) \(String(reflecting: rejection)) \(dumped)"
+
+            #expect(rejection.frameByteCount == 512)
+            #expect(rejection.frameByteCountWasCapped)
+            #expect(text.contains("origin=\(origin.rawValue)"))
+            #expect(text.contains("frame=notificationCandidate"))
+            #expect(text.contains("bytes=512+"))
+            #expect(text.contains("window=historyWritePending"))
+            for forbidden in [
+                "0x36", "sensor-identifier", "glucose-value", "record-index",
+                "private-material", "json-contents", "json-hash",
+                "arbitrary-command-bytes",
+            ] {
+                #expect(!text.contains(forbidden))
+            }
+        }
+
+        let knownPreambleRejection = GS3ProtocolRejection(
+            origin: .inboundClassification,
+            frameCategory: .observedHistoryPreambleCandidate,
+            frameByteCount: 24,
+            timingWindow: .authenticated
+        )
+        var dumped = ""
+        dump(knownPreambleRejection, to: &dumped)
+        let text = "\(knownPreambleRejection) "
+            + "\(String(reflecting: knownPreambleRejection)) \(dumped)"
+        #expect(text.contains("frame=observedHistoryPreambleCandidate"))
+        #expect(text.contains("window=authenticated"))
+        for forbidden in [
+            "0x36", "sensor-identifier", "glucose-value", "record-index",
+            "private-material", "json-contents", "json-hash", "packet-body",
+            "arbitrary-command-bytes",
+        ] {
+            #expect(!text.contains(forbidden))
+        }
+    }
+
     @Test func reconnectIsSingleFlightAndRepeatsSubscriptionAuthenticationAndHistory() {
         var machine = machine(at: .live)
         let disconnected = machine.send(.disconnected(.timeout), elapsedWholeSeconds: 90)
@@ -285,6 +445,7 @@ struct GS3SessionTests {
             reconnectAttempt: 1,
             authenticationRequestCount: 1,
             historyRequestCount: 1,
+            historyPreambleCount: 1,
             insertedSampleCount: 5,
             duplicateSampleCount: 2,
             gapRangeCount: 1
@@ -323,6 +484,7 @@ struct GS3SessionTests {
             #expect(!text.contains("raw-private-error"))
         }
         #expect(event.description.contains("other error redacted"))
+        #expect(event.description.contains("historyPreambles=1"))
     }
 
     @Test func presentationProjectionKeepsBackoffDisconnectedAndEventuallyStale() {

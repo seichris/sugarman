@@ -165,9 +165,12 @@ selection remains an operator evidence gate.
 The file is imported after installation with the Files picker. The app stores a
 normalized binary record in a generic-password Keychain item using
 `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`; it never stores the source JSON
-verbatim. Delete the Files copy after import and use the app's delete action to
-remove the Keychain item after testing. This limits accidental publication but
-does not make an unlocked development phone a hardware security module.
+verbatim. Device Test and Probe share an owned mutable import buffer: it reads
+without memory-mapping, lends a non-copying `Data` view only while the buffer is
+alive, and clears the owned bytes on every exit and deinitialization. Delete the
+Files copy after import and use the app's delete action to remove the Keychain
+item after testing. This limits accidental publication but does not make an
+unlocked development phone a hardware security module.
 
 ## Host verification
 

@@ -210,8 +210,12 @@ def check_no_write_api() -> None:
         ROOT / "Sources/GS3Transport",
         ROOT / "Sources/GS3Protocol",
         ROOT / "Sources/GS3DeveloperProbe",
+        ROOT / "Sources/GS3DeviceTesting",
     }
     probe_adapter = ROOT / "Apps/SugarmanProbe/V3ProbeBluetoothRuntime.swift"
+    provisioning_scanner = (
+        ROOT / "Sources/GS3DeviceTesting/GS3ProbeProvisioningScanner.swift"
+    )
     production_adapter = (
         ROOT / "Sources/GS3Transport/GS3ForegroundCoreBluetoothTransport.swift"
     )
@@ -232,6 +236,7 @@ def check_no_write_api() -> None:
             if (
                 "import CoreBluetooth" in text
                 and not path.is_relative_to(ROOT / "Sources/GS3Transport")
+                and not path.is_relative_to(ROOT / "Sources/GS3DeviceTesting")
                 and path != probe_adapter
             ):
                 error(f"CoreBluetooth must remain confined to GS3Transport: {rel}")
@@ -334,6 +339,43 @@ def check_no_write_api() -> None:
                 error(f"production adapter contains forbidden surface: {forbidden}")
         if body.count("guard phase != .disconnecting else { return }") < 2:
             error("production adapter must ignore write/value callbacks while disconnecting")
+
+    if not provisioning_scanner.is_file():
+        error("missing device-test Probe JSON scan-only provisioning adapter")
+    else:
+        body = provisioning_scanner.read_text(encoding="utf-8", errors="replace")
+        for required in (
+            "GS3DeviceTestExternalOwnershipGate",
+            "requireConfirmation()",
+            "GS3ProbeBridgeDiscoveryAccumulator",
+            "SharedSensorOwnerLease.acquire()",
+            "scanWindowSeconds: TimeInterval = 10",
+            "scanForPeripherals(",
+            "CBCentralManagerScanOptionAllowDuplicatesKey: true",
+            "central?.stopScan()",
+            "ownerLease?.release()",
+        ):
+            if required not in body:
+                error(f"scan-only provisioning adapter missing boundary: {required}")
+        if body.count("scanForPeripherals(") != 1:
+            error("scan-only provisioning adapter must contain exactly one scan site")
+        for forbidden in (
+            ".connect(",
+            "cancelPeripheralConnection(",
+            "retrievePeripherals(",
+            "discoverServices(",
+            "discoverCharacteristics(",
+            "setNotifyValue(",
+            ".writeValue(",
+            "writeCharacteristic(",
+            "activateSensor(",
+            "bindAccountOnSensor(",
+            "resetSensor(",
+            "writeSecretKey(",
+            "CBCentralManagerOptionRestoreIdentifierKey",
+        ):
+            if forbidden in body:
+                error(f"scan-only provisioning adapter contains forbidden surface: {forbidden}")
 
     active_material = ROOT / "Sources/GS3Protocol/V3ActiveSessionMaterial.swift"
     if not active_material.is_file():
@@ -448,14 +490,16 @@ def check_no_write_api() -> None:
 def check_sensor_ownership_and_foreground_slice() -> None:
     group = "group.app.sugarman.sensor-owner"
     project = (ROOT / "project.yml").read_text(encoding="utf-8", errors="replace")
-    if project.count(group) != 2:
-        error("both iOS targets must declare the same sensor-owner App Group")
-    if project.count("product: SensorOwnership") != 2:
-        error("both iOS targets must link the shared SensorOwnership product")
+    if project.count(group) != 4:
+        error("all iOS and macOS sensor targets must declare the sensor-owner App Group")
+    if project.count("product: SensorOwnership") != 4:
+        error("all iOS and macOS sensor targets must link SensorOwnership")
 
     for relative in (
         "Apps/Sugarman/Sugarman.entitlements",
+        "Apps/SugarmanDeviceTest/SugarmanDeviceTest.entitlements",
         "Apps/SugarmanProbe/SugarmanProbe.entitlements",
+        "Apps/SugarmanMacDeviceTest/SugarmanMacDeviceTest.entitlements",
     ):
         path = ROOT / relative
         if not path.is_file() or group not in path.read_text(
@@ -483,6 +527,7 @@ def check_sensor_ownership_and_foreground_slice() -> None:
 
     for relative in (
         "Apps/Sugarman/DiagnosticProbeSession.swift",
+        "Sources/GS3DeviceTesting/GS3ProbeProvisioningScanner.swift",
         "Apps/SugarmanProbe/V3ProbeBluetoothRuntime.swift",
     ):
         path = ROOT / relative
@@ -510,6 +555,8 @@ def check_sensor_ownership_and_foreground_slice() -> None:
         "CaptureBackedHistoryStart",
         "HistoryCursorPolicy",
         "GS3LifecycleEvent",
+        "historyPreambleObserved",
+        "historyPreambleCount",
     ):
         if required not in session_body:
             error(f"foreground GS3 slice missing boundary: {required}")
@@ -548,9 +595,51 @@ def check_sensor_ownership_and_foreground_slice() -> None:
         "clearBufferedRecordsOnSuccess: true",
         "UInt16(exactly: plan.startingIndex)",
         "quality: .questionable",
+        "case .historyPreambleObserved:",
     ):
         if required not in production_body:
             error(f"foreground production integration missing boundary: {required}")
+
+    inbound_classifier = transport_root / "V3ForegroundInboundClassifier.swift"
+    if not inbound_classifier.is_file():
+        error("missing host-testable foreground inbound classifier")
+    else:
+        classifier_body = inbound_classifier.read_text(
+            encoding="utf-8", errors="replace"
+        )
+        for required in (
+            "observedHistoryPreambleCommand: UInt8 = 0x36",
+            "observedHistoryPreambleByteCount = 24",
+            "historyWriteAcknowledgementPending",
+            "historyWriteCallCount == 1",
+            "!hasReceivedGlucoseBatch",
+            "historyPreambleCount == 0",
+            "case observedHistoryPreamble",
+            "throw error",
+        ):
+            if required not in classifier_body:
+                error(f"foreground inbound classifier missing boundary: {required}")
+        for forbidden in (
+            ".writeValue(",
+            "requestEffectiveData(",
+            "connectKnownPeripheral(",
+            "scanForPeripherals(",
+        ):
+            if forbidden in classifier_body:
+                error(f"foreground inbound classifier contains live surface: {forbidden}")
+
+    core_bluetooth_path = transport_root / "GS3ForegroundCoreBluetoothTransport.swift"
+    core_bluetooth_body = core_bluetooth_path.read_text(
+        encoding="utf-8", errors="replace"
+    )
+    for required in (
+        "V3ForegroundInboundClassifier.classify(",
+        "inFlightCommand == .effectiveData",
+        "historyPreambleCount = 1",
+        "emit(.historyPreambleObserved)",
+    ):
+        if required not in core_bluetooth_body:
+            error(f"foreground CoreBluetooth preamble boundary missing: {required}")
 
     coordinator_path = transport_root / "GS3ForegroundSessionCoordinator.swift"
     coordinator_body = coordinator_path.read_text(encoding="utf-8", errors="replace")
@@ -590,7 +679,7 @@ def check_sensor_ownership_and_foreground_slice() -> None:
             error(f"durable time anchor missing boundary: {required}")
 
     app = ROOT / "Apps/Sugarman/SugarmanApp.swift"
-    bridge = ROOT / "Apps/Sugarman/ForegroundGS3SessionBridge.swift"
+    bridge = ROOT / "Sources/GS3Transport/GS3ForegroundSessionLifecycle.swift"
     if not bridge.is_file():
         error("missing normal-app foreground session bridge")
     else:
@@ -601,6 +690,7 @@ def check_sensor_ownership_and_foreground_slice() -> None:
             "func leaveForeground() async",
             "await starting.controller.foregroundEnded()",
             "await active.controller.foregroundEnded()",
+            "await controller.foregroundEnded()",
         ):
             if required not in bridge_body:
                 error(f"normal-app foreground bridge missing boundary: {required}")
@@ -614,7 +704,46 @@ def check_sensor_ownership_and_foreground_slice() -> None:
 
     app_body = app.read_text(encoding="utf-8", errors="replace")
     if app_body.count("installForegroundSessionFactory(") != 1:
-        error("normal-app bootstrap must not install a live foreground-session factory")
+        error("normal app must retain exactly one typed factory-install method")
+    if (
+        "#if SUGARMAN_DEVICE_TEST\n"
+        "import GS3DeviceProvisioning\n"
+        "import GS3DeviceTesting\n"
+        "import GS3Session\n"
+        "import PrivateDocumentImport\n"
+        "#endif"
+    ) not in app_body:
+        error("device-test provisioning import must remain compile-time guarded")
+    report_slice = app_body.split("var redactedDeviceTestReport: String", 1)
+    if len(report_slice) != 2:
+        error("missing payload-free device-test report boundary")
+    else:
+        report_body = report_slice[1].split(
+            "func refreshDeviceTestProvisioningAvailability()", 1
+        )[0]
+        if "deviceTestStatus" in report_body:
+            error("shareable device-test report must not include arbitrary UI status")
+    import_slice = app_body.split("func importDeviceTestProvisioning(", 1)
+    arm_slice = app_body.split("func armDeviceTest()", 1)
+    if len(import_slice) != 2 or len(arm_slice) != 2:
+        error("missing explicit device-test import and arm boundaries")
+    else:
+        inert_import_body = import_slice[1].split("func armDeviceTest()", 1)[0]
+        for forbidden in (
+            "installForegroundSessionFactory(",
+            "enterForeground()",
+            "makeController(",
+        ):
+            if forbidden in inert_import_body:
+                error(f"private import must remain Bluetooth-inert: {forbidden}")
+        arm_body = arm_slice[1].split("func stopDeviceTest()", 1)[0]
+        for required in (
+            "provisioning.makeManagedForegroundDeviceTestController",
+            "foregroundSessionBridge.install { controller }",
+            "foregroundSessionBridge.enterForeground()",
+        ):
+            if required not in arm_body:
+                error(f"explicit device-test arm boundary missing: {required}")
     main_app_body = "\n".join(
         path.read_text(encoding="utf-8", errors="replace")
         for path in sorted((ROOT / "Apps/Sugarman").glob("*.swift"))
@@ -626,6 +755,199 @@ def check_sensor_ownership_and_foreground_slice() -> None:
     ):
         if forbidden in main_app_body:
             error(f"normal-app release sources provision forbidden live surface: {forbidden}")
+
+    release_target = project.split("  Sugarman:\n", 1)[1].split(
+        "  SugarmanDeviceTest:\n", 1
+    )[0]
+    device_test_target = project.split("  SugarmanDeviceTest:\n", 1)[1].split(
+        "  SugarmanProbe:\n", 1
+    )[0]
+    if "GS3DeviceProvisioning" in release_target:
+        error("release Sugarman target must not link device-only provisioning")
+    if "GS3DeviceTesting" in release_target:
+        error("release Sugarman target must not link device-test execution surfaces")
+    if "PrivateDocumentImport" in release_target:
+        error("release Sugarman target must not link private document importing")
+    for required in (
+        "product: GS3DeviceProvisioning",
+        "product: GS3DeviceTesting",
+        "SUGARMAN_DEVICE_TEST",
+        "PRODUCT_BUNDLE_IDENTIFIER: app.sugarman.ios.devicetest",
+    ):
+        if required not in device_test_target:
+            error(f"device-test target missing isolation boundary: {required}")
+
+    provisioning_root = ROOT / "Sources/GS3DeviceProvisioning"
+    if not provisioning_root.is_dir():
+        error("missing device-only GS3 provisioning module")
+    else:
+        provisioning_body = "\n".join(
+            path.read_text(encoding="utf-8", errors="replace")
+            for path in sorted(provisioning_root.glob("*.swift"))
+        )
+        for required in (
+            "DeviceOnlyGS3Provisioning",
+            "KeychainGS3DeviceProvisioningStore",
+            "kSecAttrAccessibleWhenUnlockedThisDeviceOnly",
+            "kSecAttrSynchronizable",
+            "query[kSecReturnData as String] = true",
+            "GS3DeviceProvisioningDocument",
+            "unexpectedDocumentField",
+            "replacementRequiresDeletion",
+            "GS3ForegroundSessionFactory.makeKnownPeripheralController(",
+            "captureBackedStart: CaptureBackedHistoryStart(",
+            "StoredGS3DeviceProvisioning(peripheral: redacted",
+        ):
+            if required not in provisioning_body:
+                error(f"device-only provisioning missing boundary: {required}")
+        for forbidden in (
+            "import CoreBluetooth",
+            ".writeValue(",
+            "scanForPeripherals(",
+            "activateSensor(",
+            "resetSensor(",
+            "writeSecretKey(",
+            "bindAccountOnSensor(",
+            "baseQuery(returnData:",
+        ):
+            if forbidden in provisioning_body:
+                error(f"device-only provisioning contains forbidden surface: {forbidden}")
+
+    package_text = (ROOT / "Package.swift").read_text(
+        encoding="utf-8", errors="replace"
+    )
+    if '.library(name: "GS3DeviceProvisioning"' not in package_text:
+        error("device-only provisioning must remain a separate package product")
+    if '.library(name: "GS3DeviceTesting"' not in package_text:
+        error("shared device-test execution boundaries must be a separate package product")
+
+    device_testing_root = ROOT / "Sources/GS3DeviceTesting"
+    device_testing_body = "\n".join(
+        path.read_text(encoding="utf-8", errors="replace")
+        for path in sorted(device_testing_root.glob("*.swift"))
+    )
+    for required in (
+        "GS3ManagedForegroundDeviceTestController",
+        "injectLinkLoss() async -> Bool",
+        "makeManagedForegroundDeviceTestController",
+    ):
+        if required not in device_testing_body:
+            error(f"device-test reconnect harness missing boundary: {required}")
+    for forbidden in (
+        ".writeValue(",
+        "V3ActiveSessionMaterial(",
+        "EncodedFrame(",
+        "Data(frame",
+    ):
+        if forbidden in device_testing_body:
+            error(f"device-test reconnect harness contains write surface: {forbidden}")
+
+    for required in (
+        "package protocol GS3ForegroundDeviceTestControlling",
+        "package protocol GS3ForegroundLinkLossInjecting",
+        "guard self.phase == .streaming",
+        "central.cancelPeripheralConnection(peripheral)",
+        "private var linkLossWasInjected = false",
+    ):
+        if required not in foreground_api_body + core_bluetooth_body:
+            error(f"device-test link-loss injection missing boundary: {required}")
+
+    mac_target = project.split("  SugarmanMacDeviceTest:\n", 1)[1]
+    for required in (
+        "platform: macOS",
+        "PRODUCT_BUNDLE_IDENTIFIER: app.sugarman.macos.devicetest",
+        "product: GS3DeviceProvisioning",
+        "product: GS3DeviceTesting",
+        "com.apple.security.device.bluetooth: true",
+        "com.apple.security.files.user-selected.read-only: true",
+    ):
+        if required not in mac_target:
+            error(f"macOS Device Test missing isolated safety boundary: {required}")
+
+    private_import = ROOT / "Sources/PrivateDocumentImport/PrivateDocumentImportBuffer.swift"
+    if not private_import.is_file():
+        error("missing shared private document import buffer")
+    else:
+        private_import_body = private_import.read_text(
+            encoding="utf-8", errors="replace"
+        )
+        for required in (
+            "NSMutableData(contentsOf: url, options: [])",
+            "bytesNoCopy:",
+            "deallocator: .none",
+            "#isolation",
+            "resetBytes",
+            "deinit",
+        ):
+            if required not in private_import_body:
+                error(f"private document import buffer missing boundary: {required}")
+        if "mappedIfSafe" in private_import_body:
+            error("private document import buffer must not use memory-mapped storage")
+    if '.library(name: "PrivateDocumentImport"' not in package_text:
+        error("private document importing must remain a separate package product")
+    if project.count("product: PrivateDocumentImport") != 3:
+        error("only iOS Device Test, Probe, and macOS Device Test may import private documents")
+    for relative in (
+        "Apps/Sugarman/SugarmanApp.swift",
+        "Apps/SugarmanProbe/ProbeAppModel.swift",
+        "Apps/SugarmanMacDeviceTest/MacDeviceTestModel.swift",
+    ):
+        import_body = (ROOT / relative).read_text(encoding="utf-8", errors="replace")
+        if "PrivateDocumentImportBuffer" not in import_body:
+            error(f"private JSON importer missing owned buffer: {relative}")
+        if "mappedIfSafe" in import_body:
+            error(f"private JSON importer must not map files: {relative}")
+
+    device_test_view = ROOT / "Apps/Sugarman/DeviceTestProvisioningSection.swift"
+    if not device_test_view.is_file():
+        error("missing compile-time guarded device-test provisioning UI")
+    else:
+        view_body = device_test_view.read_text(encoding="utf-8", errors="replace")
+        for required in (
+            "#if SUGARMAN_DEVICE_TEST",
+            "Importing material does not start Bluetooth",
+            "Use existing Sugarman Probe JSON",
+            "Scan only; do not connect",
+            "showArmConfirmation",
+            "Arm managed foreground test",
+            "Inject one link loss",
+            "Share redacted lifecycle report",
+        ):
+            if required not in view_body:
+                error(f"device-test UI missing explicit safety boundary: {required}")
+
+    mac_model = ROOT / "Apps/SugarmanMacDeviceTest/MacDeviceTestModel.swift"
+    mac_view = ROOT / "Apps/SugarmanMacDeviceTest/MacDeviceTestView.swift"
+    if not mac_model.is_file() or not mac_view.is_file():
+        error("missing isolated macOS Device Test application shell")
+    else:
+        mac_body = mac_model.read_text(encoding="utf-8", errors="replace")
+        mac_ui = mac_view.read_text(encoding="utf-8", errors="replace")
+        for required in (
+            "GS3DeviceTestExternalOwnershipGate",
+            "confirmAndRunProbeBridgeScan()",
+            "confirmAndArm()",
+            "GS3ForegroundSessionLifecycle",
+            "provisioning.makeManagedForegroundDeviceTestController(",
+            "PrivateDocumentImportBuffer",
+            "maximumLifecycleLineCount = 128",
+        ):
+            if required not in mac_body:
+                error(f"macOS Device Test model missing safety boundary: {required}")
+        redacted_report_body = mac_body.split("var redactedReport: String", 1)[1].split(
+            "func prepare()", 1
+        )[0]
+        if "status" in redacted_report_body:
+            error("macOS redacted report must not include free-form UI status text")
+        for required in (
+            "CoreBluetooth identifiers are local to each host",
+            "Confirm release and scan only",
+            "Confirm release, arm, and connect",
+            "Inject one link loss",
+            "Share redacted report",
+        ):
+            if required not in mac_ui:
+                error(f"macOS Device Test UI missing explicit gate: {required}")
 
 def check_private_evidence_gitignore() -> None:
     gi = ROOT / ".gitignore"

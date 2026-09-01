@@ -24,6 +24,8 @@ package enum GS3ForegroundTransportEvent: Sendable, Equatable {
     case authenticationAccepted
     case authenticationRejected
     case historyWriteAcknowledged
+    case historyPreambleObserved
+    case protocolRejected(GS3ProtocolRejection)
     case historyAcknowledged
     case glucoseBatch(V3GlucoseBatch, receivedAt: Date)
     case transportDisconnected
@@ -43,6 +45,8 @@ extension GS3ForegroundTransportEvent:
         case .authenticationAccepted: "authenticationAccepted"
         case .authenticationRejected: "authenticationRejected"
         case .historyWriteAcknowledged: "historyWriteAcknowledged"
+        case .historyPreambleObserved: "historyPreambleObserved"
+        case .protocolRejected(let rejection): "protocolRejected(\(rejection))"
         case .historyAcknowledged: "historyAcknowledged"
         case .glucoseBatch(let batch, _):
             "glucoseBatch(source: \(batch.source), recordCount: \(batch.records.count), payload: omitted)"
@@ -258,4 +262,19 @@ public protocol GS3ForegroundSessionControlling: Sendable {
     func stop() async
     func foregroundEnded() async
     func currentPhase() async -> GS3ForegroundPhase
+}
+
+/// Package-only controller surface used by the isolated Device Test targets
+/// to exercise the real foreground reconnect path without changing Bluetooth,
+/// network, or security settings. The normal app cannot import this surface.
+package protocol GS3ForegroundDeviceTestControlling:
+    GS3ForegroundSessionControlling
+{
+    func injectLinkLossForDeviceTesting() async -> Bool
+}
+
+/// Package-only transport seam for one bounded cancellation of an already-live
+/// CoreBluetooth link. It cannot write a characteristic or carry packet data.
+package protocol GS3ForegroundLinkLossInjecting: Sendable {
+    func injectLinkLossForDeviceTesting() async -> Bool
 }

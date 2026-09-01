@@ -1,0 +1,252 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Sugarman contributors
+
+#if SUGARMAN_DEVICE_TEST
+import GS3DeviceProvisioning
+import SugarmanDomain
+import SwiftUI
+
+struct DeviceTestProvisioningSection: View {
+    @Environment(AppModel.self) private var model
+    @State private var selectedIdentityID: UUID?
+    @State private var showArmConfirmation = false
+    @State private var showProbeBridgeScanConfirmation = false
+    @State private var showDeleteConfirmation = false
+
+    let requestFileImport: (GS3DeviceProvisioningFileImportRequest) -> Void
+
+    var body: some View {
+        Section("Managed foreground device test") {
+            Text(
+                "Developer-only boundary for one owned, already-active V3 sensor. "
+                    + "Importing material does not start Bluetooth. A separate explicit "
+                    + "arm confirmation is required for every app process."
+            )
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+
+            if model.identities.isEmpty {
+                Text("Store a redacted owned-sensor identity above before importing material.")
+                    .foregroundStyle(.secondary)
+            } else {
+                Picker("Linked stored identity", selection: $selectedIdentityID) {
+                    Text("Select an identity").tag(nil as UUID?)
+                    ForEach(model.identities) { identity in
+                        Text(identityLabel(identity)).tag(identity.id as UUID?)
+                    }
+                }
+                .disabled(model.hasDeviceTestProvisioning || model.isDeviceTestArmed)
+            }
+
+            LabeledContent(
+                "This-device-only Keychain",
+                value: model.hasDeviceTestProvisioning ? "Available" : "Missing"
+            )
+
+            if let linked = linkedIdentity {
+                LabeledContent("Linked sensor", value: identityLabel(linked))
+            }
+
+            Button("Import managed provisioning JSON", systemImage: "lock.doc") {
+                guard let selectedIdentityID else { return }
+                requestFileImport(
+                    GS3DeviceProvisioningFileImportRequest(
+                        kind: .managedProvisioning,
+                        linkedSensorID: selectedIdentityID
+                    )
+                )
+            }
+            .accessibilityIdentifier("device-test-import-managed-json")
+            .disabled(
+                selectedIdentityID == nil
+                    || model.hasDeviceTestProvisioning
+                    || model.isDeviceTestArmed
+                    || model.hasDeviceTestProbeBridgePending
+                    || model.isDeviceTestProbeBridgeScanning
+            )
+
+            if !model.hasDeviceTestProvisioning {
+                Button(
+                    "Use existing Sugarman Probe JSON",
+                    systemImage: "arrow.triangle.2.circlepath.doc.on.clipboard"
+                ) {
+                    guard let selectedIdentityID else { return }
+                    requestFileImport(
+                        GS3DeviceProvisioningFileImportRequest(
+                            kind: .existingProbe,
+                            linkedSensorID: selectedIdentityID
+                        )
+                    )
+                }
+                .accessibilityIdentifier("device-test-import-probe-json")
+                .disabled(
+                    selectedIdentityID == nil
+                        || model.isDeviceTestArmed
+                        || model.hasDeviceTestProbeBridgePending
+                        || model.isDeviceTestProbeBridgeScanning
+                )
+            }
+
+            if model.hasDeviceTestProbeBridgePending {
+                LabeledContent(
+                    "Probe JSON handoff",
+                    value: model.isDeviceTestProbeBridgeScanning
+                        ? "Scanning only"
+                        : "Ready in memory"
+                )
+                if model.isDeviceTestProbeBridgeScanning {
+                    ProgressView()
+                    Button("Stop provisioning scan", role: .cancel) {
+                        model.cancelDeviceTestProbeBridgeScan()
+                    }
+                } else {
+                    Button(
+                        "Run one scan-only provisioning lookup",
+                        systemImage: "dot.radiowaves.left.and.right"
+                    ) {
+                        showProbeBridgeScanConfirmation = true
+                    }
+                    Button("Discard pending Probe material", role: .destructive) {
+                        Task { await model.discardDeviceTestProbeBridge() }
+                    }
+                }
+            }
+
+            if model.hasDeviceTestProvisioning {
+                if model.isDeviceTestArmed {
+                    Button("Stop and disconnect", role: .cancel) {
+                        Task { await model.stopDeviceTest() }
+                    }
+                    Button(
+                        "Inject one link loss",
+                        systemImage: "bolt.horizontal.circle"
+                    ) {
+                        Task { await model.injectDeviceTestLinkLoss() }
+                    }
+                    .disabled(
+                        model.deviceTestPhase != .live
+                            || model.isDeviceTestLinkLossInjectionPending
+                    )
+                } else {
+                    Button("Arm managed foreground test", systemImage: "antenna.radiowaves.left.and.right") {
+                        showArmConfirmation = true
+                    }
+                    .disabled(model.isSyntheticDemo)
+                }
+
+                Button("Delete private provisioning material", role: .destructive) {
+                    showDeleteConfirmation = true
+                }
+                .disabled(model.isDeviceTestArmed)
+            }
+
+            Text(model.deviceTestStatus)
+                .font(.footnote)
+
+            if !model.deviceTestLifecycleLines.isEmpty {
+                Text(
+                    "Payload-free lifecycle only. Sensor identifiers, record indexes, "
+                        + "packet bodies, arbitrary command bytes, private material, "
+                        + "glucose values, and imported JSON contents or hashes are omitted."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+                ForEach(
+                    Array(model.deviceTestLifecycleLines.enumerated()),
+                    id: \.offset
+                ) { _, line in
+                    Text(line)
+                        .font(.caption.monospaced())
+                        .textSelection(.enabled)
+                }
+
+                ShareLink(
+                    item: model.redactedDeviceTestReport,
+                    subject: Text("Sugarman managed foreground device-test diagnostics")
+                ) {
+                    Label("Share redacted lifecycle report", systemImage: "square.and.arrow.up")
+                }
+            }
+        }
+        .task {
+            await model.refreshDeviceTestProvisioningAvailability()
+            reconcileSelectedIdentity()
+        }
+        .onChange(of: model.identities.map(\.id), initial: true) { _, _ in
+            reconcileSelectedIdentity()
+        }
+        .onChange(of: model.deviceTestLinkedSensorID, initial: true) { _, _ in
+            reconcileSelectedIdentity()
+        }
+        .confirmationDialog(
+            "Run one scan-only provisioning lookup?",
+            isPresented: $showProbeBridgeScanConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Scan only; do not connect") {
+                model.confirmExclusiveAccessForDeviceTest()
+                Task { await model.runDeviceTestProbeBridgeScan() }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(
+                "First release the owned sensor from every phone, then stop the normal "
+                    + "Sugarman app and Sugarman Probe. This holds the shared process-owner "
+                    + "lease and scans for ten seconds using "
+                    + "the exact private name from the Probe JSON. It does not connect, "
+                    + "discover GATT, subscribe, authenticate, request history, or write."
+            )
+        }
+        .confirmationDialog(
+            "Arm the managed foreground GS3 test?",
+            isPresented: $showArmConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Arm and connect while foregrounded") {
+                model.confirmExclusiveAccessForDeviceTest()
+                Task { await model.armDeviceTest() }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(
+                "First release the owned sensor from the official Android app and ensure "
+                    + "other Sugarman targets are stopped. Each physical connection may "
+                    + "subscribe, send exactly one typed authentication request and one "
+                    + "typed effective-data request, then use bounded single-flight "
+                    + "foreground reconnect. Unknown or malformed commands fail closed."
+            )
+        }
+        .confirmationDialog(
+            "Delete private provisioning material from this iPhone?",
+            isPresented: $showDeleteConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Delete private material", role: .destructive) {
+                Task { await model.deleteDeviceTestProvisioning() }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Local redacted identities and previously collected samples are retained.")
+        }
+    }
+
+    private var linkedIdentity: SensorIdentity? {
+        guard let linked = model.deviceTestLinkedSensorID else { return nil }
+        return model.identities.first { $0.id == linked }
+    }
+
+    private func reconcileSelectedIdentity() {
+        selectedIdentityID = GS3DeviceProvisioningIdentitySelection.resolve(
+            current: selectedIdentityID,
+            linked: model.deviceTestLinkedSensorID,
+            available: model.identities.map(\.id)
+        )
+    }
+
+    private func identityLabel(_ identity: SensorIdentity) -> String {
+        let product = identity.productName ?? "Owned sensor"
+        return "\(product) · \(identity.redactedSerial)"
+    }
+}
+#endif

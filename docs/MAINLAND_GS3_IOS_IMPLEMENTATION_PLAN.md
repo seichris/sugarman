@@ -1,6 +1,6 @@
 # Mainland China SiBionics GS3 support for Sugarman
 
-- Status: P1/P2 and one-value already-active iPhone interoperability passed for one owned sensor on 2026-08-30; official Android handback also passed. Five-reading durability, zero-unknown-command behavior, iPhone reconnect, timestamp parity, native state mapping, and sensor-index wrap remain incomplete. The production branch now contains a host-testable ownership/reconnect/history coordinator and a typed, known-peer foreground CoreBluetooth adapter, but the normal release bootstrap installs no controller factory or active-session material. Decoded values remain `questionable` until state mapping is physically verified. A signed exact artifact and fresh physical confirmation still gate any execution. See [`GS3_FOREGROUND_PRODUCTION_DESIGN.md`](GS3_FOREGROUND_PRODUCTION_DESIGN.md). Fresh activation remains unresolved.
+- Status: P1/P2 and one-value already-active iPhone interoperability passed for one owned sensor on 2026-08-30; official Android handback also passed. Typed payload-free diagnostics and an exact bounded receive-only preamble policy subsequently isolated and passed the authenticated/history-dispatch race. The isolated signed macOS Device Test completed managed history/live synchronization, five consecutive approximately 60-second live commits, and one Device-Test-only injected-link-loss reconnect with fresh subscription/authentication/history, inclusive-overlap deduplication, zero gaps, and correct stop ordering. The exact signed iPhone Device Test at commit `1bc52f3` has now passed ten consecutive exact 60-second one-sample live commits plus the same injected-reconnect, fresh-auth/history, duplicate-only overlap, zero-gap, return-to-live, and controlled-stop path. The normal release bootstrap still installs no controller factory or active-session material. The predeclared private official-app timestamp/value comparison, final handback, spontaneous post-live RF-loss classification, final `0x36` product meaning, native state mapping, sensor-index wrap, and fresh activation remain incomplete. A signed exact artifact and fresh device/action confirmation gate every physical run. See [`GS3_FOREGROUND_PRODUCTION_DESIGN.md`](GS3_FOREGROUND_PRODUCTION_DESIGN.md), [`GS3_DEVICE_TEST_PROVISIONING.md`](GS3_DEVICE_TEST_PROVISIONING.md), [`GS3_DEVICE_TEST_PHYSICAL_RESULT_2026-09-01.md`](GS3_DEVICE_TEST_PHYSICAL_RESULT_2026-09-01.md), and [`MACOS_DEVICE_TEST.md`](MACOS_DEVICE_TEST.md).
 - Date: 2026-08-28
 - Product: Sugarman — glucose monitoring and fueling insight for endurance athletes
 
@@ -890,8 +890,11 @@ For every claimed supported firmware/SKU:
 - onboarding identifies the sensor without unsafe fallback;
 - authentication/binding succeeds only with the legitimate owner identity;
 - the command audit shows no unexplained write;
-- at least 99% of expected five-minute samples are retained while the phone is
-  in range and the app has not been explicitly force-quit;
+- at least 99% of samples expected at the cadence verified for that exact
+  firmware/SKU are retained while the phone is in range and the app has not
+  been explicitly force-quit; the owned Mainland V3 capture currently supports
+  an approximately one-minute cadence, while the generic GS3 product material's
+  five-minute claim remains a separate acceptance input;
 - recoverable disconnects backfill gaps without duplicates;
 - aligned samples match official app/export values after documented unit
   rounding, with every discrepancy investigated;

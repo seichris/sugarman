@@ -13,7 +13,8 @@ import SugarmanStore
 /// sensor. It has no scan API, restoration identifier, activation, binding,
 /// reset, unacknowledged write, or arbitrary-frame entry point.
 package final class GS3ForegroundCoreBluetoothTransport:
-    NSObject, GS3ForegroundTransporting, @unchecked Sendable, CustomReflectable
+    NSObject, GS3ForegroundTransporting, GS3ForegroundLinkLossInjecting,
+    @unchecked Sendable, CustomReflectable
 {
     private enum Phase: Equatable {
         case idle
@@ -72,6 +73,9 @@ package final class GS3ForegroundCoreBluetoothTransport:
     private var effectiveDataWriteAcknowledged = false
     private var historyControlAcknowledged = false
     private var historyReadyEmitted = false
+    private var hasReceivedGlucoseBatch = false
+    private var historyPreambleCount = 0
+    private var protocolRejectionReported = false
 
     package init(
         peripheralID: UUID,
@@ -126,7 +130,7 @@ package final class GS3ForegroundCoreBluetoothTransport:
     public func connectKnownPeripheral() async {
         await enqueue {
             guard self.phase == .idle else {
-                self.failLocked(.protocolViolation)
+                self.rejectLocked(.stateInvariant)
                 return
             }
             self.resetConnectionStateLocked()
@@ -168,7 +172,7 @@ package final class GS3ForegroundCoreBluetoothTransport:
     public func discoverGS3Service() async {
         await enqueue {
             guard self.phase == .connected, let peripheral = self.peripheral else {
-                self.failLocked(.protocolViolation)
+                self.rejectLocked(.stateInvariant)
                 return
             }
             self.phase = .discoveringService
@@ -182,7 +186,7 @@ package final class GS3ForegroundCoreBluetoothTransport:
             guard self.phase == .serviceDiscovered,
                   let peripheral = self.peripheral,
                   let service = self.service else {
-                self.failLocked(.protocolViolation)
+                self.rejectLocked(.stateInvariant)
                 return
             }
             self.phase = .discoveringCharacteristics
@@ -199,7 +203,7 @@ package final class GS3ForegroundCoreBluetoothTransport:
             guard self.phase == .characteristicsDiscovered,
                   let peripheral = self.peripheral,
                   let characteristic = self.notificationCharacteristic else {
-                self.failLocked(.protocolViolation)
+                self.rejectLocked(.stateInvariant)
                 return
             }
             self.phase = .subscribing
@@ -214,13 +218,13 @@ package final class GS3ForegroundCoreBluetoothTransport:
                   self.authenticationWriteCallCount == 0,
                   self.effectiveDataWriteCallCount == 0,
                   self.inFlightCommand == nil else {
-                self.failLocked(.protocolViolation)
+                self.rejectLocked(.requestInvariant)
                 return
             }
             do {
                 let frame = try self.material.authenticationFrame()
                 guard frame.byteCount == 38 else {
-                    self.failLocked(.protocolViolation)
+                    self.rejectLocked(.requestInvariant)
                     return
                 }
                 self.phase = .authenticating
@@ -231,7 +235,7 @@ package final class GS3ForegroundCoreBluetoothTransport:
                     )
                 }
             } catch {
-                self.failLocked(.protocolViolation)
+                self.rejectLocked(.requestInvariant)
             }
         }
     }
@@ -242,7 +246,7 @@ package final class GS3ForegroundCoreBluetoothTransport:
                   self.authenticationAccepted,
                   self.effectiveDataWriteCallCount == 0,
                   self.queuedHistoryPlan == nil else {
-                self.failLocked(.protocolViolation)
+                self.rejectLocked(.requestInvariant)
                 return
             }
             if self.inFlightCommand == .authentication {
@@ -250,10 +254,32 @@ package final class GS3ForegroundCoreBluetoothTransport:
                 return
             }
             guard self.inFlightCommand == nil else {
-                self.failLocked(.protocolViolation)
+                self.rejectLocked(.requestInvariant)
                 return
             }
             self.transmitEffectiveDataLocked(plan)
+        }
+    }
+
+    package func injectLinkLossForDeviceTesting() async -> Bool {
+        await withCheckedContinuation { continuation in
+            queue.async {
+                guard self.phase == .streaming,
+                      let peripheral = self.peripheral,
+                      peripheral.state == .connected,
+                      let central = self.central else {
+                    continuation.resume(returning: false)
+                    return
+                }
+                self.cancelTimeoutsLocked()
+                self.pendingDisconnectReason = .linkLoss
+                self.controlledDisconnect = false
+                self.queuedHistoryPlan = nil
+                self.phase = .disconnecting
+                self.scheduleDisconnectCompletionTimeoutLocked()
+                central.cancelPeripheralConnection(peripheral)
+                continuation.resume(returning: true)
+            }
         }
     }
 
@@ -313,7 +339,7 @@ package final class GS3ForegroundCoreBluetoothTransport:
             guard frame.byteCount == 7,
                   authenticationWriteCallCount == 1,
                   effectiveDataWriteCallCount == 0 else {
-                failLocked(.protocolViolation)
+                rejectLocked(.requestInvariant)
                 return
             }
             phase = .awaitingHistory
@@ -322,7 +348,7 @@ package final class GS3ForegroundCoreBluetoothTransport:
                 scheduleResponseTimeoutLocked(after: synchronizationTimeout)
             }
         } catch {
-            failLocked(.protocolViolation)
+            rejectLocked(.requestInvariant)
         }
     }
 
@@ -337,7 +363,7 @@ package final class GS3ForegroundCoreBluetoothTransport:
               characteristic.uuid == Self.transmissionUUID,
               characteristic.properties.contains(.write),
               inFlightCommand == nil else {
-            failLocked(.protocolViolation)
+            rejectLocked(.stateInvariant)
             return false
         }
         inFlightCommand = command
@@ -350,13 +376,21 @@ package final class GS3ForegroundCoreBluetoothTransport:
         return true
     }
 
-    private func handleControlLocked(_ response: V3ControlResponse) {
+    private func handleControlLocked(
+        _ response: V3ControlResponse,
+        frameByteCount: Int,
+        timingWindow: GS3ProtocolTimingWindow
+    ) {
         switch response {
         case .authenticationAccepted:
             guard phase == .authenticating,
                   authenticationWriteCallCount == 1,
                   !authenticationAccepted else {
-                failLocked(.protocolViolation)
+                rejectLocked(
+                    .stateInvariant,
+                    frameByteCount: frameByteCount,
+                    timingWindow: timingWindow
+                )
                 return
             }
             authenticationAccepted = true
@@ -366,7 +400,11 @@ package final class GS3ForegroundCoreBluetoothTransport:
 
         case .authenticationRejected:
             guard phase == .authenticating else {
-                failLocked(.protocolViolation)
+                rejectLocked(
+                    .stateInvariant,
+                    frameByteCount: frameByteCount,
+                    timingWindow: timingWindow
+                )
                 return
             }
             cancelResponseTimeoutLocked()
@@ -378,7 +416,11 @@ package final class GS3ForegroundCoreBluetoothTransport:
                   !historyControlAcknowledged,
                   code == 0x01,
                   detail == 0x00 else {
-                failLocked(.protocolViolation)
+                rejectLocked(
+                    .stateInvariant,
+                    frameByteCount: frameByteCount,
+                    timingWindow: timingWindow
+                )
                 return
             }
             historyControlAcknowledged = true
@@ -396,22 +438,87 @@ package final class GS3ForegroundCoreBluetoothTransport:
         emit(.historyAcknowledged)
     }
 
-    private func handleGlucoseLocked(_ batch: V3GlucoseBatch) {
+    private func handleGlucoseLocked(
+        _ batch: V3GlucoseBatch,
+        frameByteCount: Int,
+        timingWindow: GS3ProtocolTimingWindow
+    ) {
         guard authenticationAccepted,
               effectiveDataWriteCallCount == 1,
               phase == .awaitingHistory || phase == .streaming else {
-            failLocked(.protocolViolation)
+            rejectLocked(
+                .stateInvariant,
+                frameByteCount: frameByteCount,
+                timingWindow: timingWindow
+            )
             return
         }
         if batch.source == .liveNotification {
             guard historyReadyEmitted else {
-                failLocked(.protocolViolation)
+                rejectLocked(
+                    .stateInvariant,
+                    frameByteCount: frameByteCount,
+                    timingWindow: timingWindow
+                )
                 return
             }
             phase = .streaming
             cancelResponseTimeoutLocked()
         }
+        hasReceivedGlucoseBatch = true
         emit(.glucoseBatch(batch, receivedAt: receiptClock()))
+    }
+
+    private func rejectLocked(
+        _ origin: GS3ProtocolRejectionOrigin,
+        frameByteCount: Int? = nil,
+        timingWindow: GS3ProtocolTimingWindow? = nil,
+        frameCategory: GS3ProtocolFrameCategory? = nil
+    ) {
+        if !protocolRejectionReported {
+            protocolRejectionReported = true
+            let window = timingWindow ?? diagnosticTimingWindowLocked()
+            let rejection: GS3ProtocolRejection
+            if let frameByteCount {
+                rejection = GS3ProtocolRejection(
+                    origin: origin,
+                    frameCategory: frameCategory
+                        ?? .classify(byteCount: frameByteCount),
+                    frameByteCount: frameByteCount,
+                    timingWindow: window
+                )
+            } else {
+                rejection = GS3ProtocolRejection(
+                    origin: origin,
+                    frameCategory: frameCategory ?? .unavailable,
+                    timingWindow: window
+                )
+            }
+            emit(.protocolRejected(rejection))
+        }
+        failLocked(.protocolViolation)
+    }
+
+    private func diagnosticTimingWindowLocked() -> GS3ProtocolTimingWindow {
+        switch phase {
+        case .idle, .waitingForPower, .connecting, .connected,
+             .discoveringService, .serviceDiscovered,
+             .discoveringCharacteristics, .characteristicsDiscovered,
+             .subscribing, .subscribed:
+            .connectionSetup
+        case .authenticating:
+            .authentication
+        case .authenticated:
+            .authenticated
+        case .awaitingHistory:
+            inFlightCommand == .effectiveData && !effectiveDataWriteAcknowledged
+                ? .historyWritePending
+                : .historyResponse
+        case .streaming:
+            .streaming
+        case .disconnecting:
+            .disconnecting
+        }
     }
 
     private func failLocked(_ reason: GS3DisconnectReason) {
@@ -540,6 +647,9 @@ package final class GS3ForegroundCoreBluetoothTransport:
         effectiveDataWriteAcknowledged = false
         historyControlAcknowledged = false
         historyReadyEmitted = false
+        hasReceivedGlucoseBatch = false
+        historyPreambleCount = 0
+        protocolRejectionReported = false
     }
 }
 
@@ -564,6 +674,69 @@ public enum GS3ForegroundSessionFactory: Sendable {
             transport: transport,
             callbacks: callbacks
         )
+    }
+
+    package static func makeKnownPeripheralDeviceTestController(
+        configuration: GS3ForegroundSessionConfiguration,
+        store: any SugarmanStoring,
+        peripheralID: UUID,
+        material: V3ActiveSessionMaterial,
+        callbacks: GS3ForegroundSessionCallbacks = GS3ForegroundSessionCallbacks()
+    ) -> any GS3ForegroundDeviceTestControlling {
+        let transport = GS3ForegroundCoreBluetoothTransport(
+            peripheralID: peripheralID,
+            material: material
+        )
+        let coordinator = GS3ForegroundSessionCoordinator(
+            configuration: configuration,
+            store: store,
+            transport: transport,
+            callbacks: callbacks
+        )
+        return GS3ForegroundDeviceTestController(
+            coordinator: coordinator,
+            linkLossInjector: transport
+        )
+    }
+}
+
+package actor GS3ForegroundDeviceTestController:
+    GS3ForegroundDeviceTestControlling
+{
+    private let coordinator: any GS3ForegroundSessionControlling
+    private let linkLossInjector: any GS3ForegroundLinkLossInjecting
+    private var linkLossWasInjected = false
+
+    package init(
+        coordinator: any GS3ForegroundSessionControlling,
+        linkLossInjector: any GS3ForegroundLinkLossInjecting
+    ) {
+        self.coordinator = coordinator
+        self.linkLossInjector = linkLossInjector
+    }
+
+    public func start() async throws {
+        try await coordinator.start()
+    }
+
+    public func stop() async {
+        await coordinator.stop()
+    }
+
+    public func foregroundEnded() async {
+        await coordinator.foregroundEnded()
+    }
+
+    public func currentPhase() async -> GS3ForegroundPhase {
+        await coordinator.currentPhase()
+    }
+
+    package func injectLinkLossForDeviceTesting() async -> Bool {
+        guard !linkLossWasInjected,
+              await coordinator.currentPhase() == .live else { return false }
+        let accepted = await linkLossInjector.injectLinkLossForDeviceTesting()
+        if accepted { linkLossWasInjected = true }
+        return accepted
     }
 }
 
@@ -637,7 +810,7 @@ extension GS3ForegroundCoreBluetoothTransport: CBPeripheralDelegate {
         guard let service = peripheral.services?.first(where: {
             $0.uuid == Self.serviceUUID
         }) else {
-            failLocked(.protocolViolation)
+            rejectLocked(.stateInvariant)
             return
         }
         cancelOperationTimeoutLocked()
@@ -669,7 +842,7 @@ extension GS3ForegroundCoreBluetoothTransport: CBPeripheralDelegate {
         }
         guard notificationCharacteristic != nil,
               transmissionCharacteristic != nil else {
-            failLocked(.protocolViolation)
+            rejectLocked(.stateInvariant)
             return
         }
         cancelOperationTimeoutLocked()
@@ -691,7 +864,7 @@ extension GS3ForegroundCoreBluetoothTransport: CBPeripheralDelegate {
             return
         }
         guard characteristic.isNotifying else {
-            failLocked(.protocolViolation)
+            rejectLocked(.stateInvariant)
             return
         }
         cancelOperationTimeoutLocked()
@@ -709,7 +882,7 @@ extension GS3ForegroundCoreBluetoothTransport: CBPeripheralDelegate {
         guard phase != .disconnecting else { return }
         guard characteristic.uuid == Self.transmissionUUID,
               let completed = inFlightCommand else {
-            failLocked(.protocolViolation)
+            rejectLocked(.writeCallbackInvariant)
             return
         }
         if let error {
@@ -746,20 +919,61 @@ extension GS3ForegroundCoreBluetoothTransport: CBPeripheralDelegate {
             return
         }
         guard let value = characteristic.value else {
-            failLocked(.protocolViolation)
+            rejectLocked(
+                .inboundClassification,
+                frameCategory: .missing
+            )
             return
         }
         do {
             let frame = EncodedFrame(bytes: [UInt8](value))
-            if frame.byteCount == 5 {
-                handleControlLocked(try material.decodeControl(frame))
-            } else {
-                handleGlucoseLocked(try material.decodeGlucose(frame))
+            let timingWindow = diagnosticTimingWindowLocked()
+            let context = V3ForegroundInboundContext(
+                isAwaitingHistory: phase == .awaitingHistory,
+                authenticationAccepted: authenticationAccepted,
+                historyWriteCallCount: effectiveDataWriteCallCount,
+                historyWriteAcknowledgementPending:
+                    inFlightCommand == .effectiveData
+                        && !effectiveDataWriteAcknowledged,
+                historyControlAcknowledged: historyControlAcknowledged,
+                historyReadyEmitted: historyReadyEmitted,
+                hasReceivedGlucoseBatch: hasReceivedGlucoseBatch,
+                historyPreambleCount: historyPreambleCount
+            )
+            switch try V3ForegroundInboundClassifier.classify(
+                frame,
+                using: material,
+                context: context
+            ) {
+            case .control(let response):
+                handleControlLocked(
+                    response,
+                    frameByteCount: frame.byteCount,
+                    timingWindow: timingWindow
+                )
+            case .glucose(let batch):
+                handleGlucoseLocked(
+                    batch,
+                    frameByteCount: frame.byteCount,
+                    timingWindow: timingWindow
+                )
+            case .observedHistoryPreamble:
+                historyPreambleCount = 1
+                emit(.historyPreambleObserved)
             }
         } catch {
-            // Production does not inherit the developer probe's one-frame
-            // quarantine. Every unknown or malformed command is terminal.
-            failLocked(.protocolViolation)
+            // Only the exact, host-tested history-preamble shape and timing
+            // above is nonterminal. Every other unknown or malformed command
+            // remains terminal.
+            rejectLocked(
+                .inboundClassification,
+                frameByteCount: value.count,
+                timingWindow: diagnosticTimingWindowLocked(),
+                frameCategory: V3ForegroundInboundClassifier.rejectionFrameCategory(
+                    for: error,
+                    frameByteCount: value.count
+                )
+            )
         }
     }
 }

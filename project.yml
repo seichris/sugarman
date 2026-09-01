@@ -8,6 +8,7 @@ options:
   bundleIdPrefix: app.sugarman
   deploymentTarget:
     iOS: "26.0"
+    macOS: "26.0"
   xcodeVersion: "26.0"
   createIntermediateGroups: true
   defaultConfig: Debug
@@ -16,6 +17,7 @@ settings:
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
     IPHONEOS_DEPLOYMENT_TARGET: "26.0"
+    MACOSX_DEPLOYMENT_TARGET: "26.0"
     TARGETED_DEVICE_FAMILY: "1"
     ENABLE_USER_SELECTED_FILES: empty
     CODE_SIGN_STYLE: Automatic
@@ -92,6 +94,89 @@ targets:
         product: SensorOwnership
     scheme:
       testTargets: []
+  SugarmanDeviceTest:
+    type: application
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: Apps/Sugarman
+        excludes:
+          - Info.plist
+          - Sugarman.entitlements
+    resources:
+      - path: Apps/Sugarman/Localizable.xcstrings
+    info:
+      path: Apps/SugarmanDeviceTest/Info.plist
+      properties:
+        CFBundleDisplayName: Sugarman Device Test
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UIBackgroundModes:
+          - bluetooth-central
+        LSSupportsOpeningDocumentsInPlace: true
+        NSBluetoothAlwaysUsageDescription: Sugarman Device Test runs an explicitly armed managed foreground connection to one owned, already-active glucose sensor.
+        NSBluetoothPeripheralUsageDescription: Sugarman Device Test runs an explicitly armed managed foreground connection to one owned, already-active glucose sensor.
+        NFCReaderUsageDescription: Sugarman Device Test can read an owned sensor tag to store a redacted identity. Scanning does not activate or bind the sensor.
+        com.apple.developer.nfc.readersession.formats:
+          - NDEF
+        NSCameraUsageDescription: Sugarman Device Test can scan a package Data Matrix to store a redacted identity. Scanning does not send sensor commands.
+        NSHealthShareUsageDescription: Sugarman Device Test can read workouts you choose to share. HealthKit glucose writes remain disabled.
+        NSHealthUpdateUsageDescription: HealthKit glucose writes are disabled in Sugarman Device Test.
+    entitlements:
+      path: Apps/SugarmanDeviceTest/SugarmanDeviceTest.entitlements
+      properties:
+        com.apple.developer.nfc.readersession.formats:
+          - NDEF
+        com.apple.security.application-groups:
+          - group.app.sugarman.sensor-owner
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.sugarman.ios.devicetest
+        PRODUCT_NAME: Sugarman Device Test
+        INFOPLIST_FILE: Apps/SugarmanDeviceTest/Info.plist
+        GENERATE_INFOPLIST_FILE: false
+        CODE_SIGN_ENTITLEMENTS: Apps/SugarmanDeviceTest/SugarmanDeviceTest.entitlements
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: false
+        SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: false
+        ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: YES
+        SWIFT_EMIT_LOC_STRINGS: YES
+        LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) SUGARMAN_DEVICE_TEST
+    dependencies:
+      - package: Sugarman
+        product: SugarmanDomain
+      - package: Sugarman
+        product: GS3Protocol
+      - package: Sugarman
+        product: GS3Transport
+      - package: Sugarman
+        product: GS3Session
+      - package: Sugarman
+        product: GS3DeviceProvisioning
+      - package: Sugarman
+        product: GS3DeviceTesting
+      - package: Sugarman
+        product: PrivateDocumentImport
+      - package: Sugarman
+        product: SensorOnboarding
+      - package: Sugarman
+        product: AccountBinding
+      - package: Sugarman
+        product: SugarmanStore
+      - package: Sugarman
+        product: SafetyEngine
+      - package: Sugarman
+        product: Integrations
+      - package: Sugarman
+        product: SugarmanDiagnostics
+      - package: Sugarman
+        product: SensorOwnership
+    scheme:
+      testTargets: []
   SugarmanProbe:
     type: application
     platform: iOS
@@ -131,6 +216,59 @@ targets:
         product: GS3DeveloperProbe
       - package: Sugarman
         product: GS3Protocol
+      - package: Sugarman
+        product: PrivateDocumentImport
+      - package: Sugarman
+        product: SensorOwnership
+    scheme:
+      testTargets: []
+  SugarmanMacDeviceTest:
+    type: application
+    platform: macOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: Apps/SugarmanMacDeviceTest
+        excludes:
+          - Info.plist
+          - SugarmanMacDeviceTest.entitlements
+    info:
+      path: Apps/SugarmanMacDeviceTest/Info.plist
+      properties:
+        CFBundleDisplayName: Sugarman Mac Device Test
+        LSSupportsOpeningDocumentsInPlace: true
+        NSBluetoothAlwaysUsageDescription: Sugarman Mac Device Test runs an explicitly confirmed managed foreground connection to one owned, already-active glucose sensor.
+    entitlements:
+      path: Apps/SugarmanMacDeviceTest/SugarmanMacDeviceTest.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.application-groups:
+          - group.app.sugarman.sensor-owner
+        com.apple.security.device.bluetooth: true
+        com.apple.security.files.user-selected.read-only: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.sugarman.macos.devicetest
+        PRODUCT_NAME: Sugarman Mac Device Test
+        INFOPLIST_FILE: Apps/SugarmanMacDeviceTest/Info.plist
+        GENERATE_INFOPLIST_FILE: false
+        CODE_SIGN_ENTITLEMENTS: Apps/SugarmanMacDeviceTest/SugarmanMacDeviceTest.entitlements
+        ENABLE_USER_SELECTED_FILES: read-only
+        SWIFT_EMIT_LOC_STRINGS: YES
+    dependencies:
+      - package: Sugarman
+        product: GS3DeviceProvisioning
+      - package: Sugarman
+        product: GS3DeviceTesting
+      - package: Sugarman
+        product: GS3Transport
+      - package: Sugarman
+        product: GS3Session
+      - package: Sugarman
+        product: PrivateDocumentImport
+      - package: Sugarman
+        product: SugarmanDomain
+      - package: Sugarman
+        product: SugarmanStore
       - package: Sugarman
         product: SensorOwnership
     scheme:

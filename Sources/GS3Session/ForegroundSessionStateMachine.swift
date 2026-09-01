@@ -91,9 +91,11 @@ public enum GS3ForegroundInput: Sendable, Equatable {
     case notificationSubscriptionEnabled
     case authenticationAccepted
     case authenticationRejected
+    case protocolRejectionObserved(GS3ProtocolRejection)
     case protocolViolation
     case historyPlanLoaded(HistoryRequestPlan)
     case historyRequestDurablyPrepared(HistoryRequestPlan)
+    case historyPreambleObserved
     case historyAcknowledged
     case batchCommitted(GS3BatchCommitSummary)
     case synchronizationCompleted
@@ -117,9 +119,12 @@ extension GS3ForegroundInput: CustomStringConvertible {
         case .notificationSubscriptionEnabled: "notificationSubscriptionEnabled"
         case .authenticationAccepted: "authenticationAccepted"
         case .authenticationRejected: "authenticationRejected"
+        case .protocolRejectionObserved(let rejection):
+            "protocolRejectionObserved(\(rejection))"
         case .protocolViolation: "protocolViolation"
         case .historyPlanLoaded: "historyPlanLoaded(index: redacted)"
         case .historyRequestDurablyPrepared: "historyRequestDurablyPrepared(index: redacted)"
+        case .historyPreambleObserved: "historyPreambleObserved"
         case .historyAcknowledged: "historyAcknowledged"
         case .batchCommitted: "batchCommitted(payload: omitted)"
         case .synchronizationCompleted: "synchronizationCompleted"
@@ -200,12 +205,14 @@ public struct GS3ForegroundSessionMachine:
     public private(set) var hasOwnership = false
     public private(set) var authenticationRequestCount = 0
     public private(set) var historyRequestCount = 0
+    public private(set) var historyPreambleCount = 0
     public private(set) var stopReason: GS3ForegroundStopReason?
 
     private var nextReconnectToken: UInt64 = 0
     private var pendingReconnect: GS3ReconnectSchedule?
     private var pendingHistoryPlan: HistoryRequestPlan?
     private var pendingTerminalFailure: GS3ForegroundError?
+    private var protocolRejectionReported = false
     private var insertedSampleCount = 0
     private var duplicateSampleCount = 0
     private var gapRangeCount = 0
@@ -331,6 +338,18 @@ public struct GS3ForegroundSessionMachine:
                 elapsed: elapsed
             )
 
+        case .protocolRejectionObserved(let rejection):
+            guard phase != .idle, phase != .stopped else { return [] }
+            guard !protocolRejectionReported else { return [] }
+            protocolRejectionReported = true
+            return [
+                record(
+                    .protocolRejected,
+                    rejection: rejection,
+                    elapsed: elapsed
+                )
+            ]
+
         case .protocolViolation:
             if isConnectionPhase(phase) {
                 return stopAfterTerminalFailure(
@@ -369,6 +388,15 @@ public struct GS3ForegroundSessionMachine:
                 record(.historyRequested, elapsed: elapsed),
                 .requestHistory(plan),
             ]
+
+        case .historyPreambleObserved:
+            guard phase == .requestingHistory,
+                  historyRequestCount == 1,
+                  historyPreambleCount == 0 else {
+                return invalidTransition()
+            }
+            historyPreambleCount = 1
+            return [record(.historyPreambleObserved, elapsed: elapsed)]
 
         case .historyAcknowledged:
             guard phase == .requestingHistory, historyRequestCount == 1 else {
@@ -441,6 +469,8 @@ public struct GS3ForegroundSessionMachine:
         connectionOrdinal &+= 1
         authenticationRequestCount = 0
         historyRequestCount = 0
+        historyPreambleCount = 0
+        protocolRejectionReported = false
         pendingHistoryPlan = nil
         pendingTerminalFailure = nil
         insertedSampleCount = 0
@@ -620,6 +650,8 @@ public struct GS3ForegroundSessionMachine:
         hasOwnership = false
         authenticationRequestCount = 0
         historyRequestCount = 0
+        historyPreambleCount = 0
+        protocolRejectionReported = false
         stopReason = nil
         pendingReconnect = nil
         pendingHistoryPlan = nil
@@ -632,6 +664,7 @@ public struct GS3ForegroundSessionMachine:
     private func record(
         _ kind: GS3LifecycleKind,
         reason: GS3DisconnectReason? = nil,
+        rejection: GS3ProtocolRejection? = nil,
         elapsed: Int
     ) -> GS3ForegroundEffect {
         .record(
@@ -642,9 +675,11 @@ public struct GS3ForegroundSessionMachine:
                 phase: phase,
                 kind: kind,
                 disconnectReason: reason,
+                protocolRejection: rejection,
                 reconnectAttempt: reconnectAttempt,
                 authenticationRequestCount: authenticationRequestCount,
                 historyRequestCount: historyRequestCount,
+                historyPreambleCount: historyPreambleCount,
                 insertedSampleCount: insertedSampleCount,
                 duplicateSampleCount: duplicateSampleCount,
                 gapRangeCount: gapRangeCount
@@ -676,7 +711,8 @@ public struct GS3ForegroundSessionMachine:
         "GS3ForegroundSessionMachine(session: #\(sessionOrdinal), connection: "
             + "#\(connectionOrdinal), phase: \(phase.rawValue), ownsSensor: "
             + "\(hasOwnership), authRequests: \(authenticationRequestCount), "
-            + "historyRequests: \(historyRequestCount))"
+            + "historyRequests: \(historyRequestCount), historyPreambles: "
+            + "\(historyPreambleCount))"
     }
 
     public var debugDescription: String { description }
@@ -691,6 +727,7 @@ public struct GS3ForegroundSessionMachine:
                 "hasOwnership": hasOwnership,
                 "authenticationRequestCount": authenticationRequestCount,
                 "historyRequestCount": historyRequestCount,
+                "historyPreambleCount": historyPreambleCount,
                 "reconnectAttempt": reconnectAttempt,
             ],
             displayStyle: .struct

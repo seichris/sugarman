@@ -23,6 +23,29 @@ cannot construct or run the adapter. A separately reviewed signed artifact and
 fresh physical authorization remain mandatory before this code contacts a
 sensor.
 
+That scene/controller boundary now lives in the shared `GS3Transport` product
+as `GS3ForegroundSessionLifecycle`, so iOS and the isolated macOS Device Test
+use the same generation-based cleanup. A controller that finishes construction
+after its scene ended is explicitly stopped, and an in-progress start cannot
+become the active owner after foreground exit.
+
+The isolated `SugarmanDeviceTest` target supplies that test boundary without
+changing the release bootstrap. It links a dedicated strict private-import
+module, stores normalized material only in a when-unlocked this-device-only
+Keychain item, and begins every process unarmed. Import prepares local
+already-active session metadata but cannot start Bluetooth. Only a separate
+in-app arm confirmation installs the existing typed factory. See
+[`GS3_DEVICE_TEST_PROVISIONING.md`](GS3_DEVICE_TEST_PROVISIONING.md).
+
+When only the historical Probe JSON is available, the Device Test target now
+has a separate provisioning-only bridge. It validates that exact schema in
+memory, then an explicitly confirmed, shared-owner, ten-second adapter scans
+for the exact private local name and stores one unique CoreBluetooth UUID. That
+adapter cannot connect or access GATT and is not part of the foreground
+transport. Zero or multiple matches fail closed, and the UUID remains absent
+from UI, reports, diagnostics, and logs. The production adapter still retrieves
+only the resulting known peripheral and never scans.
+
 ## Evidence ledger
 
 ### Verified facts
@@ -44,6 +67,77 @@ sensor.
 - The iPhone run quarantined one checksum-valid `0x36` notification. Five
   consecutive readings, a zero-quarantine run, iPhone reconnect, and same-owner
   durability are not verified.
+- The first managed Device Test run reached one durably prepared history
+  request, then reported a terminal protocol violation before CoreBluetooth
+  acknowledged the history write. Its payload-free diagnostics do not identify
+  the inbound command. The official Android app subsequently received a fresh
+  reading, so handback passed and the sensor remained healthy for that
+  observation.
+- A genuinely newer managed report after the narrow preamble handling was
+  added again recorded one authentication write acknowledgement and acceptance,
+  exactly one history request, no history write acknowledgement, no observed
+  preamble, and an immediate protocol-violation disconnect while requesting
+  history, with no inserted samples, duplicates, or gaps. This physically
+  disproves validation of the current narrow preamble handling. The report does
+  not establish the rejected frame or whether classification, a write callback,
+  transport state, or request invariant originated the failure.
+- The exact typed-observability artifact at commit `3ffbfcd` subsequently
+  reported the first rejection as inbound classification of a 24-byte
+  notification candidate in the transport's `authenticated` timing window,
+  after one coordinator history intent and before any history-write
+  acknowledgement. This rules out the other typed rejection origins for that
+  connection. It supports a timing-race hypothesis but still does not identify
+  the decrypted command or justify accepting the frame.
+- The first exact Mac Device Test artifact at commit `0efb7f2` independently
+  reproduced that ordering: authentication was acknowledged and accepted, the
+  coordinator emitted one history intent, the transport reported no history
+  write acknowledgement, and a 24-byte notification candidate was rejected in
+  the transport's `authenticated` window. It inserted no sample and performed
+  no retry or reconnect. Cross-platform reproduction strengthens the timing-race
+  inference but still does not identify the command or justify accepting it.
+- The next exact Mac artifact at commit `592056b` classified the rejected
+  inbound frame as the exact checksum-valid 24-byte known observed-preamble
+  shape, still in the transport's `authenticated` window after the coordinator
+  had durably prepared one history intent and before the history write was
+  dispatched or acknowledged. It inserted no sample and performed no retry
+  after the terminal protocol violation. This physically verifies the
+  notification-overtaking-history-dispatch race; it does not establish the
+  frame's product meaning or validate the next receive-only policy.
+- After that Mac run stopped, the official Android app received a new reading
+  and displayed history. This verifies handback plus sensor/history
+  availability, not Mac history/live reception or durability.
+- The exact receive-only Mac artifact at commit `5ef4ad4` then completed the
+  same connection with one authentication write acknowledgement, one history
+  request and acknowledgement, one accepted preamble, no rejection/retry/
+  reconnect, durable history overlap, and reducer phase `live`. The transition
+  to `live` is possible only after a live notification is committed. The
+  payload-free count reached 2,510 inserted samples, one equivalent duplicate,
+  and zero gaps, then later increased by one while still live. The session was
+  explicitly stopped and the process exited. This is a Mac history and
+  live-reading interoperability pass, not final iPhone or durability proof.
+- A longer run of that same exact artifact completed initial synchronization
+  and then durably inserted five consecutive one-sample live batches at
+  approximately 60-second intervals. It retained exactly one authentication
+  and history request, with no reconnect, rejection, or gap, and stopped in the
+  required disconnect ordering. This passes the five-reading durability gate
+  on Mac only.
+- The exact Device-Test reconnect artifact at commit `8179b0c` then injected
+  one cancellation only after reaching `live`. The lifecycle scheduled exactly
+  one reconnect, freshly subscribed and authenticated, requested one inclusive
+  history overlap, deduplicated it, committed the next live sample, and stopped
+  without a second reconnect or rejection. This validates the integrated Mac
+  reconnect path but is not evidence of spontaneous RF-loss classification or
+  iPhone parity.
+- The exact signed iPhone Device Test artifact at commit `1bc52f3` subsequently
+  completed initial synchronization after one pre-sync unexpected
+  CoreBluetooth disconnect and one fresh reconnect. It then committed ten
+  consecutive one-sample live batches at exact 60-second intervals. One
+  Device-Test-only live link-loss injection produced exactly one further
+  reconnect with fresh subscription/authentication/history, a duplicate-only
+  inclusive overlap, one new live sample, zero gaps or rejection, return to
+  `live`, and ordered controlled stop. This passes iPhone five-reading and
+  injected-reconnect parity; spontaneous post-live RF loss, private
+  official-app comparison, and final handback remain open.
 - Two earlier attempts stopped before FF31 subscription while both Sugarman
   processes were running; a Probe-only run reached live data. That sequence is
   observed, but it does not isolate process contention as the cause.
@@ -55,7 +149,8 @@ sensor.
 Public evidence: `docs/V3_GLUCOSE_NOTIFICATION_SOURCE_MAP_2026-08-30.md`,
 `docs/V3_PROBE_PHYSICAL_RESULT_2026-08-30.md`,
 `docs/V3_FIRST_LIVE_READING_RESULT_2026-08-30.md`, and the redacted JSON records
-under `docs/evidence/`.
+under `docs/evidence/`. The managed-run result is
+`docs/GS3_DEVICE_TEST_PHYSICAL_RESULT_2026-09-01.md`.
 
 ### Production inferences
 
@@ -92,8 +187,26 @@ under `docs/evidence/`.
    calibration, and expiry meanings are not. Glucose and the observed trend can
    be stored for comparison without allowing `SafetyEngine` to present them as
    current.
+8. **Classify one exact observed history preamble without assigning semantic
+   meaning.** The Probe physically observed one checksum-valid 24-byte `0x36`
+   while the sole typed `0x39` CoreBluetooth acknowledgement was pending, then
+   received valid history and live data. The exact Mac diagnostic later proved
+   the same known frame shape can arrive after the coordinator has durably
+   prepared its history intent but before the transport dispatches that write.
+   The transport may therefore recognize that exact shape once, before any
+   glucose batch, in either of those two adjacent transport windows.
+9. **Require the independent durable-request gate.** Transport classification
+   alone grants no acceptance. The coordinator accepts the payload-free event
+   only in `requestingHistory`, after exactly one history request has been
+   durably prepared. An event before that state, a duplicate, a late event, or
+   any malformed/different unsupported notification remains terminal. The
+   combined policy adds no payload, write, retry, reconnect, glucose,
+   acknowledgement, or readiness semantics.
 
-These are reviewed policies, not claims of physical iPhone reconnect parity.
+The combined preamble policy is now physically interoperable for managed Mac
+history/live connections. Five-reading durability and the injected-link-loss
+reconnect path have passed on Mac; they remain unverified on iPhone, and the
+injected cancellation is not proof of spontaneous RF-loss classification.
 
 ### Physical-test gates
 
@@ -107,21 +220,38 @@ exact artifact must prove, with fresh owner confirmation:
   acknowledged `0x39`;
 - a controlled gap is backfilled from the durable inclusive cursor without a
   duplicate database row or a skipped index;
-- mapped history timestamps agree with the official app within a predeclared
-  tolerance, and the 60-second anchor policy is revised if they do not;
+- at least five sequential corresponding readings match the official app's
+  displayed value after selecting the same unit, each mapped timestamp differs
+  by no more than 30 seconds, and their order and approximately 60-second
+  spacing agree; any adjacent-slot shift, reordered/missing value, larger
+  timestamp error, or value mismatch fails the current anchor policy;
 - native sensor-index wrap behavior is captured before any session can cross
   the current `UInt16` boundary;
 - five consecutive live readings arrive on a managed foreground session;
 - healthy/error/calibration/expiry state patterns are compared with the official
   app before any production sample quality can become `ok`;
-- the acceptance run has no unknown or malformed command; if `0x36` recurs, the
-  production adapter stops and that command requires a separate product
-  classification before any policy can change;
+- the acceptance run has no unsupported or malformed command; an exact bounded
+  `0x36` occurrence is reported separately as an observed-history-preamble
+  count, and any second, late, wrong-length, checksum-invalid, or different
+  unsupported command stops the adapter;
+- a bounded preamble occurrence may collect history/live interoperability
+  evidence, but it does not by itself pass final protocol-completeness or
+  five-reading durability while the command's product meaning remains unknown;
 - stale and disconnected presentation matches the actual link and reading age;
   and
 - official Android handback still succeeds without binding or activation.
 
-No physical action is authorized by this design.
+No physical action is authorized by this design or by provisioning/import
+alone. Every exact artifact and each physical test action still requires fresh
+owner confirmation.
+
+The isolated `SugarmanMacDeviceTest` can shorten the build/run loop while
+reusing the typed controller. Because a CoreBluetooth identifier is host-local,
+the Mac must perform its own separately confirmed scan-only provisioning. Its
+App Group lease excludes local Sugarman processes only, so a second
+non-persisted confirmation gates external phone/app ownership. Mac evidence can
+inform protocol timing; it cannot replace final iPhone acceptance. See
+[`MACOS_DEVICE_TEST.md`](MACOS_DEVICE_TEST.md).
 
 ## Architecture
 
@@ -218,9 +348,15 @@ background design:
   before both acknowledgements remain bounded in memory and are not persisted;
   a live packet before both is terminal; the post-authentication planning gap
   is also bounded by the operation timeout; and
-- it treats every unknown or malformed notification, including the previously
-  quarantined family, as a terminal protocol violation. Production does not
-  inherit the one-shot probe's quarantine;
+- it recognizes at most one checksum-valid 24-byte `0x36` before any glucose
+  batch, either while authenticated just before history dispatch or while the
+  sole typed history write acknowledgement is pending. The coordinator
+  independently requires its durably prepared, exactly-once history-request
+  state before accepting the receive-only event. The event is named an
+  observed history preamble, increments a payload-free per-connection count,
+  and grants no write, retry, glucose, acknowledgement, or readiness semantics.
+  Any early coordinator event, duplicate, late occurrence, other unsupported
+  command, or malformed notification is a terminal protocol violation;
 - delegate callbacks must match the active central, peripheral, and exact
   characteristic object, and value/write callbacks are ignored once controlled
   disconnection begins; and
@@ -275,17 +411,29 @@ typed failure. The release bootstrap currently configures no controller. Thus
 the existing stale/disconnected UI is integrated without turning this host
 slice into an implicitly enabled sensor path. Even in reducer phase `live`, the
 unresolved native state mapping keeps decoded samples `questionable`, so the
-dashboard cannot label them current.
+dashboard cannot label them current. The isolated Device Test target can
+install that same bridge only after an explicit process-local arm confirmation;
+the release target does not link its provisioning module.
 
 ### Payload-free observability
 
 `GS3LifecycleEvent` records only process-local session/connection ordinals,
 monotonic elapsed whole seconds supplied by the adapter, lifecycle phase,
 allowlisted error class or CoreBluetooth numeric code, reconnect attempt, and
-bounded counts. It contains no UUID, peripheral name, owner field, history
+bounded authentication, history-request, observed-preamble, insert, duplicate,
+and gap counts. It contains no UUID, peripheral name, owner field, history
 index, glucose value, packet body, private material, or arbitrary localized
 error text. History plans, commit results, effects, and ownership leases redact
 their operational index/path fields from description, debug, and reflection.
+
+The first protocol rejection in each connection is recorded before disconnect
+as one typed, payload-free diagnostic. Its origin is limited to inbound
+classification, write-callback, state, or request invariant; optional frame
+metadata is limited to a coarse category and byte count capped at 512; and its
+timing is an allowlisted lifecycle window. Duplicate diagnostics are suppressed.
+Packet bodies, arbitrary command bytes, sensor identifiers, private material,
+glucose values, record indexes, imported JSON contents or hashes, and arbitrary
+error text cannot enter this type.
 
 PR #17's developer-probe disconnect status is also sanitized before it becomes
 the exportable report's final status; non-CoreBluetooth error descriptions no
