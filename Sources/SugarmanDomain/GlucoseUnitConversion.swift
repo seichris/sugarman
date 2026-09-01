@@ -32,6 +32,15 @@ extension GlucoseUnit {
             return "mmol/L"
         }
     }
+
+    public var alternate: GlucoseUnit {
+        switch self {
+        case .milligramsPerDeciliter:
+            return .millimolesPerLiter
+        case .millimolesPerLiter:
+            return .milligramsPerDeciliter
+        }
+    }
 }
 
 /// A reusable history window for the Live glucose surface on iPhone and Mac.

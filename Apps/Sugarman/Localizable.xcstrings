@@ -435,6 +435,28 @@
         }
       }
     },
+    "live.no_reading_accessibility": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No glucose reading"
+          }
+        }
+      }
+    },
+    "live.unit_toggle_hint_format": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Switch all glucose values to %@."
+          }
+        }
+      }
+    },
     "onboarding.title": {
       "extractionState": "manual",
       "localizations": {

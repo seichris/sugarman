@@ -20,11 +20,6 @@ struct DashboardView: View {
             .foregroundStyle(LivePalette.primaryText)
             .toolbarBackground(LivePalette.background, for: .navigationBar)
             .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    unitMenu
-                }
-            }
         }
         .preferredColorScheme(.dark)
     }
@@ -121,29 +116,44 @@ struct DashboardView: View {
 
     @ViewBuilder
     private func readingHero(_ assessment: SafetyAssessment) -> some View {
-        switch assessment.presentation {
-        case .current(let mgdl, _):
-            currentReadingHero(mgdl: mgdl, assessment: assessment)
-        case .empty:
-            unavailableReadingHero(Text("dashboard.empty"), assessment: assessment)
-        case .connectedNoData:
-            unavailableReadingHero(
-                Text("dashboard.connected_no_data"),
-                assessment: assessment
-            )
-        case .disconnected:
-            unavailableReadingHero(Text("dashboard.disconnected"), assessment: assessment)
-        case .stale:
-            unavailableReadingHero(Text("dashboard.stale"), assessment: assessment)
-        case .warmUp:
-            unavailableReadingHero(Text("dashboard.warmup"), assessment: assessment)
-        case .sensorError:
-            unavailableReadingHero(Text("dashboard.error"), assessment: assessment)
-        case .expired:
-            unavailableReadingHero(Text("dashboard.expired"), assessment: assessment)
-        case .questionable:
-            unavailableReadingHero(Text("dashboard.questionable"), assessment: assessment)
+        if model.latestSample == nil {
+            missingReadingHero
+        } else {
+            switch assessment.presentation {
+            case .current(let mgdl, _):
+                currentReadingHero(mgdl: mgdl, assessment: assessment)
+            case .empty:
+                unavailableReadingHero(Text("dashboard.empty"), assessment: assessment)
+            case .connectedNoData:
+                unavailableReadingHero(
+                    Text("dashboard.connected_no_data"),
+                    assessment: assessment
+                )
+            case .disconnected:
+                unavailableReadingHero(Text("dashboard.disconnected"), assessment: assessment)
+            case .stale:
+                unavailableReadingHero(Text("dashboard.stale"), assessment: assessment)
+            case .warmUp:
+                unavailableReadingHero(Text("dashboard.warmup"), assessment: assessment)
+            case .sensorError:
+                unavailableReadingHero(Text("dashboard.error"), assessment: assessment)
+            case .expired:
+                unavailableReadingHero(Text("dashboard.expired"), assessment: assessment)
+            case .questionable:
+                unavailableReadingHero(Text("dashboard.questionable"), assessment: assessment)
+            }
         }
+    }
+
+    private var missingReadingHero: some View {
+        HStack(alignment: .lastTextBaseline, spacing: 12) {
+            Text(verbatim: "-")
+                .font(.system(size: glucoseSize, weight: .light, design: .rounded))
+                .accessibilityLabel(Text("live.no_reading_accessibility"))
+            unitToggleButton
+        }
+        .frame(maxWidth: .infinity, minHeight: 150)
+        .accessibilityElement(children: .contain)
     }
 
     private func currentReadingHero(
@@ -162,22 +172,21 @@ struct DashboardView: View {
                 .minimumScaleFactor(0.55)
                 .lineLimit(1)
                 .layoutPriority(2)
+                .accessibilityLabel(Text("dashboard.glucose"))
+                .accessibilityValue(
+                    Text(currentReadingAccessibilityValue(mgdl: mgdl, assessment: assessment))
+                )
 
             VStack(alignment: .leading, spacing: 4) {
                 Image(systemName: trendSymbol(model.latestSample?.trend ?? .unknown))
                     .font(.system(size: 48, weight: .light))
                     .accessibilityHidden(true)
-                Text(model.preferredUnit.displaySymbol)
-                    .font(.title3)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                unitToggleButton
             }
             .frame(minWidth: 78, alignment: .leading)
         }
         .frame(maxWidth: .infinity)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text("dashboard.glucose"))
-        .accessibilityValue(Text(currentReadingAccessibilityValue(mgdl: mgdl, assessment: assessment)))
+        .accessibilityElement(children: .contain)
     }
 
     private func unavailableReadingHero(
@@ -191,9 +200,10 @@ struct DashboardView: View {
             Text(compactAgeLabel(assessment.readingAgeSeconds))
                 .font(.title3.monospacedDigit())
                 .foregroundStyle(LivePalette.secondaryText)
+            unitToggleButton
         }
         .frame(maxWidth: .infinity, minHeight: 150)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
     }
 
     private var rangePicker: some View {
@@ -288,16 +298,22 @@ struct DashboardView: View {
         }
     }
 
-    private var unitMenu: some View {
-        Menu {
-            Picker("dashboard.unit", selection: Bindable(model).preferredUnit) {
-                Text("dashboard.unit.mgdl").tag(GlucoseUnit.milligramsPerDeciliter)
-                Text("dashboard.unit.mmol").tag(GlucoseUnit.millimolesPerLiter)
-            }
+    private var unitToggleButton: some View {
+        Button {
+            model.preferredUnit = model.preferredUnit.alternate
         } label: {
-            Label(model.preferredUnit.displaySymbol, systemImage: "ruler")
+            Text(model.preferredUnit.displaySymbol)
+                .font(.title3)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .padding(.horizontal, 4)
+                .padding(.vertical, 10)
+                .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
         .accessibilityLabel(Text("dashboard.unit"))
+        .accessibilityValue(Text(model.preferredUnit.displaySymbol))
+        .accessibilityHint(Text(unitToggleAccessibilityHint))
     }
 
     private func errorText(_ message: String) -> some View {
@@ -391,6 +407,14 @@ struct DashboardView: View {
             trendLabel(model.latestSample?.trend ?? .unknown),
             compactAgeLabel(assessment.readingAgeSeconds),
         ].joined(separator: ", ")
+    }
+
+    private var unitToggleAccessibilityHint: String {
+        String(
+            format: String(localized: "live.unit_toggle_hint_format"),
+            locale: .current,
+            model.preferredUnit.alternate.displaySymbol
+        )
     }
 
     private func chartAccessibilityValue(_ count: Int) -> String {

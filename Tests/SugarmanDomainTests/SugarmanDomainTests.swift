@@ -189,6 +189,8 @@ struct SugarmanDomainTests {
         #expect(withTenths.value(in: .millimolesPerLiter) == Double(61) / 10.0)
         #expect(GlucoseUnit.milligramsPerDeciliter.displaySymbol == "mg/dL")
         #expect(GlucoseUnit.millimolesPerLiter.displaySymbol == "mmol/L")
+        #expect(GlucoseUnit.milligramsPerDeciliter.alternate == .millimolesPerLiter)
+        #expect(GlucoseUnit.millimolesPerLiter.alternate == .milligramsPerDeciliter)
     }
 
     @Test func glucoseTimelineFiltersBoundsAndSortsSourceOrder() {
