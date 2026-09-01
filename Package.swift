@@ -18,6 +18,7 @@ let package = Package(
         .library(name: "GS3Transport", targets: ["GS3Transport"]),
         .library(name: "GS3Session", targets: ["GS3Session"]),
         .library(name: "GS3DeviceProvisioning", targets: ["GS3DeviceProvisioning"]),
+        .library(name: "GS3DeviceTesting", targets: ["GS3DeviceTesting"]),
         .library(name: "GS3DeveloperProbe", targets: ["GS3DeveloperProbe"]),
         .library(name: "PrivateDocumentImport", targets: ["PrivateDocumentImport"]),
         .library(name: "SensorOwnership", targets: ["SensorOwnership"]),
@@ -55,6 +56,14 @@ let package = Package(
                 "SugarmanStore",
             ],
             linkerSettings: [.linkedFramework("Security")]
+        ),
+        .target(
+            name: "GS3DeviceTesting",
+            dependencies: [
+                "GS3DeviceProvisioning",
+                "SensorOwnership",
+            ],
+            linkerSettings: [.linkedFramework("CoreBluetooth")]
         ),
         .target(
             name: "GS3DeveloperProbe",
@@ -96,6 +105,10 @@ let package = Package(
                 "SugarmanDomain",
                 "SugarmanStore",
             ]
+        ),
+        .testTarget(
+            name: "GS3DeviceTestingTests",
+            dependencies: ["GS3DeviceTesting"]
         ),
         .testTarget(
             name: "GS3DeveloperProbeTests",

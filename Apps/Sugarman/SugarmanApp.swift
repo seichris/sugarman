@@ -4,6 +4,7 @@
 import AccountBinding
 #if SUGARMAN_DEVICE_TEST
 import GS3DeviceProvisioning
+import GS3DeviceTesting
 import PrivateDocumentImport
 #endif
 import GS3Transport
@@ -64,7 +65,7 @@ final class AppModel {
     var exportFileWriter: PrivacyExportFileWriter
     var demoLoadError: String?
     var storeErrorMessage: String?
-    private var foregroundSessionBridge: ForegroundGS3SessionBridge
+    private var foregroundSessionBridge: GS3ForegroundSessionLifecycle
 #if SUGARMAN_DEVICE_TEST
     var hasDeviceTestProvisioning: Bool
     var deviceTestLinkedSensorID: UUID?
@@ -76,8 +77,10 @@ final class AppModel {
     var hasDeviceTestProbeBridgePending: Bool
     var isDeviceTestProbeBridgeScanning: Bool
     @ObservationIgnored private let deviceTestProvisioning: DeviceOnlyGS3Provisioning
+    @ObservationIgnored private let deviceTestExternalOwnershipGate:
+        GS3DeviceTestExternalOwnershipGate
     @ObservationIgnored private let deviceTestProbeBridgeScanner:
-        DeviceTestProbeProvisioningScanner
+        GS3ProbeProvisioningScanner
     @ObservationIgnored private var deviceTestProbeBridgeRequest:
         GS3ProbeBridgeScanRequest?
     private var currentScenePhase: ScenePhase
@@ -124,8 +127,9 @@ final class AppModel {
         self.exportFileWriter = PrivacyExportFileWriter()
         self.demoLoadError = nil
         self.storeErrorMessage = initialStoreError
-        self.foregroundSessionBridge = ForegroundGS3SessionBridge()
+        self.foregroundSessionBridge = GS3ForegroundSessionLifecycle()
 #if SUGARMAN_DEVICE_TEST
+        let externalOwnershipGate = GS3DeviceTestExternalOwnershipGate()
         self.hasDeviceTestProvisioning = false
         self.deviceTestLinkedSensorID = nil
         self.isDeviceTestArmed = false
@@ -136,7 +140,10 @@ final class AppModel {
         self.hasDeviceTestProbeBridgePending = false
         self.isDeviceTestProbeBridgeScanning = false
         self.deviceTestProvisioning = DeviceOnlyGS3Provisioning()
-        self.deviceTestProbeBridgeScanner = DeviceTestProbeProvisioningScanner()
+        self.deviceTestExternalOwnershipGate = externalOwnershipGate
+        self.deviceTestProbeBridgeScanner = GS3ProbeProvisioningScanner(
+            externalOwnershipGate: externalOwnershipGate
+        )
         self.deviceTestProbeBridgeRequest = nil
         self.currentScenePhase = .inactive
 #endif
@@ -369,6 +376,7 @@ final class AppModel {
     }
 
     func runDeviceTestProbeBridgeScan() async {
+        defer { deviceTestExternalOwnershipGate.revoke() }
         guard currentScenePhase == .active else {
             deviceTestStatus =
                 "Keep Sugarman Device Test in the foreground for scan-only provisioning."
@@ -405,6 +413,10 @@ final class AppModel {
         }
     }
 
+    func confirmExclusiveAccessForDeviceTest() {
+        deviceTestExternalOwnershipGate.confirmExclusiveAccess()
+    }
+
     func cancelDeviceTestProbeBridgeScan() {
         guard isDeviceTestProbeBridgeScanning else { return }
         deviceTestProbeBridgeScanner.cancel()
@@ -422,12 +434,23 @@ final class AppModel {
 
     func armDeviceTest() async {
         guard !isSyntheticDemo else {
+            deviceTestExternalOwnershipGate.revoke()
             deviceTestStatus = "Exit synthetic demo mode before arming the device test."
             return
         }
         guard hasDeviceTestProvisioning,
               !isDeviceTestArmed,
-              !isDeviceTestProbeBridgeScanning else { return }
+              !isDeviceTestProbeBridgeScanning else {
+            deviceTestExternalOwnershipGate.revoke()
+            return
+        }
+        do {
+            try deviceTestExternalOwnershipGate.requireConfirmation()
+        } catch {
+            deviceTestExternalOwnershipGate.revoke()
+            deviceTestStatus = error.localizedDescription
+            return
+        }
         let provisioning = deviceTestProvisioning
         let liveStore = primaryStore
         deviceTestLifecycleLines = []
@@ -446,6 +469,7 @@ final class AppModel {
             try await foregroundSessionBridge.enterForeground()
         } catch {
             isDeviceTestArmed = false
+            deviceTestExternalOwnershipGate.revoke()
             await foregroundSessionBridge.removeFactory()
             deviceTestStatus = error.localizedDescription
         }
@@ -453,6 +477,7 @@ final class AppModel {
 
     func stopDeviceTest() async {
         isDeviceTestArmed = false
+        deviceTestExternalOwnershipGate.revoke()
         await foregroundSessionBridge.removeFactory()
         if hasDeviceTestProvisioning {
             deviceTestStatus =

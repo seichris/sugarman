@@ -766,6 +766,60 @@ struct GS3ForegroundSessionCoordinatorTests {
         }
     }
 
+    @Test func authenticatedInboundRejectionAfterHistoryIntentMatchesPhysicalOrdering() async throws {
+        let harness = try await ForegroundHarness.make()
+        try await harness.coordinator.start()
+        await harness.coordinator.receive(.connected)
+        await harness.coordinator.receive(.servicesDiscovered)
+        await harness.coordinator.receive(.characteristicsDiscovered)
+        await harness.coordinator.receive(.notificationSubscriptionEnabled)
+        await harness.coordinator.receive(.authenticationWriteAcknowledged)
+        await harness.coordinator.receive(.authenticationAccepted)
+
+        #expect(await harness.coordinator.currentPhase() == .requestingHistory)
+        #expect(
+            await harness.transport.commands().filter {
+                if case .requestHistory = $0 { true } else { false }
+            }.count == 1
+        )
+        #expect(harness.callbackLog.snapshot().acknowledgements == [.authentication])
+
+        let rejection = GS3ProtocolRejection(
+            origin: .inboundClassification,
+            frameCategory: .notificationCandidate,
+            frameByteCount: 24,
+            timingWindow: .authenticated
+        )
+        await harness.transport.emit([
+            .protocolRejected(rejection),
+            .disconnected(.protocolViolation),
+        ])
+        for _ in 0..<200 where await harness.coordinator.currentPhase() != .stopped {
+            await Task.yield()
+        }
+
+        let snapshot = harness.callbackLog.snapshot()
+        let historyIntent = try #require(
+            snapshot.events.firstIndex(where: { $0.kind == .historyRequested })
+        )
+        let rejectionIndex = try #require(
+            snapshot.events.firstIndex(where: { $0.kind == .protocolRejected })
+        )
+        let disconnectedIndex = try #require(
+            snapshot.events.firstIndex(where: { $0.kind == .disconnected })
+        )
+        let stoppedIndex = try #require(
+            snapshot.events.firstIndex(where: { $0.kind == .stopped })
+        )
+        #expect(historyIntent < rejectionIndex)
+        #expect(rejectionIndex < disconnectedIndex)
+        #expect(disconnectedIndex < stoppedIndex)
+        #expect(snapshot.events.filter { $0.kind == .protocolRejected }.count == 1)
+        #expect(snapshot.acknowledgements == [.authentication])
+        #expect(try await harness.store.samples(sessionID: harness.sessionID).isEmpty)
+        #expect(harness.ownership.latestLease?.isActive == false)
+    }
+
     @Test func outOfRangeHistoryRequestReportsRequestInvariantWithoutWriting() async throws {
         let harness = try await ForegroundHarness.make(captureStart: 65_536)
         try await harness.coordinator.start()

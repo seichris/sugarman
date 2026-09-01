@@ -18,8 +18,13 @@ package protocol GS3DeviceProvisioningPersisting: Sendable {
 package struct KeychainGS3DeviceProvisioningStore:
     GS3DeviceProvisioningPersisting
 {
+    #if os(macOS)
+    package static let defaultService =
+        "app.sugarman.macos.devicetest.gs3-v3-provisioning"
+    #else
     package static let defaultService =
         "app.sugarman.ios.devicetest.gs3-v3-provisioning"
+    #endif
     private static let account = "owned-already-active-sensor"
 
     private let service: String

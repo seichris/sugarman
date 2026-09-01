@@ -23,6 +23,12 @@ cannot construct or run the adapter. A separately reviewed signed artifact and
 fresh physical authorization remain mandatory before this code contacts a
 sensor.
 
+That scene/controller boundary now lives in the shared `GS3Transport` product
+as `GS3ForegroundSessionLifecycle`, so iOS and the isolated macOS Device Test
+use the same generation-based cleanup. A controller that finishes construction
+after its scene ended is explicitly stopped, and an in-progress start cannot
+become the active owner after foreground exit.
+
 The isolated `SugarmanDeviceTest` target supplies that test boundary without
 changing the release bootstrap. It links a dedicated strict private-import
 module, stores normalized material only in a when-unlocked this-device-only
@@ -75,6 +81,13 @@ only the resulting known peripheral and never scans.
   disproves validation of the current narrow preamble handling. The report does
   not establish the rejected frame or whether classification, a write callback,
   transport state, or request invariant originated the failure.
+- The exact typed-observability artifact at commit `3ffbfcd` subsequently
+  reported the first rejection as inbound classification of a 24-byte
+  notification candidate in the transport's `authenticated` timing window,
+  after one coordinator history intent and before any history-write
+  acknowledgement. This rules out the other typed rejection origins for that
+  connection. It supports a timing-race hypothesis but still does not identify
+  the decrypted command or justify accepting the frame.
 - Two earlier attempts stopped before FF31 subscription while both Sugarman
   processes were running; a Probe-only run reached live data. That sequence is
   observed, but it does not isolate process contention as the cause.
@@ -171,6 +184,14 @@ exact artifact must prove, with fresh owner confirmation:
 No physical action is authorized by this design or by provisioning/import
 alone. Every exact artifact and each physical test action still requires fresh
 owner confirmation.
+
+The isolated `SugarmanMacDeviceTest` can shorten the build/run loop while
+reusing the typed controller. Because a CoreBluetooth identifier is host-local,
+the Mac must perform its own separately confirmed scan-only provisioning. Its
+App Group lease excludes local Sugarman processes only, so a second
+non-persisted confirmation gates external phone/app ownership. Mac evidence can
+inform protocol timing; it cannot replace final iPhone acceptance. See
+[`MACOS_DEVICE_TEST.md`](MACOS_DEVICE_TEST.md).
 
 ## Architecture
 

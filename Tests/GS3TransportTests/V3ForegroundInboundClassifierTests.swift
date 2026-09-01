@@ -3,9 +3,45 @@
 
 import Testing
 @testable import GS3Protocol
+@testable import GS3Session
 @testable import GS3Transport
 
 struct V3ForegroundInboundClassifierTests {
+    @Test func notificationOvertakingHistoryDispatchRemainsTerminalAndDiagnosable() throws {
+        let material = try syntheticActiveSessionMaterial()
+        let frame = try syntheticUnsupportedNotification(command: 0x36)
+        let authenticatedBeforeHistoryDispatch = V3ForegroundInboundContext(
+            isAwaitingHistory: false,
+            authenticationAccepted: true,
+            historyWriteCallCount: 0,
+            historyWriteAcknowledgementPending: false,
+            historyControlAcknowledged: false,
+            historyReadyEmitted: false,
+            hasReceivedGlucoseBatch: false,
+            historyPreambleCount: 0
+        )
+
+        #expect(throws: GS3ProtocolError.unsupportedV3NotificationCommand(0x36)) {
+            try V3ForegroundInboundClassifier.classify(
+                frame,
+                using: material,
+                context: authenticatedBeforeHistoryDispatch
+            )
+        }
+
+        let rejection = GS3ProtocolRejection(
+            origin: .inboundClassification,
+            frameCategory: .notificationCandidate,
+            frameByteCount: frame.byteCount,
+            timingWindow: .authenticated
+        )
+        #expect(
+            rejection.description
+                == "origin=inboundClassification, frame=notificationCandidate, "
+                    + "bytes=24, window=authenticated"
+        )
+    }
+
     @Test func exactObservedHistoryPreambleIsAcceptedOnlyInPendingWriteWindow() throws {
         let material = try syntheticActiveSessionMaterial()
         let frame = try syntheticUnsupportedNotification(command: 0x36)

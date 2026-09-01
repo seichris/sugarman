@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Sugarman contributors
 
-#if SUGARMAN_DEVICE_TEST
+#if canImport(CoreBluetooth)
 import Foundation
 import GS3DeviceProvisioning
 import SensorOwnership
 @preconcurrency import CoreBluetooth
 
-enum DeviceTestProbeProvisioningScanError: Error, Sendable, Equatable {
+public enum GS3ProbeProvisioningScanError: Error, Sendable, Equatable {
     case alreadyRunning
     case ownershipUnavailable
     case bluetoothUnavailable
@@ -15,8 +15,8 @@ enum DeviceTestProbeProvisioningScanError: Error, Sendable, Equatable {
     case canceled
 }
 
-extension DeviceTestProbeProvisioningScanError: LocalizedError {
-    var errorDescription: String? {
+extension GS3ProbeProvisioningScanError: LocalizedError {
+    public var errorDescription: String? {
         switch self {
         case .alreadyRunning:
             "A scan-only provisioning operation is already running."
@@ -32,15 +32,26 @@ extension DeviceTestProbeProvisioningScanError: LocalizedError {
     }
 }
 
-/// Bounded, scan-only CoreBluetooth adapter for converting an existing Probe
-/// JSON into the managed known-peripheral record. This type has no peripheral
-/// connection, GATT discovery, subscription, authentication, history, or write
-/// API. It retains the shared process-owner lease until the scan stops.
-final class DeviceTestProbeProvisioningScanner: NSObject, @unchecked Sendable {
-    static let scanWindowSeconds: TimeInterval = 10
+public protocol GS3ProbeProvisioningScanning: Sendable {
+    func scan(
+        matching request: GS3ProbeBridgeScanRequest,
+        timeoutSeconds: TimeInterval
+    ) async throws -> UUID
+    func cancel()
+}
 
+/// Bounded, scan-only CoreBluetooth adapter for resolving the host-local UUID
+/// associated with an existing Probe document. It has no peripheral
+/// connection, GATT discovery, subscription, authentication, history, command,
+/// or write API. The shared local owner lease is retained until scanning ends.
+public final class GS3ProbeProvisioningScanner:
+    NSObject, GS3ProbeProvisioningScanning, @unchecked Sendable
+{
+    public static let scanWindowSeconds: TimeInterval = 10
+
+    private let externalOwnershipGate: GS3DeviceTestExternalOwnershipGate
     private let queue = DispatchQueue(
-        label: "app.sugarman.ios.devicetest.provisioning-scan"
+        label: "app.sugarman.devicetest.provisioning-scan"
     )
     private var central: CBCentralManager?
     private var continuation: CheckedContinuation<UUID, Error>?
@@ -49,10 +60,16 @@ final class DeviceTestProbeProvisioningScanner: NSObject, @unchecked Sendable {
     private var timeoutWorkItem: DispatchWorkItem?
     private var ownerLease: SensorOwnerLease?
 
-    func scan(
+    public init(externalOwnershipGate: GS3DeviceTestExternalOwnershipGate) {
+        self.externalOwnershipGate = externalOwnershipGate
+        super.init()
+    }
+
+    public func scan(
         matching request: GS3ProbeBridgeScanRequest,
         timeoutSeconds: TimeInterval = scanWindowSeconds
     ) async throws -> UUID {
+        try externalOwnershipGate.requireConfirmation()
         try Task.checkCancellation()
         let scanToken = UUID()
         return try await withTaskCancellationHandler {
@@ -71,9 +88,9 @@ final class DeviceTestProbeProvisioningScanner: NSObject, @unchecked Sendable {
         }
     }
 
-    func cancel() {
+    public func cancel() {
         queue.async {
-            self.finish(.failure(DeviceTestProbeProvisioningScanError.canceled))
+            self.finish(.failure(GS3ProbeProvisioningScanError.canceled))
         }
     }
 
@@ -84,41 +101,37 @@ final class DeviceTestProbeProvisioningScanner: NSObject, @unchecked Sendable {
         continuation: CheckedContinuation<UUID, Error>
     ) {
         guard self.continuation == nil else {
-            continuation.resume(
-                throwing: DeviceTestProbeProvisioningScanError.alreadyRunning
-            )
+            continuation.resume(throwing: GS3ProbeProvisioningScanError.alreadyRunning)
             return
         }
         guard timeoutSeconds > 0, timeoutSeconds.isFinite else {
-            continuation.resume(
-                throwing: DeviceTestProbeProvisioningScanError.bluetoothUnavailable
-            )
+            continuation.resume(throwing: GS3ProbeProvisioningScanError.bluetoothUnavailable)
             return
         }
         do {
+            try externalOwnershipGate.requireConfirmation()
             ownerLease = try SharedSensorOwnerLease.acquire()
-        } catch {
+        } catch is GS3DeviceTestExternalOwnershipError {
             continuation.resume(
-                throwing: DeviceTestProbeProvisioningScanError.ownershipUnavailable
+                throwing: GS3DeviceTestExternalOwnershipError.confirmationRequired
             )
+            return
+        } catch {
+            continuation.resume(throwing: GS3ProbeProvisioningScanError.ownershipUnavailable)
             return
         }
         switch CBManager.authorization {
         case .denied, .restricted:
             ownerLease?.release()
             ownerLease = nil
-            continuation.resume(
-                throwing: DeviceTestProbeProvisioningScanError.permissionDenied
-            )
+            continuation.resume(throwing: GS3ProbeProvisioningScanError.permissionDenied)
             return
         case .allowedAlways, .notDetermined:
             break
         @unknown default:
             ownerLease?.release()
             ownerLease = nil
-            continuation.resume(
-                throwing: DeviceTestProbeProvisioningScanError.bluetoothUnavailable
-            )
+            continuation.resume(throwing: GS3ProbeProvisioningScanError.bluetoothUnavailable)
             return
         }
 
@@ -129,10 +142,7 @@ final class DeviceTestProbeProvisioningScanner: NSObject, @unchecked Sendable {
             self?.finishFromAccumulator()
         }
         self.timeoutWorkItem = timeoutWorkItem
-        queue.asyncAfter(
-            deadline: .now() + timeoutSeconds,
-            execute: timeoutWorkItem
-        )
+        queue.asyncAfter(deadline: .now() + timeoutSeconds, execute: timeoutWorkItem)
         central = CBCentralManager(
             delegate: self,
             queue: queue,
@@ -142,7 +152,7 @@ final class DeviceTestProbeProvisioningScanner: NSObject, @unchecked Sendable {
 
     private func finishFromAccumulator() {
         guard let accumulator else {
-            finish(.failure(DeviceTestProbeProvisioningScanError.bluetoothUnavailable))
+            finish(.failure(GS3ProbeProvisioningScanError.bluetoothUnavailable))
             return
         }
         do {
@@ -170,13 +180,13 @@ final class DeviceTestProbeProvisioningScanner: NSObject, @unchecked Sendable {
     private func cancel(scanToken: UUID) {
         queue.async {
             guard self.activeScanToken == scanToken else { return }
-            self.finish(.failure(DeviceTestProbeProvisioningScanError.canceled))
+            self.finish(.failure(GS3ProbeProvisioningScanError.canceled))
         }
     }
 }
 
-extension DeviceTestProbeProvisioningScanner: CBCentralManagerDelegate {
-    func centralManagerDidUpdateState(_ central: CBCentralManager) {
+extension GS3ProbeProvisioningScanner: CBCentralManagerDelegate {
+    public func centralManagerDidUpdateState(_ central: CBCentralManager) {
         guard continuation != nil else { return }
         switch central.state {
         case .poweredOn:
@@ -185,17 +195,17 @@ extension DeviceTestProbeProvisioningScanner: CBCentralManagerDelegate {
                 options: [CBCentralManagerScanOptionAllowDuplicatesKey: true]
             )
         case .unauthorized:
-            finish(.failure(DeviceTestProbeProvisioningScanError.permissionDenied))
+            finish(.failure(GS3ProbeProvisioningScanError.permissionDenied))
         case .poweredOff, .unsupported, .resetting:
-            finish(.failure(DeviceTestProbeProvisioningScanError.bluetoothUnavailable))
+            finish(.failure(GS3ProbeProvisioningScanError.bluetoothUnavailable))
         case .unknown:
             break
         @unknown default:
-            finish(.failure(DeviceTestProbeProvisioningScanError.bluetoothUnavailable))
+            finish(.failure(GS3ProbeProvisioningScanError.bluetoothUnavailable))
         }
     }
 
-    func centralManager(
+    public func centralManager(
         _ central: CBCentralManager,
         didDiscover peripheral: CBPeripheral,
         advertisementData: [String: Any],

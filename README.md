@@ -1,6 +1,6 @@
 # Sugarman — Glucose monitoring for endurance athletes
 
-Sugarman is a native Swift/SwiftUI iOS app that gives endurance athletes a
+Sugarman is a native Swift/SwiftUI Apple-platform project that gives endurance athletes a
 glanceable view of glucose, trend, reading age, and sensor connectivity, then
 correlates that timeline with workouts and user-recorded fueling events.
 
@@ -65,6 +65,13 @@ dependencies. See [docs/UPSTREAMS.md](docs/UPSTREAMS.md).
   Every app process starts unarmed, and only a separate in-app confirmation
   installs the typed factory and begins the managed foreground lifecycle. The
   release `Sugarman` target does not link this module.
+- An isolated `SugarmanMacDeviceTest` target reuses the same typed controller,
+  persistence, ownership, and payload-free diagnostics for faster Mac-side
+  hardware iteration. Its exact-name scan resolves a Mac-local CoreBluetooth
+  identifier, and both scan and arm require a non-persisted confirmation that
+  every phone and other app has released the sensor. It is reusable groundwork
+  for a future Mac product, not a production release or a substitute for final
+  iPhone acceptance. See the [macOS Device Test guide](docs/MACOS_DEVICE_TEST.md).
 - The production foreground lifecycle requires one shared App Group process
   lease, repeats subscription/authentication/history on every connection, uses
   bounded single-flight reconnect, establishes a durable sensor-time anchor
@@ -112,6 +119,7 @@ dependencies. See [docs/UPSTREAMS.md](docs/UPSTREAMS.md).
 | `Sources/GS3Transport` | Read-only BLE diagnostics plus the typed known-peer foreground coordinator and adapter |
 | `Sources/GS3Session` | Pure foreground ownership/reconnect/history lifecycle reducer |
 | `Sources/GS3DeviceProvisioning` | Strict device-only import, Keychain normalization, local live-session preparation, and typed production-controller construction for the isolated Device Test target |
+| `Sources/GS3DeviceTesting` | Shared scan-only adapter and non-persisted cross-device ownership confirmation for isolated Device Test apps |
 | `Sources/SensorOwnership` | Payload-free cross-process App Group file lease |
 | `Sources/SensorOnboarding` | Bounded package/NDEF parser interfaces |
 | `Sources/AccountBinding` | Manual legitimate owner ID only |
@@ -122,6 +130,7 @@ dependencies. See [docs/UPSTREAMS.md](docs/UPSTREAMS.md).
 | `Apps/Sugarman` | SwiftUI iOS application shell |
 | `Apps/SugarmanProbe` | Separate foreground-only developer handover application; not linked by `Sugarman` |
 | `Apps/SugarmanDeviceTest` | Signing metadata for the isolated normal-app production-lifecycle test target |
+| `Apps/SugarmanMacDeviceTest` | Isolated macOS test/product-foundation shell; no release-app linkage |
 | `upstream/` | Pinned research references — not build inputs |
 
 ## Build and test
@@ -149,6 +158,20 @@ Or open `Sugarman.xcodeproj` in Xcode and run the `Sugarman` scheme on an iOS 26
 simulator. Device builds need an Apple Developer team selected locally; the
 bundle identifier is `app.sugarman.ios`. Do not invent a team ID. See
 [docs/LOCAL_SIGNING.md](docs/LOCAL_SIGNING.md).
+
+Compile the isolated Mac target without signing or running it:
+
+```sh
+xcodegen generate
+CC="$PWD/Scripts/xcode-clang-wrapper.sh" xcodebuild \
+  -scheme SugarmanMacDeviceTest \
+  -destination 'generic/platform=macOS' \
+  -configuration Debug build \
+  CODE_SIGNING_ALLOWED=NO SDK_STAT_CACHE_ENABLE=NO
+```
+
+See [the macOS Device Test guide](docs/MACOS_DEVICE_TEST.md) before any signed
+launch, private import, scan, or connection.
 
 The developer probe is a separate scheme and bundle identifier
 `app.sugarman.probe`:

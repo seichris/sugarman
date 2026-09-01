@@ -175,13 +175,15 @@ struct DeviceTestProvisioningSection: View {
             titleVisibility: .visible
         ) {
             Button("Scan only; do not connect") {
+                model.confirmExclusiveAccessForDeviceTest()
                 Task { await model.runDeviceTestProbeBridgeScan() }
             }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text(
-                "First stop the normal Sugarman app and Sugarman Probe. This holds "
-                    + "the shared process-owner lease and scans for ten seconds using "
+                "First release the owned sensor from every phone, then stop the normal "
+                    + "Sugarman app and Sugarman Probe. This holds the shared process-owner "
+                    + "lease and scans for ten seconds using "
                     + "the exact private name from the Probe JSON. It does not connect, "
                     + "discover GATT, subscribe, authenticate, request history, or write."
             )
@@ -192,6 +194,7 @@ struct DeviceTestProvisioningSection: View {
             titleVisibility: .visible
         ) {
             Button("Arm and connect while foregrounded") {
+                model.confirmExclusiveAccessForDeviceTest()
                 Task { await model.armDeviceTest() }
             }
             Button("Cancel", role: .cancel) {}

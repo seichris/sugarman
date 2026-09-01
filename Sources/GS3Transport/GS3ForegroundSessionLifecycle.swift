@@ -1,17 +1,21 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Sugarman contributors
 
-import GS3Transport
+import Foundation
 
-/// App lifecycle bridge for the typed foreground coordinator.
+/// Main-actor lifecycle boundary between an application scene and one typed
+/// foreground GS3 controller.
 ///
-/// No factory is installed by the release bootstrap, so the normal app remains
-/// unable to construct live material or contact a sensor. A separately
-/// reviewed device-only provisioning boundary may install a typed factory for
-/// an exact physical-test artifact without adding raw commands here.
+/// Installing a factory is inert. Entering the foreground constructs and
+/// starts at most one controller, while leaving the foreground invalidates any
+/// in-progress start and stops both starting and active controllers. The
+/// generation check prevents a delayed start from becoming active after a
+/// scene has ended.
 @MainActor
-final class ForegroundGS3SessionBridge {
-    typealias Factory = @Sendable () async throws -> any GS3ForegroundSessionControlling
+public final class GS3ForegroundSessionLifecycle {
+    public typealias Factory =
+        @Sendable () async throws -> any GS3ForegroundSessionControlling
+
     private typealias ControllerSlot = (
         generation: UInt64,
         controller: any GS3ForegroundSessionControlling
@@ -22,20 +26,22 @@ final class ForegroundGS3SessionBridge {
     private var startingController: ControllerSlot?
     private var lifecycleGeneration: UInt64 = 0
 
-    var isConfigured: Bool { factory != nil }
-    var isRunning: Bool { activeController != nil }
+    public init() {}
 
-    func install(factory: @escaping Factory) {
+    public var isConfigured: Bool { factory != nil }
+    public var isRunning: Bool { activeController != nil }
+
+    public func install(factory: @escaping Factory) {
         precondition(activeController == nil && startingController == nil)
         self.factory = factory
     }
 
-    func removeFactory() async {
+    public func removeFactory() async {
         factory = nil
         await leaveForeground()
     }
 
-    func enterForeground() async throws {
+    public func enterForeground() async throws {
         guard activeController == nil,
               startingController == nil,
               let factory else { return }
@@ -48,7 +54,10 @@ final class ForegroundGS3SessionBridge {
             guard generation == lifecycleGeneration else { return }
             throw error
         }
-        guard generation == lifecycleGeneration else { return }
+        guard generation == lifecycleGeneration else {
+            await controller.foregroundEnded()
+            return
+        }
 
         startingController = (generation, controller)
         do {
@@ -67,7 +76,7 @@ final class ForegroundGS3SessionBridge {
         activeController = (generation, controller)
     }
 
-    func leaveForeground() async {
+    public func leaveForeground() async {
         lifecycleGeneration &+= 1
         let starting = startingController
         let active = activeController

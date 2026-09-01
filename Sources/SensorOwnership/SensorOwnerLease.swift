@@ -126,7 +126,7 @@ public final class SensorOwnerLease:
     }
 }
 
-/// Shared location used by both iOS application targets.
+/// Shared location used by cooperating Sugarman app targets on this Apple host.
 public enum SharedSensorOwnerLease: Sendable {
     public static let applicationGroupIdentifier = "group.app.sugarman.sensor-owner"
     public static let lockFileName = "sensor-owner.lock"

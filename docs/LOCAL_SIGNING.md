@@ -7,12 +7,18 @@ Physical iPhone builds for NFC, Bluetooth, and HealthKit require an Apple
 Developer **Development Team** selected in Xcode. Simulator builds in CI use
 `CODE_SIGNING_ALLOWED=NO` and do not need a team.
 
+The isolated macOS Device Test also compiles unsigned, but a physical Bluetooth
+run needs a locally signed Mac app with the Bluetooth, sandbox, user-selected
+read-only file, and shared sensor-owner App Group entitlements. A compile-only
+build must not be launched as a substitute for that signing check.
+
 ## Identifiers
 
 | Item | Value |
 | --- | --- |
 | Bundle identifier | `app.sugarman.ios` |
 | Device-test bundle identifier | `app.sugarman.ios.devicetest` |
+| Mac Device Test bundle identifier | `app.sugarman.macos.devicetest` |
 | Apple Developer team | WEB3 team, identifier **TBD** |
 | `DEVELOPMENT_TEAM` in Git | Empty (`project.yml` / Xcode project keep it blank) |
 
@@ -33,6 +39,13 @@ links device-only GS3 provisioning. Its App ID must also be assigned to
 must be constrained to the exact owner-confirmed device. Building, installing,
 launching, private import, and arming are separate approval gates. The normal
 `Sugarman` scheme remains fail closed.
+
+`SugarmanMacDeviceTest` is a separate macOS application and Keychain namespace.
+Its App ID must also be assigned to `group.app.sugarman.sensor-owner`. That
+lease coordinates only processes on the same Mac; it does not exclude an
+iPhone or Android owner, so the Mac UI requires an additional process-local
+release confirmation before scan and arm. Building, signing, launching,
+private import, scan-only provisioning, and arming are separate approval gates.
 
 ## Local workflow
 

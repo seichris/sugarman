@@ -89,3 +89,38 @@ the existing classifier and exactly-one typed write policy remain unchanged.
 
 The follow-up report contains no exact signed-artifact identity, so it does not
 replace the exact artifact record above or authorize a further physical action.
+
+## Typed first-rejection diagnostic run
+
+The owner then built and installed the exact typed-observability source commit
+`3ffbfcd566e205ef44fa79868e6c5be4aff3a452` with the
+`SugarmanDeviceTest` scheme. The signed-app manifest SHA-256 recorded at build
+time was
+`57850ea3f18346ad3c1ee28bd13a2ffe2e2793dc36df9fec2429b569895f9491`.
+The subsequently exported payload-free report establishes:
+
+1. one authentication write acknowledgement and exact authentication
+   acceptance;
+2. exactly one durably prepared history request intent;
+3. no history write acknowledgement and no accepted history preamble;
+4. the first rejection was `inboundClassification` for a coarse
+   `notificationCandidate` of 24 bytes while the transport timing window was
+   `authenticated`;
+5. the rejection was recorded before the protocol-violation disconnect and
+   terminal stop; and
+6. no sample insertion, duplicate, gap, retry, or reconnect.
+
+This is a successful observability result and a failed reading/durability run.
+It distinguishes the failure from write-callback, coordinator state, and
+request-invariant origins for this connection. The combination of one
+coordinator history intent with the transport's earlier `authenticated` window
+is consistent with a notification overtaking the actual history-write
+dispatch. That is a source-backed timing inference, not a packet
+classification. The report still does not expose the decrypted command, packet
+body, sensor identity, private material, record index, or failure semantics,
+and it does not justify broadening the accepted preamble window.
+
+The next physical step may be accelerated with the isolated macOS Device Test,
+but a signed exact Mac artifact plus separate launch, private import, scan, and
+arm confirmations are still required. Final product acceptance remains an
+iPhone gate. See [`MACOS_DEVICE_TEST.md`](MACOS_DEVICE_TEST.md).

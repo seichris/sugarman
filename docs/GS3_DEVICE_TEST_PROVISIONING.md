@@ -12,6 +12,12 @@ the historical one-shot `SugarmanProbe` runtime.
 The release `Sugarman` target remains fail closed and does not link
 `GS3DeviceProvisioning`. This target is not an App Store distribution path.
 
+The reusable scan-only adapter and non-persisted external-owner confirmation
+live in the separate `GS3DeviceTesting` package product. The iOS Device Test
+and isolated `SugarmanMacDeviceTest` share those boundaries without linking
+them into the release app. The Mac shell is future-product groundwork, but
+remains a development target; see [`MACOS_DEVICE_TEST.md`](MACOS_DEVICE_TEST.md).
+
 ## Provisioning and live gates
 
 Private import and live execution are separate operations:
@@ -114,6 +120,9 @@ the real shared App Group ownership provider to the bounded reconnect
 scheduler and typed two-command CoreBluetooth adapter. The separate Device Test
 scan-only adapter uses the opaque request as an exact-name matcher and has no
 controller, raw frame, characteristic, connection, or arbitrary-write surface.
+It also requires a non-persisted external-owner confirmation before acquiring
+the same-machine process lease. Scanning consumes that confirmation; arming
+requires a fresh confirmation.
 
 ## Observability and acceptance
 
@@ -131,10 +140,12 @@ suppressed after the first occurrence in each connection. A separate typed
 `historyPreambleObserved` event and per-connection count remain available when
 the exact bounded empirical preamble policy actually accepts a frame.
 
-Host and simulator verification cannot establish CoreBluetooth behavior. A
+Host, simulator, and unsigned Mac builds cannot establish CoreBluetooth behavior. A
 new exact signed artifact and fresh owner confirmation must still gate every
 installation, launch, provisioning scan, arm, disconnect induction, Android
-handback, or other physical step. The physical acceptance gates remain those in
+handback, or other physical step. A separately confirmed signed Mac run may
+collect faster timing evidence, but it does not replace final iPhone
+acceptance. The physical acceptance gates remain those in
 [`GS3_FOREGROUND_PRODUCTION_DESIGN.md`](GS3_FOREGROUND_PRODUCTION_DESIGN.md):
 five consecutive readings, zero unsupported or malformed commands, one
 reconnect timer and one

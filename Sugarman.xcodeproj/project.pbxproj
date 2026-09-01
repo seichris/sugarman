@@ -8,66 +8,73 @@
 
 /* Begin PBXBuildFile section */
 		002EFC6ED59C2E7037C2B4E2 /* DeviceTestProvisioningSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C91B80E38A6B0F30FC5BA2F /* DeviceTestProvisioningSection.swift */; };
+		0B7927BD28D8E6EBFD1CF74C /* GS3DeviceTesting in Frameworks */ = {isa = PBXBuildFile; productRef = 60E9AF85DCF832ACE0BD5D85 /* GS3DeviceTesting */; };
 		12724BCD612662109738652C /* PrivacyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D62AEF0933A5D37DBD9819B /* PrivacyView.swift */; };
-		166D19AFE96F079D8F838425 /* DeviceTestProbeProvisioningScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41FF861651D8A22ECA92C4ED /* DeviceTestProbeProvisioningScanner.swift */; };
 		17C620CE59FF8DAD029BD6DB /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 015AE5A8B5FB8B171B34FD9B /* Localizable.xcstrings */; };
 		18547DFCFF92039200422D99 /* GS3Transport in Frameworks */ = {isa = PBXBuildFile; productRef = 9BD053E9E2482A4DF749F1BC /* GS3Transport */; };
 		1BD5EF2CC6DEAB38AA7AC2C9 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 860607D7CABFC1DCB652CAE8 /* HistoryView.swift */; };
 		1BF94CCC65C237F400445C72 /* FuelingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 656BBC6B356424ED01B62A5C /* FuelingView.swift */; };
 		2180F84F9A632C8BD78BEB55 /* Integrations in Frameworks */ = {isa = PBXBuildFile; productRef = 67DE8DC36AEDDAE5D84B6DDD /* Integrations */; };
 		22FB8A1D82E6E44903F30D43 /* WorkoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 624C211ABA31163598C2C265 /* WorkoutView.swift */; };
-		23787A247B38E6C5221C7E01 /* DeviceTestProbeProvisioningScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41FF861651D8A22ECA92C4ED /* DeviceTestProbeProvisioningScanner.swift */; };
 		279867D011F2F2B3ED5C1F49 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3776611985DB564BF1E3EC5E /* Assets.xcassets */; };
 		3112B5FDC7B10EC2E0A7F499 /* SugarmanStore in Frameworks */ = {isa = PBXBuildFile; productRef = 375AFB438175197FEB7F5409 /* SugarmanStore */; };
-		311FFA08D56DBCE6DF7C34C7 /* ForegroundGS3SessionBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC5257F916946C521956A61B /* ForegroundGS3SessionBridge.swift */; };
 		32BE21F247BF960A65076A56 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3776611985DB564BF1E3EC5E /* Assets.xcassets */; };
 		36723C2EA4A5201A9B819C64 /* SensorOnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000D344B1531771A82196E8E /* SensorOnboardingView.swift */; };
 		38F266F75AE17DE2E58C7A03 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29BED539403ADB33595539AE /* DashboardView.swift */; };
 		3B2F680A22443E47D108D1AE /* GS3Transport in Frameworks */ = {isa = PBXBuildFile; productRef = 0F54958F160F02B5B6C6C373 /* GS3Transport */; };
 		3E7CB545F3803FFE8AC5EF8A /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 015AE5A8B5FB8B171B34FD9B /* Localizable.xcstrings */; };
-		4210AE5C6932FD01CD3B013A /* SugarmanDiagnostics in Frameworks */ = {isa = PBXBuildFile; productRef = AC88843AE5EFCB19CD37AB6B /* SugarmanDiagnostics */; };
+		420B4B596CD0FA70A19BDF90 /* SensorOwnership in Frameworks */ = {isa = PBXBuildFile; productRef = B74E57073811F62DE2D4E3BF /* SensorOwnership */; };
+		4210AE5C6932FD01CD3B013A /* Integrations in Frameworks */ = {isa = PBXBuildFile; productRef = EAD93EBE638021E98704BB34 /* Integrations */; };
+		435EEDC60E8276B3D37674F1 /* MacDeviceTestModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 327A3D3BAFDF1EBE39B246DE /* MacDeviceTestModel.swift */; };
+		4389CD8E60C20DCD7A142893 /* SugarmanStore in Frameworks */ = {isa = PBXBuildFile; productRef = E7E8D4FA8F2971F788EF938A /* SugarmanStore */; };
 		4652CFF78AE7544266154C5E /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F1463176FB0AB503E0DBC95 /* RootView.swift */; };
 		49FEDAFEF5F23DA7FD82079F /* GS3Protocol in Frameworks */ = {isa = PBXBuildFile; productRef = E9EB7D6D79BE31130E3A86B9 /* GS3Protocol */; };
 		4F3EAF6A77D5002026D89A18 /* DataMatrixCameraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3488762722113D1DF2E2D318 /* DataMatrixCameraView.swift */; };
 		560BC0BADE45D27FAC05D341 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29BED539403ADB33595539AE /* DashboardView.swift */; };
 		5AB576F431822FF1828D7CFA /* PrivateDocumentImport in Frameworks */ = {isa = PBXBuildFile; productRef = 5DF359744959C8FDEF95369B /* PrivateDocumentImport */; };
+		5EE6D2D51340768400D128F2 /* SugarmanMacDeviceTestApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5197BAABED85D493E72182F /* SugarmanMacDeviceTestApp.swift */; };
 		624555F9F302675C3DAF4C73 /* DeviceTestProvisioningSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C91B80E38A6B0F30FC5BA2F /* DeviceTestProvisioningSection.swift */; };
-		70ACFF5FBCB1714DD6ED3052 /* SafetyEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 2682BE8D6FCE365BCCAA471F /* SafetyEngine */; };
+		70ACFF5FBCB1714DD6ED3052 /* SugarmanStore in Frameworks */ = {isa = PBXBuildFile; productRef = F0E612B31C6AE1F0DAA6AE44 /* SugarmanStore */; };
 		74735FDEB0F1627C9F14766B /* GS3DeveloperProbe in Frameworks */ = {isa = PBXBuildFile; productRef = AA164286726B3EF92D3AAE1C /* GS3DeveloperProbe */; };
 		78E8C92384E18DBC9C515A18 /* SugarmanDomain in Frameworks */ = {isa = PBXBuildFile; productRef = ADE13AEECE159CEFFE400572 /* SugarmanDomain */; };
 		7A3339A58F11CBD32E22675E /* ActiveSessionBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15DF313DF9367CC3CEA50640 /* ActiveSessionBanner.swift */; };
 		7EEA0EE53C2AC605578EA65E /* DataMatrixCameraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3488762722113D1DF2E2D318 /* DataMatrixCameraView.swift */; };
 		7F15A41C2BF5312E05733725 /* WorkoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 624C211ABA31163598C2C265 /* WorkoutView.swift */; };
 		837CABEF38C1FB95E82266F5 /* GS3Protocol in Frameworks */ = {isa = PBXBuildFile; productRef = 5391074AF6B3847D8D21EB21 /* GS3Protocol */; };
+		86248D0E4EB17F6FC2CDDA75 /* GS3DeviceProvisioning in Frameworks */ = {isa = PBXBuildFile; productRef = 10B8C77CF1EF6462BE94D73A /* GS3DeviceProvisioning */; };
 		868FDCD491194DAE71D42360 /* V3ProbeBluetoothRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9DEBFFC56BDC6FB81519643 /* V3ProbeBluetoothRuntime.swift */; };
 		8C55E464E39F9A14F9E321F3 /* NoDosingBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F709C40FC939809818D7ADF /* NoDosingBanner.swift */; };
 		8E05CC2263526ED24ACD9FE7 /* ProbeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60D75ABFD67CB22CB7D4C18B /* ProbeView.swift */; };
-		8ED86A0AEB8E274402518168 /* SensorOnboarding in Frameworks */ = {isa = PBXBuildFile; productRef = E5C682ACDC44433C83C42DC0 /* SensorOnboarding */; };
+		8ED86A0AEB8E274402518168 /* PrivateDocumentImport in Frameworks */ = {isa = PBXBuildFile; productRef = 0D36F4670FBDBF2845A24415 /* PrivateDocumentImport */; };
 		935EF8FAD536DD113B2011DE /* SugarmanApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4704D8B1664BAC86165C699F /* SugarmanApp.swift */; };
+		964846BA9BEFD88F5193DCEB /* SugarmanDomain in Frameworks */ = {isa = PBXBuildFile; productRef = 7886D38C4750C23AF06F4666 /* SugarmanDomain */; };
 		99A5B09163915D3FB6532C55 /* DiagnosticProbeSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2EE7DEAE55777159E636FBD /* DiagnosticProbeSession.swift */; };
+		9B7B1EBE4490F858208E046D /* GS3Transport in Frameworks */ = {isa = PBXBuildFile; productRef = 77D232E133BC26F477455789 /* GS3Transport */; };
 		9CD79405070151AA125610EB /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F1463176FB0AB503E0DBC95 /* RootView.swift */; };
 		9E6E58485EEC842AF8EB8E2D /* GS3Protocol in Frameworks */ = {isa = PBXBuildFile; productRef = D160C18AD47C04C556994EA4 /* GS3Protocol */; };
 		9FEA5F925193DB6A14980AC2 /* NoDosingBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F709C40FC939809818D7ADF /* NoDosingBanner.swift */; };
-		A3EE9E4BF2642B9D472B90C3 /* SugarmanStore in Frameworks */ = {isa = PBXBuildFile; productRef = F0E612B31C6AE1F0DAA6AE44 /* SugarmanStore */; };
+		A3EE9E4BF2642B9D472B90C3 /* AccountBinding in Frameworks */ = {isa = PBXBuildFile; productRef = 1A663E90A429605A1E565651 /* AccountBinding */; };
 		AA5E71104F1C4450C6891D3E /* SensorOwnership in Frameworks */ = {isa = PBXBuildFile; productRef = 7E8B64029D6BD24F1A302D50 /* SensorOwnership */; };
 		B1A68B3AD78A74A2EE80A515 /* SugarmanDomain in Frameworks */ = {isa = PBXBuildFile; productRef = 8315F3675E38C87BD98440E0 /* SugarmanDomain */; };
 		B2FC75E9F9317D3F50202930 /* SafetyEngine in Frameworks */ = {isa = PBXBuildFile; productRef = A9114B2D0C315218CD65C655 /* SafetyEngine */; };
 		B38DA06F640C94A46D153927 /* SugarmanProbeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA4F6CD684BA19A9D21C9C65 /* SugarmanProbeApp.swift */; };
-		B4582411C3B055051A9517B8 /* Integrations in Frameworks */ = {isa = PBXBuildFile; productRef = EAD93EBE638021E98704BB34 /* Integrations */; };
+		B4582411C3B055051A9517B8 /* SafetyEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 2682BE8D6FCE365BCCAA471F /* SafetyEngine */; };
 		B6ADB2D8260077121F557995 /* GS3DeviceProvisioning in Frameworks */ = {isa = PBXBuildFile; productRef = 06147D6013644C5A118A2565 /* GS3DeviceProvisioning */; };
 		B81DE0655CBA983E0C8E7C5A /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 860607D7CABFC1DCB652CAE8 /* HistoryView.swift */; };
 		C415BCB114E2A449B39CC652 /* ProbeAppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD93DE80D8823F077A698FBA /* ProbeAppModel.swift */; };
+		C7E75782D209952D71C51624 /* PrivateDocumentImport in Frameworks */ = {isa = PBXBuildFile; productRef = 69F403DE0B775A0A891FEFED /* PrivateDocumentImport */; };
 		D0CD0CAD05AD3E611AE84928 /* SensorOnboarding in Frameworks */ = {isa = PBXBuildFile; productRef = F705304B1A41ECB50B19865E /* SensorOnboarding */; };
+		D429394E319CB240A0CC15D9 /* SensorOwnership in Frameworks */ = {isa = PBXBuildFile; productRef = C7A47036ADC02F17DD6BCE03 /* SensorOwnership */; };
 		D5095075A1A49CBC804F65F7 /* FuelingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 656BBC6B356424ED01B62A5C /* FuelingView.swift */; };
 		D5AD979760659516BCF4B266 /* SensorOnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000D344B1531771A82196E8E /* SensorOnboardingView.swift */; };
 		DAE2954C63A3A8ABC2A4E9A9 /* AccountBinding in Frameworks */ = {isa = PBXBuildFile; productRef = 6816F1F47828A1F57E5EE72A /* AccountBinding */; };
-		DAFDD1859204923EF7E6C59C /* ForegroundGS3SessionBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC5257F916946C521956A61B /* ForegroundGS3SessionBridge.swift */; };
 		DB99391AB425A41FC0785CCC /* DiagnosticProbeSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2EE7DEAE55777159E636FBD /* DiagnosticProbeSession.swift */; };
-		DBABA50C0F7BF0C8C27F8C65 /* PrivateDocumentImport in Frameworks */ = {isa = PBXBuildFile; productRef = 0D36F4670FBDBF2845A24415 /* PrivateDocumentImport */; };
-		E0705F959641E06BB7FA75C0 /* AccountBinding in Frameworks */ = {isa = PBXBuildFile; productRef = 1A663E90A429605A1E565651 /* AccountBinding */; };
+		DBABA50C0F7BF0C8C27F8C65 /* GS3DeviceTesting in Frameworks */ = {isa = PBXBuildFile; productRef = 6FC235AE34E14B74697CF164 /* GS3DeviceTesting */; };
+		E0705F959641E06BB7FA75C0 /* SensorOnboarding in Frameworks */ = {isa = PBXBuildFile; productRef = E5C682ACDC44433C83C42DC0 /* SensorOnboarding */; };
 		E15309AE01C533808742A893 /* SugarmanApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4704D8B1664BAC86165C699F /* SugarmanApp.swift */; };
-		E2A3D71DDE9AA6936853F84F /* SensorOwnership in Frameworks */ = {isa = PBXBuildFile; productRef = C7A47036ADC02F17DD6BCE03 /* SensorOwnership */; };
+		E2A3D71DDE9AA6936853F84F /* SugarmanDiagnostics in Frameworks */ = {isa = PBXBuildFile; productRef = AC88843AE5EFCB19CD37AB6B /* SugarmanDiagnostics */; };
 		E957FF0A866DAEBEE78F454D /* PrivacyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D62AEF0933A5D37DBD9819B /* PrivacyView.swift */; };
+		E9774F36FD34D802F3ECCA35 /* MacDeviceTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 546916A3A332E02DE574F2A6 /* MacDeviceTestView.swift */; };
 		F31E6F71459357BB609CA8AE /* ActiveSessionBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15DF313DF9367CC3CEA50640 /* ActiveSessionBanner.swift */; };
 		F85EFE7C19C587F8C7A6FB07 /* SensorOwnership in Frameworks */ = {isa = PBXBuildFile; productRef = 0A8CB8EC5B8B728EAA009209 /* SensorOwnership */; };
 		FF8873FC56CAC156D746ECE0 /* SugarmanDiagnostics in Frameworks */ = {isa = PBXBuildFile; productRef = 68C83594A30351E0BAA91AE3 /* SugarmanDiagnostics */; };
@@ -79,28 +86,30 @@
 		15DF313DF9367CC3CEA50640 /* ActiveSessionBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveSessionBanner.swift; sourceTree = "<group>"; };
 		1F1463176FB0AB503E0DBC95 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		29BED539403ADB33595539AE /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
+		327A3D3BAFDF1EBE39B246DE /* MacDeviceTestModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacDeviceTestModel.swift; sourceTree = "<group>"; };
 		3488762722113D1DF2E2D318 /* DataMatrixCameraView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataMatrixCameraView.swift; sourceTree = "<group>"; };
 		3776611985DB564BF1E3EC5E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		41FF861651D8A22ECA92C4ED /* DeviceTestProbeProvisioningScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceTestProbeProvisioningScanner.swift; sourceTree = "<group>"; };
 		4704D8B1664BAC86165C699F /* SugarmanApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SugarmanApp.swift; sourceTree = "<group>"; };
 		4C91B80E38A6B0F30FC5BA2F /* DeviceTestProvisioningSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceTestProvisioningSection.swift; sourceTree = "<group>"; };
+		546916A3A332E02DE574F2A6 /* MacDeviceTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacDeviceTestView.swift; sourceTree = "<group>"; };
 		5D62AEF0933A5D37DBD9819B /* PrivacyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyView.swift; sourceTree = "<group>"; };
 		60D75ABFD67CB22CB7D4C18B /* ProbeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProbeView.swift; sourceTree = "<group>"; };
 		624C211ABA31163598C2C265 /* WorkoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutView.swift; sourceTree = "<group>"; };
 		656BBC6B356424ED01B62A5C /* FuelingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FuelingView.swift; sourceTree = "<group>"; };
 		6D7D5408CC201C89747826BF /* Sugarman.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Sugarman.entitlements; sourceTree = "<group>"; };
 		805EFD4E6C63AC4FA9C59EB9 /* SugarmanProbe.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SugarmanProbe.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		839B94F533B13BD3AE2E1DEA /* sugarman-gs3-device-provisioning */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "sugarman-gs3-device-provisioning"; path = .; sourceTree = SOURCE_ROOT; };
 		860607D7CABFC1DCB652CAE8 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
 		9F709C40FC939809818D7ADF /* NoDosingBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoDosingBanner.swift; sourceTree = "<group>"; };
 		AC96B54C5A9982635D8FAA25 /* DevelopmentTeam.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = DevelopmentTeam.xcconfig; sourceTree = "<group>"; };
 		B4267C7DE28C61725933287C /* SugarmanDeviceTest.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SugarmanDeviceTest.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BF74DB52FA25D6BED9C37F44 /* sugarman */ = {isa = PBXFileReference; lastKnownFileType = folder; name = sugarman; path = .; sourceTree = SOURCE_ROOT; };
+		C5986B6248ACE9BB1160335E /* SugarmanMacDeviceTest.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SugarmanMacDeviceTest.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CA4F6CD684BA19A9D21C9C65 /* SugarmanProbeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SugarmanProbeApp.swift; sourceTree = "<group>"; };
 		CD93DE80D8823F077A698FBA /* ProbeAppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProbeAppModel.swift; sourceTree = "<group>"; };
 		D9DEBFFC56BDC6FB81519643 /* V3ProbeBluetoothRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = V3ProbeBluetoothRuntime.swift; sourceTree = "<group>"; };
 		E2EE7DEAE55777159E636FBD /* DiagnosticProbeSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticProbeSession.swift; sourceTree = "<group>"; };
 		E6EE39F377CDFD5147B0BA60 /* Sugarman.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Sugarman.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		EC5257F916946C521956A61B /* ForegroundGS3SessionBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundGS3SessionBridge.swift; sourceTree = "<group>"; };
+		F5197BAABED85D493E72182F /* SugarmanMacDeviceTestApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SugarmanMacDeviceTestApp.swift; sourceTree = "<group>"; };
 		F628625178EE8285CEC183DE /* SugarmanProbe.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SugarmanProbe.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -141,20 +150,45 @@
 				9E6E58485EEC842AF8EB8E2D /* GS3Protocol in Frameworks */,
 				3B2F680A22443E47D108D1AE /* GS3Transport in Frameworks */,
 				B6ADB2D8260077121F557995 /* GS3DeviceProvisioning in Frameworks */,
-				DBABA50C0F7BF0C8C27F8C65 /* PrivateDocumentImport in Frameworks */,
-				8ED86A0AEB8E274402518168 /* SensorOnboarding in Frameworks */,
-				E0705F959641E06BB7FA75C0 /* AccountBinding in Frameworks */,
-				A3EE9E4BF2642B9D472B90C3 /* SugarmanStore in Frameworks */,
-				70ACFF5FBCB1714DD6ED3052 /* SafetyEngine in Frameworks */,
-				B4582411C3B055051A9517B8 /* Integrations in Frameworks */,
-				4210AE5C6932FD01CD3B013A /* SugarmanDiagnostics in Frameworks */,
-				E2A3D71DDE9AA6936853F84F /* SensorOwnership in Frameworks */,
+				DBABA50C0F7BF0C8C27F8C65 /* GS3DeviceTesting in Frameworks */,
+				8ED86A0AEB8E274402518168 /* PrivateDocumentImport in Frameworks */,
+				E0705F959641E06BB7FA75C0 /* SensorOnboarding in Frameworks */,
+				A3EE9E4BF2642B9D472B90C3 /* AccountBinding in Frameworks */,
+				70ACFF5FBCB1714DD6ED3052 /* SugarmanStore in Frameworks */,
+				B4582411C3B055051A9517B8 /* SafetyEngine in Frameworks */,
+				4210AE5C6932FD01CD3B013A /* Integrations in Frameworks */,
+				E2A3D71DDE9AA6936853F84F /* SugarmanDiagnostics in Frameworks */,
+				D429394E319CB240A0CC15D9 /* SensorOwnership in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EA4BCF442FB8E808275D44F1 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				86248D0E4EB17F6FC2CDDA75 /* GS3DeviceProvisioning in Frameworks */,
+				0B7927BD28D8E6EBFD1CF74C /* GS3DeviceTesting in Frameworks */,
+				9B7B1EBE4490F858208E046D /* GS3Transport in Frameworks */,
+				C7E75782D209952D71C51624 /* PrivateDocumentImport in Frameworks */,
+				964846BA9BEFD88F5193DCEB /* SugarmanDomain in Frameworks */,
+				4389CD8E60C20DCD7A142893 /* SugarmanStore in Frameworks */,
+				420B4B596CD0FA70A19BDF90 /* SensorOwnership in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		176A2D81328C63C7849418FB /* SugarmanMacDeviceTest */ = {
+			isa = PBXGroup;
+			children = (
+				327A3D3BAFDF1EBE39B246DE /* MacDeviceTestModel.swift */,
+				546916A3A332E02DE574F2A6 /* MacDeviceTestView.swift */,
+				F5197BAABED85D493E72182F /* SugarmanMacDeviceTestApp.swift */,
+			);
+			path = SugarmanMacDeviceTest;
+			sourceTree = "<group>";
+		};
 		1DA3660768658D95F2A415E1 = {
 			isa = PBXGroup;
 			children = (
@@ -172,10 +206,8 @@
 				3776611985DB564BF1E3EC5E /* Assets.xcassets */,
 				29BED539403ADB33595539AE /* DashboardView.swift */,
 				3488762722113D1DF2E2D318 /* DataMatrixCameraView.swift */,
-				41FF861651D8A22ECA92C4ED /* DeviceTestProbeProvisioningScanner.swift */,
 				4C91B80E38A6B0F30FC5BA2F /* DeviceTestProvisioningSection.swift */,
 				E2EE7DEAE55777159E636FBD /* DiagnosticProbeSession.swift */,
-				EC5257F916946C521956A61B /* ForegroundGS3SessionBridge.swift */,
 				656BBC6B356424ED01B62A5C /* FuelingView.swift */,
 				860607D7CABFC1DCB652CAE8 /* HistoryView.swift */,
 				015AE5A8B5FB8B171B34FD9B /* Localizable.xcstrings */,
@@ -205,7 +237,7 @@
 		3935FB384078684757B5D8ED /* Packages */ = {
 			isa = PBXGroup;
 			children = (
-				839B94F533B13BD3AE2E1DEA /* sugarman-gs3-device-provisioning */,
+				BF74DB52FA25D6BED9C37F44 /* sugarman */,
 			);
 			name = Packages;
 			sourceTree = "<group>";
@@ -215,6 +247,7 @@
 			children = (
 				E6EE39F377CDFD5147B0BA60 /* Sugarman.app */,
 				B4267C7DE28C61725933287C /* SugarmanDeviceTest.app */,
+				C5986B6248ACE9BB1160335E /* SugarmanMacDeviceTest.app */,
 				805EFD4E6C63AC4FA9C59EB9 /* SugarmanProbe.app */,
 			);
 			name = Products;
@@ -232,6 +265,7 @@
 			isa = PBXGroup;
 			children = (
 				297046D61D4874D6A9DD5E85 /* Sugarman */,
+				176A2D81328C63C7849418FB /* SugarmanMacDeviceTest */,
 				2CB4D8278058A3A053F41AE1 /* SugarmanProbe */,
 			);
 			path = Apps;
@@ -269,6 +303,31 @@
 			productReference = E6EE39F377CDFD5147B0BA60 /* Sugarman.app */;
 			productType = "com.apple.product-type.application";
 		};
+		367AAA41F385216218F37F7A /* SugarmanMacDeviceTest */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 93A64796CE99006F55078706 /* Build configuration list for PBXNativeTarget "SugarmanMacDeviceTest" */;
+			buildPhases = (
+				F49432E68964A9F3CB5546FE /* Sources */,
+				EA4BCF442FB8E808275D44F1 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SugarmanMacDeviceTest;
+			packageProductDependencies = (
+				10B8C77CF1EF6462BE94D73A /* GS3DeviceProvisioning */,
+				60E9AF85DCF832ACE0BD5D85 /* GS3DeviceTesting */,
+				77D232E133BC26F477455789 /* GS3Transport */,
+				69F403DE0B775A0A891FEFED /* PrivateDocumentImport */,
+				7886D38C4750C23AF06F4666 /* SugarmanDomain */,
+				E7E8D4FA8F2971F788EF938A /* SugarmanStore */,
+				B74E57073811F62DE2D4E3BF /* SensorOwnership */,
+			);
+			productName = SugarmanMacDeviceTest;
+			productReference = C5986B6248ACE9BB1160335E /* SugarmanMacDeviceTest.app */;
+			productType = "com.apple.product-type.application";
+		};
 		A1CAC1EB00C435BD847350B7 /* SugarmanDeviceTest */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = B58F97A9FB9F380346BEE44D /* Build configuration list for PBXNativeTarget "SugarmanDeviceTest" */;
@@ -287,6 +346,7 @@
 				D160C18AD47C04C556994EA4 /* GS3Protocol */,
 				0F54958F160F02B5B6C6C373 /* GS3Transport */,
 				06147D6013644C5A118A2565 /* GS3DeviceProvisioning */,
+				6FC235AE34E14B74697CF164 /* GS3DeviceTesting */,
 				0D36F4670FBDBF2845A24415 /* PrivateDocumentImport */,
 				E5C682ACDC44433C83C42DC0 /* SensorOnboarding */,
 				1A663E90A429605A1E565651 /* AccountBinding */,
@@ -335,6 +395,10 @@
 						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
+					367AAA41F385216218F37F7A = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
 					A1CAC1EB00C435BD847350B7 = {
 						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
@@ -364,6 +428,7 @@
 			targets = (
 				366A36D7DA44EAA9CC9323F4 /* Sugarman */,
 				A1CAC1EB00C435BD847350B7 /* SugarmanDeviceTest */,
+				367AAA41F385216218F37F7A /* SugarmanMacDeviceTest */,
 				EEB58151DCD2991CD693A1F1 /* SugarmanProbe */,
 			);
 		};
@@ -398,10 +463,8 @@
 				7A3339A58F11CBD32E22675E /* ActiveSessionBanner.swift in Sources */,
 				38F266F75AE17DE2E58C7A03 /* DashboardView.swift in Sources */,
 				7EEA0EE53C2AC605578EA65E /* DataMatrixCameraView.swift in Sources */,
-				166D19AFE96F079D8F838425 /* DeviceTestProbeProvisioningScanner.swift in Sources */,
 				624555F9F302675C3DAF4C73 /* DeviceTestProvisioningSection.swift in Sources */,
 				DB99391AB425A41FC0785CCC /* DiagnosticProbeSession.swift in Sources */,
-				DAFDD1859204923EF7E6C59C /* ForegroundGS3SessionBridge.swift in Sources */,
 				1BF94CCC65C237F400445C72 /* FuelingView.swift in Sources */,
 				B81DE0655CBA983E0C8E7C5A /* HistoryView.swift in Sources */,
 				9FEA5F925193DB6A14980AC2 /* NoDosingBanner.swift in Sources */,
@@ -420,10 +483,8 @@
 				F31E6F71459357BB609CA8AE /* ActiveSessionBanner.swift in Sources */,
 				560BC0BADE45D27FAC05D341 /* DashboardView.swift in Sources */,
 				4F3EAF6A77D5002026D89A18 /* DataMatrixCameraView.swift in Sources */,
-				23787A247B38E6C5221C7E01 /* DeviceTestProbeProvisioningScanner.swift in Sources */,
 				002EFC6ED59C2E7037C2B4E2 /* DeviceTestProvisioningSection.swift in Sources */,
 				99A5B09163915D3FB6532C55 /* DiagnosticProbeSession.swift in Sources */,
-				311FFA08D56DBCE6DF7C34C7 /* ForegroundGS3SessionBridge.swift in Sources */,
 				D5095075A1A49CBC804F65F7 /* FuelingView.swift in Sources */,
 				1BD5EF2CC6DEAB38AA7AC2C9 /* HistoryView.swift in Sources */,
 				8C55E464E39F9A14F9E321F3 /* NoDosingBanner.swift in Sources */,
@@ -443,6 +504,16 @@
 				8E05CC2263526ED24ACD9FE7 /* ProbeView.swift in Sources */,
 				B38DA06F640C94A46D153927 /* SugarmanProbeApp.swift in Sources */,
 				868FDCD491194DAE71D42360 /* V3ProbeBluetoothRuntime.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F49432E68964A9F3CB5546FE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				435EEDC60E8276B3D37674F1 /* MacDeviceTestModel.swift in Sources */,
+				E9774F36FD34D802F3ECCA35 /* MacDeviceTestView.swift in Sources */,
+				5EE6D2D51340768400D128F2 /* SugarmanMacDeviceTestApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -506,12 +577,12 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 0.0.1;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_STRICT_CONCURRENCY = complete;
@@ -590,6 +661,27 @@
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
+		};
+		671B1CB4555D6A2F4C27F959 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Apps/SugarmanMacDeviceTest/SugarmanMacDeviceTest.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_USER_SELECTED_FILES = "read-only";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Apps/SugarmanMacDeviceTest/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.sugarman.macos.devicetest;
+				PRODUCT_NAME = "Sugarman Mac Device Test";
+				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Release;
 		};
 		71D195F5E32878FFE8DF5CEB /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -719,11 +811,11 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 0.0.1;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_STRICT_CONCURRENCY = complete;
@@ -731,6 +823,27 @@
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
+		};
+		B5585F8D886AA74618D7664E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Apps/SugarmanMacDeviceTest/SugarmanMacDeviceTest.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_USER_SELECTED_FILES = "read-only";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Apps/SugarmanMacDeviceTest/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.sugarman.macos.devicetest;
+				PRODUCT_NAME = "Sugarman Mac Device Test";
+				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Debug;
 		};
 /* End XCBuildConfiguration section */
 
@@ -749,6 +862,15 @@
 			buildConfigurations = (
 				1EED47F2641DE6C232679681 /* Debug */,
 				2E49AF59E3E028ADC6CC3E2D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		93A64796CE99006F55078706 /* Build configuration list for PBXNativeTarget "SugarmanMacDeviceTest" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B5585F8D886AA74618D7664E /* Debug */,
+				671B1CB4555D6A2F4C27F959 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
@@ -797,6 +919,10 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = GS3Transport;
 		};
+		10B8C77CF1EF6462BE94D73A /* GS3DeviceProvisioning */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = GS3DeviceProvisioning;
+		};
 		1A663E90A429605A1E565651 /* AccountBinding */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = AccountBinding;
@@ -817,6 +943,10 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = PrivateDocumentImport;
 		};
+		60E9AF85DCF832ACE0BD5D85 /* GS3DeviceTesting */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = GS3DeviceTesting;
+		};
 		67DE8DC36AEDDAE5D84B6DDD /* Integrations */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Integrations;
@@ -828,6 +958,22 @@
 		68C83594A30351E0BAA91AE3 /* SugarmanDiagnostics */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SugarmanDiagnostics;
+		};
+		69F403DE0B775A0A891FEFED /* PrivateDocumentImport */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PrivateDocumentImport;
+		};
+		6FC235AE34E14B74697CF164 /* GS3DeviceTesting */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = GS3DeviceTesting;
+		};
+		77D232E133BC26F477455789 /* GS3Transport */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = GS3Transport;
+		};
+		7886D38C4750C23AF06F4666 /* SugarmanDomain */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SugarmanDomain;
 		};
 		7E8B64029D6BD24F1A302D50 /* SensorOwnership */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -857,6 +1003,10 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = SugarmanDomain;
 		};
+		B74E57073811F62DE2D4E3BF /* SensorOwnership */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SensorOwnership;
+		};
 		C7A47036ADC02F17DD6BCE03 /* SensorOwnership */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SensorOwnership;
@@ -868,6 +1018,10 @@
 		E5C682ACDC44433C83C42DC0 /* SensorOnboarding */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SensorOnboarding;
+		};
+		E7E8D4FA8F2971F788EF938A /* SugarmanStore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SugarmanStore;
 		};
 		E9EB7D6D79BE31130E3A86B9 /* GS3Protocol */ = {
 			isa = XCSwiftPackageProductDependency;
