@@ -253,3 +253,70 @@ This run does not establish five consecutive live readings, unexpected-link-
 loss reconnect, iPhone parity, timestamp parity with the official app, native
 quality-state meaning, protocol completeness, or official-app handback after
 this specific run. Those remain separate physical gates.
+
+## Five-consecutive-live-reading macOS pass
+
+The same exact receive-only Mac artifact at source commit
+`5ef4ad4921e15d7400c037ac34a95c9de9797fd6` and signed-app manifest SHA-256
+`7c3b61d927d866966910974bbf3fbb276d83a21a4e09e44ea179a865d462ff9a`
+was later armed for a longer managed foreground connection. The payload-free
+report established:
+
+1. initial synchronization completed at 29 elapsed seconds with 23 inserted
+   samples, one equivalent duplicate, and zero gap ranges;
+2. five consecutive one-sample durable increases occurred at 89, 149, 209,
+   269, and 329 elapsed seconds;
+3. the connection retained exactly one authentication request and
+   acknowledgement and exactly one history request, preamble, and
+   acknowledgement throughout the run;
+4. there was no extra request, reconnect, protocol rejection, or gap; and
+5. explicit stop at 373 elapsed seconds produced `disconnectRequested`, then
+   `transportDisconnected`, then `stopped`.
+
+This physically passes the five-consecutive-reading and foreground durability
+gates on the Mac. It also confirms an approximately 60-second live cadence for
+this run; the client is not polling every five minutes. Private values, record
+indexes, and timestamps remain outside this report. Sequential timestamp and
+value comparison with the official app remains open.
+
+## Device-Test-only injected-link-loss macOS pass
+
+The reconnect diagnostic source commit was
+`8179b0c2dcc7482081a1fbbf9a62bca9d74b7be6`. Its signed arm64 Mac app
+manifest SHA-256 was
+`7ad43f53c00b246e189cc747d8f6521fe71a65a49595352c7758db1ad0fbe8ca`,
+and the executable SHA-256 was
+`d3e5a5be7a7141b63b21455dffb267e14077af30889ce2b8eb78d15e8790416c`.
+The signature and sandbox, Bluetooth, and App Group entitlements were verified
+before launch.
+
+After initial synchronization reached `live`, the Device-Test-only control
+cancelled that one already-streaming CoreBluetooth connection without sending
+a sensor write. The payload-free report established:
+
+1. connection one performed exactly one subscription, authentication, and
+   history request and reached `live` with zero gaps;
+2. the injected cancellation produced one `linkLoss` disconnect and exactly
+   one reconnect schedule;
+3. connection two freshly subscribed and authenticated, then made exactly one
+   history request;
+4. its first inclusive overlap inserted no row and counted one equivalent
+   duplicate, with zero gaps;
+5. its next batch durably inserted one sample and returned the reducer to
+   `live`, still with zero gaps and no rejection; and
+6. explicit stop produced `disconnectRequested`, then
+   `transportDisconnected`, then `stopped`, with no second reconnect.
+
+This physically validates the integrated single-flight reconnect, fresh
+per-connection authentication/history sequence, durable inclusive overlap,
+deduplication, and disconnect ordering on the Mac. The trigger was an explicit
+Device Test CoreBluetooth cancellation routed through the link-loss path; it
+was not an uncontrolled radio or out-of-range loss. Spontaneous RF-loss
+classification therefore remains a distinct physical gate. The control is
+live-only, at most once per controller, absent from the release app, and adds
+no command, retry, raw-write, or classifier semantics.
+
+Final acceptance still requires sequential private timestamp/value comparison
+with the official app and the equivalent exact-artifact iPhone run. Native
+quality-state meaning, index wrap, and official-app handback after the final
+iPhone run also remain open.

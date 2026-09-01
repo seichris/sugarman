@@ -124,6 +124,13 @@ It also requires a non-persisted external-owner confirmation before acquiring
 the same-machine process lease. Scanning consumes that confirmation; arming
 requires a fresh confirmation.
 
+The separate `GS3DeviceTesting` product may wrap that typed controller with one
+Device-Test-only link-loss control. It can cancel an already-streaming
+CoreBluetooth connection at most once per controller. It is inert before
+`live`, cannot encode or dispatch a frame, and is not linked into the release
+app. The ordinary typed controller and two-command write boundary remain
+unchanged.
+
 ## Observability and acceptance
 
 The Device Test UI retains at most 128 in-memory `GS3LifecycleEvent`
@@ -139,6 +146,11 @@ window. It is ordered before the existing fail-closed disconnect and is
 suppressed after the first occurrence in each connection. A separate typed
 `historyPreambleObserved` event and per-connection count remain available when
 the exact bounded empirical preamble policy actually accepts a frame.
+
+The Mac Device Test may additionally show recent sample timestamps and values
+inside its private on-device UI for side-by-side owner comparison. Those fields
+are never included in the lifecycle report or share sheet and must not be
+copied into Git, issues, PRs, logs, or shared diagnostics.
 
 Host, simulator, and unsigned Mac builds cannot establish CoreBluetooth behavior. A
 new exact signed artifact and fresh owner confirmation must still gate every

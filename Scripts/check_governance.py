@@ -709,6 +709,7 @@ def check_sensor_ownership_and_foreground_slice() -> None:
         "#if SUGARMAN_DEVICE_TEST\n"
         "import GS3DeviceProvisioning\n"
         "import GS3DeviceTesting\n"
+        "import GS3Session\n"
         "import PrivateDocumentImport\n"
         "#endif"
     ) not in app_body:
@@ -737,8 +738,8 @@ def check_sensor_ownership_and_foreground_slice() -> None:
                 error(f"private import must remain Bluetooth-inert: {forbidden}")
         arm_body = arm_slice[1].split("func stopDeviceTest()", 1)[0]
         for required in (
-            "installForegroundSessionFactory",
-            "provisioning.makeController",
+            "provisioning.makeManagedForegroundDeviceTestController",
+            "foregroundSessionBridge.install { controller }",
             "foregroundSessionBridge.enterForeground()",
         ):
             if required not in arm_body:
@@ -820,6 +821,37 @@ def check_sensor_ownership_and_foreground_slice() -> None:
     if '.library(name: "GS3DeviceTesting"' not in package_text:
         error("shared device-test execution boundaries must be a separate package product")
 
+    device_testing_root = ROOT / "Sources/GS3DeviceTesting"
+    device_testing_body = "\n".join(
+        path.read_text(encoding="utf-8", errors="replace")
+        for path in sorted(device_testing_root.glob("*.swift"))
+    )
+    for required in (
+        "GS3ManagedForegroundDeviceTestController",
+        "injectLinkLoss() async -> Bool",
+        "makeManagedForegroundDeviceTestController",
+    ):
+        if required not in device_testing_body:
+            error(f"device-test reconnect harness missing boundary: {required}")
+    for forbidden in (
+        ".writeValue(",
+        "V3ActiveSessionMaterial(",
+        "EncodedFrame(",
+        "Data(frame",
+    ):
+        if forbidden in device_testing_body:
+            error(f"device-test reconnect harness contains write surface: {forbidden}")
+
+    for required in (
+        "package protocol GS3ForegroundDeviceTestControlling",
+        "package protocol GS3ForegroundLinkLossInjecting",
+        "guard self.phase == .streaming",
+        "central.cancelPeripheralConnection(peripheral)",
+        "private var linkLossWasInjected = false",
+    ):
+        if required not in foreground_api_body + core_bluetooth_body:
+            error(f"device-test link-loss injection missing boundary: {required}")
+
     mac_target = project.split("  SugarmanMacDeviceTest:\n", 1)[1]
     for required in (
         "platform: macOS",
@@ -878,6 +910,7 @@ def check_sensor_ownership_and_foreground_slice() -> None:
             "Scan only; do not connect",
             "showArmConfirmation",
             "Arm managed foreground test",
+            "Inject one link loss",
             "Share redacted lifecycle report",
         ):
             if required not in view_body:
@@ -895,7 +928,7 @@ def check_sensor_ownership_and_foreground_slice() -> None:
             "confirmAndRunProbeBridgeScan()",
             "confirmAndArm()",
             "GS3ForegroundSessionLifecycle",
-            "provisioning.makeController(",
+            "provisioning.makeManagedForegroundDeviceTestController(",
             "PrivateDocumentImportBuffer",
             "maximumLifecycleLineCount = 128",
         ):
@@ -910,6 +943,7 @@ def check_sensor_ownership_and_foreground_slice() -> None:
             "CoreBluetooth identifiers are local to each host",
             "Confirm release and scan only",
             "Confirm release, arm, and connect",
+            "Inject one link loss",
             "Share redacted report",
         ):
             if required not in mac_ui:

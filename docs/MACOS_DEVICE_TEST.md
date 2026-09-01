@@ -25,7 +25,18 @@ later durably increased its sample count while still live. It used no second
 request, retry, or reconnect, then stopped and exited cleanly. This is the first
 managed Mac history/live-reading pass. The earlier official Android handback
 establishes sensor/history availability only; handback after the successful Mac
-run remains open. See
+run remains open.
+
+A longer run of that same exact artifact then durably committed five
+consecutive live samples at approximately 60-second intervals with no extra
+authentication/history request, reconnect, rejection, or gap. A later exact
+Device-Test artifact exercised one live-only CoreBluetooth cancellation: the
+managed lifecycle scheduled exactly one reconnect, freshly subscribed and
+authenticated, made one inclusive history request, deduplicated its overlap,
+committed the next live sample, and stopped without a second reconnect. This
+was an injected cancellation through the link-loss path, not a spontaneous RF
+loss. Sequential private comparison with the official app and iPhone parity
+remain open. See
 [`GS3_DEVICE_TEST_PHYSICAL_RESULT_2026-09-01.md`](GS3_DEVICE_TEST_PHYSICAL_RESULT_2026-09-01.md).
 Every future build and physical action remains separately gated.
 
@@ -40,7 +51,9 @@ The Mac target reuses:
 - the typed known-peripheral transport with only authentication and
   effective-data requests;
 - the same coordinator, history cursor, deduplication, reconnect, and
-  payload-free lifecycle diagnostics; and
+  payload-free lifecycle diagnostics;
+- a separate Device-Test-only, live-only, at-most-once link-loss injector with
+  no frame encoder or write surface; and
 - `GS3ForegroundSessionLifecycle`, shared by iOS and macOS so delayed creation
   or start cannot outlive the foreground scene that requested it.
 
@@ -72,6 +85,10 @@ private names and material, record indexes, packet bodies, arbitrary command
 bytes, glucose values, imported JSON contents and hashes, file paths, and
 arbitrary error strings.
 
+Recent values and timestamps may be rendered for private side-by-side owner
+comparison inside the app. They are excluded from the bounded shareable report
+and must remain outside source control and shared diagnostics.
+
 The imported Probe file remains private evidence. Its normalized material is
 stored under a Mac-specific Keychain service using
 `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`; it does not reuse the iPhone
@@ -95,8 +112,8 @@ Building does not authorize running. Each of these requires a new exact
 artifact and action confirmation: signing, launching, private-file import,
 scan-only provisioning, arming/connecting, disconnect induction, and official
 app handback. A Mac physical run can accelerate protocol timing evidence, but
-five-reading durability and the complete acceptance matrix must still pass on
-the intended iPhone product path.
+the complete acceptance matrix must still pass on the intended iPhone product
+path. The five-reading and injected-reconnect gates have passed on Mac only.
 
 ## Provenance
 

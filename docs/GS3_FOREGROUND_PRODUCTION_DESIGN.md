@@ -115,6 +115,19 @@ only the resulting known peripheral and never scans.
   and zero gaps, then later increased by one while still live. The session was
   explicitly stopped and the process exited. This is a Mac history and
   live-reading interoperability pass, not final iPhone or durability proof.
+- A longer run of that same exact artifact completed initial synchronization
+  and then durably inserted five consecutive one-sample live batches at
+  approximately 60-second intervals. It retained exactly one authentication
+  and history request, with no reconnect, rejection, or gap, and stopped in the
+  required disconnect ordering. This passes the five-reading durability gate
+  on Mac only.
+- The exact Device-Test reconnect artifact at commit `8179b0c` then injected
+  one cancellation only after reaching `live`. The lifecycle scheduled exactly
+  one reconnect, freshly subscribed and authenticated, requested one inclusive
+  history overlap, deduplicated it, committed the next live sample, and stopped
+  without a second reconnect or rejection. This validates the integrated Mac
+  reconnect path but is not evidence of spontaneous RF-loss classification or
+  iPhone parity.
 - Two earlier attempts stopped before FF31 subscription while both Sugarman
   processes were running; a Probe-only run reached live data. That sequence is
   observed, but it does not isolate process contention as the cause.
@@ -180,9 +193,10 @@ under `docs/evidence/`. The managed-run result is
    combined policy adds no payload, write, retry, reconnect, glucose,
    acknowledgement, or readiness semantics.
 
-The combined preamble policy is now physically interoperable for one managed
-Mac history/live connection. These remain reviewed policies rather than claims
-of physical iPhone reconnect or five-reading parity.
+The combined preamble policy is now physically interoperable for managed Mac
+history/live connections. Five-reading durability and the injected-link-loss
+reconnect path have passed on Mac; they remain unverified on iPhone, and the
+injected cancellation is not proof of spontaneous RF-loss classification.
 
 ### Physical-test gates
 
