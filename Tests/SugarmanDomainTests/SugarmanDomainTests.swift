@@ -6,6 +6,21 @@ import Testing
 @testable import SugarmanDomain
 
 struct SugarmanDomainTests {
+    @Test func liveDashboardShowsOnboardingUntilARealReadingExists() {
+        #expect(
+            LiveDashboardContentMode.resolve(sampleCount: 0, isSyntheticDemo: false)
+                == .sensorOnboarding
+        )
+        #expect(
+            LiveDashboardContentMode.resolve(sampleCount: 1, isSyntheticDemo: false)
+                == .readings
+        )
+        #expect(
+            LiveDashboardContentMode.resolve(sampleCount: 0, isSyntheticDemo: true)
+                == .readings
+        )
+    }
+
     @Test func protocolVariantsRemainLiveUnimplemented() {
         let names = ProtocolVariant.allCases.map(\.rawValue)
         #expect(names == ["unknown", "v120RC4", "v3AES"])

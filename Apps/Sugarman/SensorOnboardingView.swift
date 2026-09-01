@@ -39,6 +39,7 @@ struct SensorOnboardingView: View {
     }
 
     @Environment(AppModel.self) private var model
+    private let embeddedInNavigationStack: Bool
     @State private var packageText = ""
     @State private var ndefText = ""
     @State private var parseMessage = String(localized: "sensor.parse_idle")
@@ -69,9 +70,23 @@ struct SensorOnboardingView: View {
     private let imageScanner: any BarcodeImageScanning = StubBarcodeImageScanner()
 #endif
 
+    init(embeddedInNavigationStack: Bool = false) {
+        self.embeddedInNavigationStack = embeddedInNavigationStack
+    }
+
+    @ViewBuilder
     var body: some View {
-        NavigationStack {
-            Form {
+        if embeddedInNavigationStack {
+            onboardingContent
+        } else {
+            NavigationStack {
+                onboardingContent
+            }
+        }
+    }
+
+    private var onboardingContent: some View {
+        Form {
                 Section("sensor.hardware") {
 #if os(iOS) && canImport(AVFoundation) && canImport(UIKit) && canImport(Vision) && !targetEnvironment(simulator)
                     Button {
@@ -189,22 +204,22 @@ struct SensorOnboardingView: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
-            }
-            .navigationTitle("sensor.title")
-            .confirmationDialog("sensor.confirm_title", isPresented: $confirmStore) {
+        }
+        .navigationTitle("sensor.title")
+        .confirmationDialog("sensor.confirm_title", isPresented: $confirmStore) {
                 Button("sensor.confirm") {
                     Task { await storeParsedIdentity() }
                 }
             } message: {
                 Text("sensor.confirm_body")
             }
-            .fileImporter(
-                isPresented: $isFileImporterPresented,
-                allowedContentTypes: fileImportRoute?.allowedContentTypes ?? [.data],
-                allowsMultipleSelection: false,
-                onCompletion: handleFileImportResult,
-                onCancellation: cancelFileImport
-            )
+        .fileImporter(
+            isPresented: $isFileImporterPresented,
+            allowedContentTypes: fileImportRoute?.allowedContentTypes ?? [.data],
+            allowsMultipleSelection: false,
+            onCompletion: handleFileImportResult,
+            onCancellation: cancelFileImport
+        )
 #if canImport(PhotosUI)
             .onChange(of: pickerItem) { _, item in
                 guard let item else { return }
@@ -226,7 +241,6 @@ struct SensorOnboardingView: View {
                 .ignoresSafeArea()
             }
 #endif
-        }
     }
 
     private func parsePayloads() {

@@ -391,6 +391,50 @@
         }
       }
     },
+    "live.sensor_setup_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set up your sensor"
+          }
+        }
+      }
+    },
+    "live.sensor_setup_body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sugarman needs an identified sensor before it can show glucose. Scan the package Data Matrix, read the NFC tag, or import a package image to begin."
+          }
+        }
+      }
+    },
+    "live.sensor_setup_action": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start sensor setup"
+          }
+        }
+      }
+    },
+    "live.sensor_setup_hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opens sensor setup from the Live screen."
+          }
+        }
+      }
+    },
     "onboarding.title": {
       "extractionState": "manual",
       "localizations": {

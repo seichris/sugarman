@@ -24,9 +24,6 @@ struct DashboardView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     unitMenu
                 }
-                ToolbarItem(placement: .topBarTrailing) {
-                    demoMenu
-                }
             }
         }
         .preferredColorScheme(.dark)
@@ -51,23 +48,23 @@ struct DashboardView: View {
                     errorText(storeErrorMessage)
                 }
 
-                readingHero(assessment)
-                rangePicker
-                glucoseChart(
-                    timeline: timeline,
-                    assessment: assessment
-                )
+                if contentMode == .sensorOnboarding {
+                    sensorOnboardingPrompt(assessment: assessment)
+                } else {
+                    readingHero(assessment)
+                    rangePicker
+                    glucoseChart(
+                        timeline: timeline,
+                        assessment: assessment
+                    )
 
-                if !assessment.showsValueAsCurrent, !timeline.samples.isEmpty {
-                    Label("live.chart_not_current", systemImage: "exclamationmark.triangle")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(LivePalette.warning)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    if !assessment.showsValueAsCurrent, !timeline.samples.isEmpty {
+                        Label("live.chart_not_current", systemImage: "exclamationmark.triangle")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(LivePalette.warning)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                 }
-                NoDosingBanner()
-                Text("dashboard.athlete_purpose")
-                    .font(.footnote)
-                    .foregroundStyle(LivePalette.secondaryText)
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 24)
@@ -75,6 +72,51 @@ struct DashboardView: View {
         .refreshable {
             await model.refresh()
         }
+    }
+
+    private var contentMode: LiveDashboardContentMode {
+        LiveDashboardContentMode.resolve(
+            sampleCount: model.activeSamples.count,
+            isSyntheticDemo: model.isSyntheticDemo
+        )
+    }
+
+    private func sensorOnboardingPrompt(
+        assessment: SafetyAssessment
+    ) -> some View {
+        VStack(spacing: 20) {
+            readingHero(assessment)
+
+            Image(systemName: "sensor.tag.radiowaves.forward")
+                .font(.system(size: 52, weight: .light))
+                .foregroundStyle(LivePalette.secondaryText)
+                .accessibilityHidden(true)
+
+            VStack(spacing: 8) {
+                Text("live.sensor_setup_title")
+                    .font(.title2.weight(.semibold))
+                Text("live.sensor_setup_body")
+                    .font(.body)
+                    .foregroundStyle(LivePalette.secondaryText)
+                    .multilineTextAlignment(.center)
+            }
+
+            NavigationLink {
+                SensorOnboardingView(embeddedInNavigationStack: true)
+            } label: {
+                Label("live.sensor_setup_action", systemImage: "arrow.right.circle.fill")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.white)
+            .foregroundStyle(.black)
+            .accessibilityHint(Text("live.sensor_setup_hint"))
+        }
+        .frame(maxWidth: 560)
+        .frame(maxWidth: .infinity)
+        .padding(.top, 28)
     }
 
     @ViewBuilder
@@ -258,33 +300,6 @@ struct DashboardView: View {
         .accessibilityLabel(Text("dashboard.unit"))
     }
 
-    private var demoMenu: some View {
-        Menu {
-            Section("demo.isolated_data") {
-                ForEach(SyntheticDemoScenario.allCases) { scenario in
-                    Button(demoTitle(scenario)) {
-                        Task {
-                            do {
-                                try await model.loadDemo(scenario)
-                            } catch {
-                                // loadDemo already exposes its typed error state.
-                            }
-                        }
-                    }
-                }
-            }
-            if model.isSyntheticDemo {
-                Button("demo.exit") {
-                    Task { await model.exitDemo() }
-                }
-            }
-        } label: {
-            Label("demo.menu", systemImage: "sparkles")
-        }
-        .accessibilityLabel(Text("demo.menu"))
-        .accessibilityHint(Text("demo.hint"))
-    }
-
     private func errorText(_ message: String) -> some View {
         Text(verbatim: message)
             .font(.footnote)
@@ -387,18 +402,6 @@ struct DashboardView: View {
         )
     }
 
-    private func demoTitle(_ scenario: SyntheticDemoScenario) -> LocalizedStringKey {
-        switch scenario {
-        case .current: "demo.current"
-        case .stale: "demo.stale"
-        case .disconnected: "demo.disconnected"
-        case .warmUp: "demo.warmup"
-        case .sensorError: "demo.error"
-        case .expired: "demo.expired"
-        case .connectedNoData: "demo.connected_no_data"
-        case .questionableSample: "demo.questionable"
-        }
-    }
 }
 
 private enum LivePalette {
@@ -419,6 +422,11 @@ private enum LivePalette {
 #Preview("Live — Questionable") {
     DashboardView()
         .environment(dashboardPreviewModel(.questionableSample))
+}
+
+#Preview("Live — Sensor setup") {
+    DashboardView()
+        .environment(AppModel(preferredUnit: .millimolesPerLiter))
 }
 
 @MainActor
