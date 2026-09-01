@@ -33,3 +33,61 @@ extension GlucoseUnit {
         }
     }
 }
+
+/// A reusable history window for the Live glucose surface on iPhone and Mac.
+public enum GlucoseHistoryRange: Int, Sendable, Codable, Equatable, CaseIterable, Identifiable {
+    case threeHours = 3
+    case sixHours = 6
+    case twelveHours = 12
+    case twentyFourHours = 24
+
+    public var id: Int { rawValue }
+
+    public var duration: TimeInterval {
+        TimeInterval(rawValue * 60 * 60)
+    }
+}
+
+/// Source-ordered samples inside one bounded Live-chart window.
+public struct GlucoseTimeline: Sendable, Equatable {
+    public var start: Date
+    public var end: Date
+    public var samples: [GlucoseSample]
+
+    public init(
+        samples: [GlucoseSample],
+        endingAt end: Date,
+        range: GlucoseHistoryRange
+    ) {
+        let start = end.addingTimeInterval(-range.duration)
+        self.start = start
+        self.end = end
+        self.samples = samples
+            .filter { sample in
+                sample.sensorTimestamp >= start && sample.sensorTimestamp <= end
+            }
+            .sorted { left, right in
+                if left.sensorTimestamp == right.sensorTimestamp {
+                    return left.sensorIndex < right.sensorIndex
+                }
+                return left.sensorTimestamp < right.sensorTimestamp
+            }
+    }
+}
+
+/// Fixed cross-platform chart scale matching the product's mmol/L reference.
+public struct GlucoseChartScale: Sendable, Equatable {
+    public var domain: ClosedRange<Double>
+    public var tickValues: [Double]
+
+    public init(unit: GlucoseUnit) {
+        switch unit {
+        case .millimolesPerLiter:
+            domain = 0...21
+            tickValues = stride(from: 0.0, through: 21.0, by: 3.0).map(\.self)
+        case .milligramsPerDeciliter:
+            domain = 0...400
+            tickValues = stride(from: 0.0, through: 400.0, by: 50.0).map(\.self)
+        }
+    }
+}

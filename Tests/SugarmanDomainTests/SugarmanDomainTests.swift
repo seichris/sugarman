@@ -176,6 +176,47 @@ struct SugarmanDomainTests {
         #expect(GlucoseUnit.millimolesPerLiter.displaySymbol == "mmol/L")
     }
 
+    @Test func glucoseTimelineFiltersBoundsAndSortsSourceOrder() {
+        let session = UUID()
+        let end = Date(timeIntervalSince1970: 1_800_000_000)
+        func sample(index: UInt32, offset: TimeInterval) -> GlucoseSample {
+            GlucoseSample(
+                sessionID: session,
+                sensorIndex: index,
+                sensorTimestamp: end.addingTimeInterval(offset),
+                receiptTimestamp: end.addingTimeInterval(offset + 1),
+                milligramsPerDeciliter: 100,
+                decoderRevision: "test"
+            )
+        }
+
+        let timeline = GlucoseTimeline(
+            samples: [
+                sample(index: 4, offset: 1),
+                sample(index: 3, offset: 0),
+                sample(index: 2, offset: -60),
+                sample(index: 1, offset: -(3 * 60 * 60)),
+                sample(index: 0, offset: -(3 * 60 * 60) - 1),
+            ],
+            endingAt: end,
+            range: .threeHours
+        )
+
+        #expect(timeline.start == end.addingTimeInterval(-3 * 60 * 60))
+        #expect(timeline.end == end)
+        #expect(timeline.samples.map(\.sensorIndex) == [1, 2, 3])
+    }
+
+    @Test func glucoseChartScaleMatchesEachDisplayUnit() {
+        let mmol = GlucoseChartScale(unit: .millimolesPerLiter)
+        #expect(mmol.domain == 0...21)
+        #expect(mmol.tickValues == [0, 3, 6, 9, 12, 15, 18, 21])
+
+        let mgdl = GlucoseChartScale(unit: .milligramsPerDeciliter)
+        #expect(mgdl.domain == 0...400)
+        #expect(mgdl.tickValues == [0, 50, 100, 150, 200, 250, 300, 350, 400])
+    }
+
     @Test func activeSessionPrefersDemoThenSelectionNotUUIDSort() {
         let earlyID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
         let lateID = UUID(uuidString: "ffffffff-ffff-ffff-ffff-ffffffffffff")!
