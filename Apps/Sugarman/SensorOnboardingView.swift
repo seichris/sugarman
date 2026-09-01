@@ -2,6 +2,9 @@
 // Copyright (C) 2026 Sugarman contributors
 
 import AccountBinding
+#if SUGARMAN_DEVICE_TEST
+import GS3DeviceProvisioning
+#endif
 import SensorOnboarding
 import SugarmanDomain
 import SwiftUI
@@ -17,6 +20,24 @@ import CoreNFC
 #endif
 
 struct SensorOnboardingView: View {
+    private enum FileImportRoute: Equatable {
+        case sensorImage
+#if SUGARMAN_DEVICE_TEST
+        case deviceTest(GS3DeviceProvisioningFileImportRequest)
+#endif
+
+        var allowedContentTypes: [UTType] {
+            switch self {
+            case .sensorImage:
+                [.image]
+#if SUGARMAN_DEVICE_TEST
+            case .deviceTest:
+                [.json]
+#endif
+            }
+        }
+    }
+
     @Environment(AppModel.self) private var model
     @State private var packageText = ""
     @State private var ndefText = ""
@@ -28,7 +49,8 @@ struct SensorOnboardingView: View {
     @State private var ownerID = ""
     @State private var ownerStatus = String(localized: "onboarding.owner_idle")
     @State private var confirmStore = false
-    @State private var showFileImporter = false
+    @State private var fileImportRoute: FileImportRoute?
+    @State private var isFileImporterPresented = false
 #if os(iOS) && canImport(AVFoundation) && canImport(UIKit) && canImport(Vision) && !targetEnvironment(simulator)
     @State private var showCamera = false
 #endif
@@ -85,7 +107,7 @@ struct SensorOnboardingView: View {
                     .accessibilityHint(Text("sensor.import_image_hint"))
 #endif
                     Button("sensor.import_file") {
-                        showFileImporter = true
+                        presentFileImporter(.sensorImage)
                     }
                     .accessibilityLabel(Text("sensor.import_file"))
                     .accessibilityHint(Text("sensor.import_file_hint"))
@@ -141,7 +163,9 @@ struct SensorOnboardingView: View {
                     }
                 }
 #if SUGARMAN_DEVICE_TEST
-                DeviceTestProvisioningSection()
+                DeviceTestProvisioningSection { request in
+                    presentFileImporter(.deviceTest(request))
+                }
 #endif
                 Section("onboarding.owner") {
                     TextField("onboarding.owner_field", text: $ownerID)
@@ -175,19 +199,12 @@ struct SensorOnboardingView: View {
                 Text("sensor.confirm_body")
             }
             .fileImporter(
-                isPresented: $showFileImporter,
-                allowedContentTypes: [.image],
-                allowsMultipleSelection: false
-            ) { result in
-                switch result {
-                case .success(let urls):
-                    if let url = urls.first {
-                        Task { await importFile(url) }
-                    }
-                case .failure(let error):
-                    parseMessage = error.localizedDescription
-                }
-            }
+                isPresented: $isFileImporterPresented,
+                allowedContentTypes: fileImportRoute?.allowedContentTypes ?? [.data],
+                allowsMultipleSelection: false,
+                onCompletion: handleFileImportResult,
+                onCancellation: cancelFileImport
+            )
 #if canImport(PhotosUI)
             .onChange(of: pickerItem) { _, item in
                 guard let item else { return }
@@ -214,6 +231,83 @@ struct SensorOnboardingView: View {
 
     private func parsePayloads() {
         applyParsedPackage(packageText, ndef: ndefText)
+    }
+
+    private func presentFileImporter(_ route: FileImportRoute) {
+        guard !isFileImporterPresented else { return }
+        fileImportRoute = route
+        isFileImporterPresented = true
+    }
+
+    private func handleFileImportResult(_ result: Result<[URL], Error>) {
+        guard let route = fileImportRoute else {
+            isFileImporterPresented = false
+            return
+        }
+        fileImportRoute = nil
+        isFileImporterPresented = false
+
+        switch result {
+        case .success(let urls):
+            guard let url = urls.first else {
+                handleFileImportFailure(for: route)
+                return
+            }
+            switch route {
+            case .sensorImage:
+                Task { await importFile(url) }
+#if SUGARMAN_DEVICE_TEST
+            case .deviceTest(let request):
+                Task {
+                    switch request.kind {
+                    case .managedProvisioning:
+                        await model.importDeviceTestProvisioning(
+                            from: url,
+                            linkedSensorID: request.linkedSensorID
+                        )
+                    case .existingProbe:
+                        await model.prepareDeviceTestProbeBridge(
+                            from: url,
+                            linkedSensorID: request.linkedSensorID
+                        )
+                    }
+                }
+#endif
+            }
+        case .failure(let error):
+            switch route {
+            case .sensorImage:
+                parseMessage = error.localizedDescription
+#if SUGARMAN_DEVICE_TEST
+            case .deviceTest:
+                model.deviceTestStatus =
+                    "Private provisioning file selection failed closed."
+#endif
+            }
+        }
+    }
+
+    private func cancelFileImport() {
+#if SUGARMAN_DEVICE_TEST
+        if case .deviceTest = fileImportRoute {
+            model.deviceTestStatus =
+                "Private provisioning file selection cancelled. No material imported."
+        }
+#endif
+        fileImportRoute = nil
+        isFileImporterPresented = false
+    }
+
+    private func handleFileImportFailure(for route: FileImportRoute) {
+        switch route {
+        case .sensorImage:
+            parseMessage = String(localized: "sensor.no_barcode")
+#if SUGARMAN_DEVICE_TEST
+        case .deviceTest:
+            model.deviceTestStatus =
+                "Private provisioning file selection failed closed."
+#endif
+        }
     }
 
 #if canImport(CoreNFC)

@@ -2,23 +2,18 @@
 // Copyright (C) 2026 Sugarman contributors
 
 #if SUGARMAN_DEVICE_TEST
+import GS3DeviceProvisioning
 import SugarmanDomain
 import SwiftUI
-import UniformTypeIdentifiers
 
 struct DeviceTestProvisioningSection: View {
-    private enum ImportKind {
-        case managedProvisioning
-        case existingProbe
-    }
-
     @Environment(AppModel.self) private var model
     @State private var selectedIdentityID: UUID?
-    @State private var showImporter = false
-    @State private var importKind = ImportKind.managedProvisioning
     @State private var showArmConfirmation = false
     @State private var showProbeBridgeScanConfirmation = false
     @State private var showDeleteConfirmation = false
+
+    let requestFileImport: (GS3DeviceProvisioningFileImportRequest) -> Void
 
     var body: some View {
         Section("Managed foreground device test") {
@@ -53,9 +48,15 @@ struct DeviceTestProvisioningSection: View {
             }
 
             Button("Import managed provisioning JSON", systemImage: "lock.doc") {
-                importKind = .managedProvisioning
-                showImporter = true
+                guard let selectedIdentityID else { return }
+                requestFileImport(
+                    GS3DeviceProvisioningFileImportRequest(
+                        kind: .managedProvisioning,
+                        linkedSensorID: selectedIdentityID
+                    )
+                )
             }
+            .accessibilityIdentifier("device-test-import-managed-json")
             .disabled(
                 selectedIdentityID == nil
                     || model.hasDeviceTestProvisioning
@@ -69,9 +70,15 @@ struct DeviceTestProvisioningSection: View {
                     "Use existing Sugarman Probe JSON",
                     systemImage: "arrow.triangle.2.circlepath.doc.on.clipboard"
                 ) {
-                    importKind = .existingProbe
-                    showImporter = true
+                    guard let selectedIdentityID else { return }
+                    requestFileImport(
+                        GS3DeviceProvisioningFileImportRequest(
+                            kind: .existingProbe,
+                            linkedSensorID: selectedIdentityID
+                        )
+                    )
                 }
+                .accessibilityIdentifier("device-test-import-probe-json")
                 .disabled(
                     selectedIdentityID == nil
                         || model.isDeviceTestArmed
@@ -153,36 +160,13 @@ struct DeviceTestProvisioningSection: View {
         }
         .task {
             await model.refreshDeviceTestProvisioningAvailability()
-            if selectedIdentityID == nil {
-                selectedIdentityID = model.deviceTestLinkedSensorID
-                    ?? model.identities.first?.id
-            }
+            reconcileSelectedIdentity()
         }
-        .fileImporter(
-            isPresented: $showImporter,
-            allowedContentTypes: [.json],
-            allowsMultipleSelection: false
-        ) { result in
-            switch result {
-            case .success(let urls):
-                guard let url = urls.first, let selectedIdentityID else { return }
-                Task {
-                    switch importKind {
-                    case .managedProvisioning:
-                        await model.importDeviceTestProvisioning(
-                            from: url,
-                            linkedSensorID: selectedIdentityID
-                        )
-                    case .existingProbe:
-                        await model.prepareDeviceTestProbeBridge(
-                            from: url,
-                            linkedSensorID: selectedIdentityID
-                        )
-                    }
-                }
-            case .failure:
-                model.deviceTestStatus = "Private provisioning file selection failed closed."
-            }
+        .onChange(of: model.identities.map(\.id), initial: true) { _, _ in
+            reconcileSelectedIdentity()
+        }
+        .onChange(of: model.deviceTestLinkedSensorID, initial: true) { _, _ in
+            reconcileSelectedIdentity()
         }
         .confirmationDialog(
             "Run one scan-only provisioning lookup?",
@@ -236,6 +220,14 @@ struct DeviceTestProvisioningSection: View {
     private var linkedIdentity: SensorIdentity? {
         guard let linked = model.deviceTestLinkedSensorID else { return nil }
         return model.identities.first { $0.id == linked }
+    }
+
+    private func reconcileSelectedIdentity() {
+        selectedIdentityID = GS3DeviceProvisioningIdentitySelection.resolve(
+            current: selectedIdentityID,
+            linked: model.deviceTestLinkedSensorID,
+            available: model.identities.map(\.id)
+        )
     }
 
     private func identityLabel(_ identity: SensorIdentity) -> String {

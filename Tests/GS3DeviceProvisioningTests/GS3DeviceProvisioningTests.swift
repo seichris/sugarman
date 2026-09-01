@@ -10,6 +10,51 @@ import Testing
 
 @Suite("GS3 device-only provisioning")
 struct GS3DeviceProvisioningTests {
+    @Test func identitySelectionReconcilesAfterAsynchronousStoreLoad() throws {
+        let first = UUID(uuidString: "AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE")!
+        let linked = UUID(uuidString: "11111111-2222-3333-4444-555555555555")!
+
+        #expect(
+            GS3DeviceProvisioningIdentitySelection.resolve(
+                current: nil,
+                linked: nil,
+                available: []
+            ) == nil
+        )
+        #expect(
+            GS3DeviceProvisioningIdentitySelection.resolve(
+                current: nil,
+                linked: linked,
+                available: [first, linked]
+            ) == linked
+        )
+        #expect(
+            GS3DeviceProvisioningIdentitySelection.resolve(
+                current: first,
+                linked: linked,
+                available: [first, linked]
+            ) == first
+        )
+        #expect(
+            GS3DeviceProvisioningIdentitySelection.resolve(
+                current: UUID(),
+                linked: nil,
+                available: [first]
+            ) == first
+        )
+    }
+
+    @Test func fileImportRequestPinsKindAndLinkedIdentity() throws {
+        let linked = UUID(uuidString: "11111111-2222-3333-4444-555555555555")!
+        let request = GS3DeviceProvisioningFileImportRequest(
+            kind: .existingProbe,
+            linkedSensorID: linked
+        )
+
+        #expect(request.kind == .existingProbe)
+        #expect(request.linkedSensorID == linked)
+    }
+
     @Test func importNormalizesMaterialAndPreparesOneLiveSession() async throws {
         let persistence = InMemoryProvisioningPersistence()
         let generatedSessionID = UUID(uuidString: "AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE")!

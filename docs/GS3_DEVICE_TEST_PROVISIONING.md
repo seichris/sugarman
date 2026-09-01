@@ -40,6 +40,15 @@ Private import and live execution are separate operations:
    foreground starts a fresh reducer only while that same process remains
    explicitly armed.
 
+The Sensor screen owns one system file-import presentation for package images,
+managed provisioning JSON, and the existing Probe JSON. A device-test request
+pins its import kind and selected redacted identity before the picker appears;
+the completion cannot be silently retargeted by an asynchronous store refresh.
+The identity picker reconciles again whenever stored identities or the existing
+Keychain link change, rather than relying on one launch-time task. Cancellation
+and picker failure leave Keychain provisioning unchanged and surface a bounded
+status without file paths or private content.
+
 Deleting provisioning first stops the controller and then deletes only the
 private Keychain item. Deleting all local app data also deletes that item.
 
