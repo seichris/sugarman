@@ -42,6 +42,16 @@ public enum BluetoothAuthorizationMapping: Sendable {
 /// bind, or activate. Does not call `writeValue`. Simulator has no BLE
 /// peripheral; this type must not be required to talk to live hardware in tests.
 public final class CoreBluetoothRuntime: NSObject, BluetoothRuntime, @unchecked Sendable {
+    private enum PendingOperation: Equatable {
+        case startScan
+        case connect(UUID)
+        case discoverServices
+        case discoverCharacteristics
+        case read(UUID)
+    }
+    /// Stable CoreBluetooth state-restoration identifier. Identity only —
+    /// this adapter does not reconnect to a live sensor or resume
+    /// authentication after `willRestoreState`.
     public static let restorationIdentifier = "app.sugarman.ios.gs3.transport"
     public static let queueLabel = "app.sugarman.ios.gs3.transport"
 
@@ -51,10 +61,16 @@ public final class CoreBluetoothRuntime: NSObject, BluetoothRuntime, @unchecked 
     private var connected: CBPeripheral?
     private var characteristics: [UUID: CBCharacteristic] = [:]
     private var pending: CheckedContinuation<Void, Error>?
+    private var pendingOperationID: UUID?
+    private var pendingOperation: PendingOperation?
     private var startScanAfterPoweredOn = false
     private var backoffAttempt = 0
     private var advertisements: [UUID: AdvertisementSnapshot] = [:]
     private var documentedTexts: [UUID: String] = [:]
+    private var gattServices: [GATTServiceSnapshot] = []
+    private var serialByteCount: Int?
+    private var remainingCharacteristicDiscoveries = 0
+    private let operationTimeoutSeconds: TimeInterval
     public var onDiscover: (@Sendable (AdvertisementSnapshot) -> Void)?
 
     public var discoveredAdvertisements: [AdvertisementSnapshot] {
@@ -70,12 +86,24 @@ public final class CoreBluetoothRuntime: NSObject, BluetoothRuntime, @unchecked 
         return queue.sync { documentedTexts[uuid] }
     }
 
+    public var discoveredGATTServices: [GATTServiceSnapshot] {
+        queue.sync { gattServices }
+    }
+
+    public var serialNumberByteCount: Int? {
+        queue.sync { serialByteCount }
+    }
+
     public func deviceInformationSnapshot() -> DeviceInformationSnapshot {
         DeviceInformationSnapshot.omittingSerial(from: queue.sync { documentedTexts })
     }
 
-    public init(queue: DispatchQueue = DispatchQueue(label: CoreBluetoothRuntime.queueLabel)) {
+    public init(
+        queue: DispatchQueue = DispatchQueue(label: CoreBluetoothRuntime.queueLabel),
+        operationTimeoutSeconds: TimeInterval = 15
+    ) {
         self.queue = queue
+        self.operationTimeoutSeconds = operationTimeoutSeconds
         super.init()
     }
 
@@ -130,8 +158,16 @@ public final class CoreBluetoothRuntime: NSObject, BluetoothRuntime, @unchecked 
                     case .poweredOff, .unsupported, .resetting:
                         continuation.resume(throwing: TransportError.bluetoothUnavailable)
                     default:
+                        guard self.pending == nil else {
+                            continuation.resume(throwing: TransportError.commandInFlight)
+                            return
+                        }
                         self.pending = continuation
+                        self.pendingOperation = .startScan
+                        let operationID = UUID()
+                        self.pendingOperationID = operationID
                         self.startScanAfterPoweredOn = true
+                        self.scheduleTimeout(operationID: operationID)
                     }
                 } catch {
                     continuation.resume(throwing: error)
@@ -145,13 +181,16 @@ public final class CoreBluetoothRuntime: NSObject, BluetoothRuntime, @unchecked 
             queue.async {
                 self.startScanAfterPoweredOn = false
                 self.central?.stopScan()
+                if self.pendingOperation == .startScan {
+                    self.resumePending(error: TransportError.disconnected)
+                }
                 continuation.resume()
             }
         }
     }
 
     private func connect(_ id: UUID) async throws {
-        try await enqueue { runtime in
+        try await enqueue(kind: .connect(id)) { runtime in
             try runtime.ensureCentralLocked()
             let peripheral: CBPeripheral
             if let known = runtime.peripherals[id] {
@@ -163,6 +202,7 @@ public final class CoreBluetoothRuntime: NSObject, BluetoothRuntime, @unchecked 
             } else {
                 throw TransportError.timeout
             }
+            runtime.resetPeripheralEvidenceLocked()
             runtime.central?.stopScan()
             runtime.central?.connect(peripheral, options: nil)
         }
@@ -177,33 +217,37 @@ public final class CoreBluetoothRuntime: NSObject, BluetoothRuntime, @unchecked 
                 if self.connected?.identifier == id {
                     self.connected = nil
                 }
+                if self.pending != nil {
+                    self.resumePending(error: TransportError.disconnected)
+                }
                 continuation.resume()
             }
         }
     }
 
     private func discoverServices() async throws {
-        try await enqueue { runtime in
+        try await enqueue(kind: .discoverServices) { runtime in
             guard let peripheral = runtime.connected else {
                 throw TransportError.invalidTransition(from: .connecting)
             }
-            let dis = CBUUID(nsuuid: DocumentedReadableCharacteristic.deviceInformationService)
-            peripheral.discoverServices([dis])
+            // P1 GATT map needs every service. Reads stay allowlisted below.
+            peripheral.discoverServices(nil)
         }
     }
 
     private func discoverCharacteristics() async throws {
-        try await enqueue { runtime in
+        try await enqueue(kind: .discoverCharacteristics) { runtime in
             guard let peripheral = runtime.connected else {
                 throw TransportError.invalidTransition(from: .discovering)
             }
-            let allowlisted = DocumentedReadableCharacteristic.all.map { CBUUID(nsuuid: $0) }
             let services = peripheral.services ?? []
             guard !services.isEmpty else {
                 throw TransportError.timeout
             }
+            runtime.gattServices = []
+            runtime.remainingCharacteristicDiscoveries = services.count
             for service in services {
-                peripheral.discoverCharacteristics(allowlisted, for: service)
+                peripheral.discoverCharacteristics(nil, for: service)
             }
         }
     }
@@ -212,9 +256,9 @@ public final class CoreBluetoothRuntime: NSObject, BluetoothRuntime, @unchecked 
         guard DocumentedReadableCharacteristic.isAllowlisted(uuid) else {
             throw TransportError.mutatingOperationRefused
         }
-        try await enqueue { runtime in
+        try await enqueue(kind: .read(uuid)) { runtime in
             guard let characteristic = runtime.characteristics[uuid] else {
-                throw TransportError.timeout
+                throw TransportError.characteristicUnavailable(uuid)
             }
             guard let peripheral = runtime.connected else {
                 throw TransportError.invalidTransition(from: .subscribed)
@@ -236,7 +280,10 @@ public final class CoreBluetoothRuntime: NSObject, BluetoothRuntime, @unchecked 
         }
     }
 
-    private func enqueue(_ body: @escaping @Sendable (CoreBluetoothRuntime) throws -> Void) async throws {
+    private func enqueue(
+        kind: PendingOperation,
+        _ body: @escaping @Sendable (CoreBluetoothRuntime) throws -> Void
+    ) async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             queue.async {
                 if self.pending != nil {
@@ -245,9 +292,15 @@ public final class CoreBluetoothRuntime: NSObject, BluetoothRuntime, @unchecked 
                 }
                 do {
                     self.pending = continuation
+                    self.pendingOperation = kind
+                    let operationID = UUID()
+                    self.pendingOperationID = operationID
+                    self.scheduleTimeout(operationID: operationID)
                     try body(self)
                 } catch {
                     self.pending = nil
+                    self.pendingOperationID = nil
+                    self.pendingOperation = nil
                     continuation.resume(throwing: error)
                 }
             }
@@ -258,11 +311,36 @@ public final class CoreBluetoothRuntime: NSObject, BluetoothRuntime, @unchecked 
         startScanAfterPoweredOn = false
         guard let pending else { return }
         self.pending = nil
+        pendingOperationID = nil
+        pendingOperation = nil
         if let error {
             pending.resume(throwing: error)
         } else {
             pending.resume()
         }
+    }
+
+    private func scheduleTimeout(operationID: UUID) {
+        queue.asyncAfter(deadline: .now() + operationTimeoutSeconds) { [weak self] in
+            guard let self, self.pendingOperationID == operationID else { return }
+            if case .connect(let id) = self.pendingOperation,
+               let peripheral = self.peripherals[id] {
+                self.central?.cancelPeripheralConnection(peripheral)
+            }
+            if self.pendingOperation == .startScan {
+                self.central?.stopScan()
+            }
+            self.resumePending(error: TransportError.timeout)
+        }
+    }
+
+    private func resetPeripheralEvidenceLocked() {
+        connected = nil
+        characteristics = [:]
+        documentedTexts = [:]
+        gattServices = []
+        serialByteCount = nil
+        remainingCharacteristicDiscoveries = 0
     }
 
     private func sugarmanUUID(from cbuuid: CBUUID) -> UUID? {
@@ -279,7 +357,7 @@ extension CoreBluetoothRuntime: CBCentralManagerDelegate {
             resumePending(error: error)
             return
         }
-        if startScanAfterPoweredOn, central.state == .poweredOn {
+        if startScanAfterPoweredOn, pendingOperation == .startScan, central.state == .poweredOn {
             startScanAfterPoweredOn = false
             central.scanForPeripherals(withServices: nil, options: nil)
             resumePending(error: nil)
@@ -320,24 +398,43 @@ extension CoreBluetoothRuntime: CBCentralManagerDelegate {
         peripheral.delegate = self
         connected = peripheral
         peripherals[peripheral.identifier] = peripheral
-        resumePending(error: nil)
+        if pendingOperation == .connect(peripheral.identifier) {
+            resumePending(error: nil)
+        } else {
+            central.cancelPeripheralConnection(peripheral)
+        }
     }
 
     public func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
-        _ = peripheral
-        resumePending(error: error ?? TransportError.timeout)
+        if pendingOperation == .connect(peripheral.identifier) {
+            resumePending(error: error ?? TransportError.timeout)
+        }
     }
 
     public func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
-        _ = error
-        if connected?.identifier == peripheral.identifier {
+        let wasConnectedPeripheral = connected?.identifier == peripheral.identifier
+        if wasConnectedPeripheral {
             connected = nil
+        }
+        let matchesPendingOperation: Bool
+        switch pendingOperation {
+        case .connect(let id):
+            matchesPendingOperation = id == peripheral.identifier
+        case .discoverServices, .discoverCharacteristics, .read:
+            matchesPendingOperation = wasConnectedPeripheral
+        case .startScan, nil:
+            matchesPendingOperation = false
+        }
+        if matchesPendingOperation {
+            resumePending(error: error ?? TransportError.disconnected)
         }
     }
 }
 
 extension CoreBluetoothRuntime: CBPeripheralDelegate {
     public func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
+        guard pendingOperation == .discoverServices,
+              connected?.identifier == peripheral.identifier else { return }
         if let error {
             resumePending(error: error)
             return
@@ -347,31 +444,87 @@ extension CoreBluetoothRuntime: CBPeripheralDelegate {
     }
 
     public func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
+        guard pendingOperation == .discoverCharacteristics,
+              connected?.identifier == peripheral.identifier else { return }
         if let error {
+            remainingCharacteristicDiscoveries = 0
             resumePending(error: error)
             return
         }
+        var mapped: [GATTCharacteristicSnapshot] = []
         for characteristic in service.characteristics ?? [] {
-            if let uuid = sugarmanUUID(from: characteristic.uuid),
-               DocumentedReadableCharacteristic.isAllowlisted(uuid) {
+            let uuid = sugarmanUUID(from: characteristic.uuid)
+            if let uuid,
+               DocumentedReadableCharacteristic.isAllowlisted(uuid),
+               characteristic.properties.contains(.read) {
                 characteristics[uuid] = characteristic
             }
+            if let uuid {
+                mapped.append(
+                    GATTCharacteristicSnapshot(
+                        uuid: uuid,
+                        properties: Self.propertyNames(characteristic.properties),
+                        valueByteCount: characteristic.value?.count
+                    )
+                )
+            }
         }
-        resumePending(error: nil)
+        if let serviceUUID = sugarmanUUID(from: service.uuid) {
+            gattServices.append(GATTServiceSnapshot(uuid: serviceUUID, characteristics: mapped))
+        }
+        remainingCharacteristicDiscoveries = max(0, remainingCharacteristicDiscoveries - 1)
+        if remainingCharacteristicDiscoveries == 0 {
+            resumePending(error: nil)
+        }
+        _ = peripheral
+    }
+
+    private static func propertyNames(_ properties: CBCharacteristicProperties) -> [String] {
+        var names: [String] = []
+        if properties.contains(.broadcast) { names.append("broadcast") }
+        if properties.contains(.read) { names.append("read") }
+        if properties.contains(.writeWithoutResponse) { names.append("writeWithoutResponse") }
+        if properties.contains(.write) { names.append("write") }
+        if properties.contains(.notify) { names.append("notify") }
+        if properties.contains(.indicate) { names.append("indicate") }
+        if properties.contains(.authenticatedSignedWrites) { names.append("authenticatedSignedWrites") }
+        if properties.contains(.extendedProperties) { names.append("extendedProperties") }
+        if properties.contains(.notifyEncryptionRequired) { names.append("notifyEncryptionRequired") }
+        if properties.contains(.indicateEncryptionRequired) { names.append("indicateEncryptionRequired") }
+        return names
     }
 
     public func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
-        _ = peripheral
-        _ = characteristic.value?.count
-        if error == nil,
-           let uuid = sugarmanUUID(from: characteristic.uuid),
-           DocumentedReadableCharacteristic.isAllowlisted(uuid),
-           uuid != DocumentedReadableCharacteristic.serialNumber,
-           let data = characteristic.value,
-           let text = String(data: data, encoding: .utf8) {
-            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !trimmed.isEmpty {
-                documentedTexts[uuid] = trimmed
+        guard connected?.identifier == peripheral.identifier,
+              let characteristicUUID = sugarmanUUID(from: characteristic.uuid),
+              pendingOperation == .read(characteristicUUID) else { return }
+        if error == nil {
+            let uuid = characteristicUUID
+            let count = characteristic.value?.count
+            if uuid == DocumentedReadableCharacteristic.serialNumber {
+                serialByteCount = count
+                // Never store serial text.
+            } else if DocumentedReadableCharacteristic.isAllowlisted(uuid),
+                      let data = characteristic.value,
+                      let text = String(data: data, encoding: .utf8) {
+                let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty {
+                    documentedTexts[uuid] = trimmed
+                }
+            }
+            if let index = gattServices.firstIndex(where: { service in
+                service.characteristics.contains(where: { $0.uuid == uuid })
+            }) {
+                var service = gattServices[index]
+                service.characteristics = service.characteristics.map { item in
+                    guard item.uuid == uuid else { return item }
+                    return GATTCharacteristicSnapshot(
+                        uuid: item.uuid,
+                        properties: item.properties,
+                        valueByteCount: count ?? item.valueByteCount
+                    )
+                }
+                gattServices[index] = service
             }
         }
         resumePending(error: error)

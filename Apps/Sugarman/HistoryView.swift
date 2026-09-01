@@ -42,11 +42,11 @@ struct HistoryView: View {
                     }
                 }
                 Section("history.samples") {
-                    if model.samples.isEmpty {
+                    if model.activeSamples.isEmpty {
                         Text("history.empty")
                             .foregroundStyle(.secondary)
                     } else {
-                        ForEach(model.samples) { sample in
+                        ForEach(model.activeSamples) { sample in
                             sampleRow(sample)
                         }
                     }
@@ -132,6 +132,8 @@ struct HistoryView: View {
 
     private func sourceLabel(_ sample: GlucoseSample) -> String {
         switch sample.source {
+        case .unknown:
+            String(localized: "history.source.unknown")
         case .live:
             String(localized: "history.source.live")
         case .backfill:

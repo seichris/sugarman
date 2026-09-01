@@ -9,7 +9,8 @@ This policy is operational, not a legal opinion.
 - Credentials, tokens, cookies, account passwords, and Keychain dumps
 - Full UDI strings, full serial numbers, and unredacted package photographs
   that expose unique identifiers
-- Embedded key bytes, registration tokens, and cipher key material
+- Runtime/account key bytes, IVs, registration tokens, authentication IDs, and
+  other owner-specific cipher material
 - Raw BLE/HCI captures that include authentication payloads
 - LLM transcripts used as if they were implementation specifications
 
@@ -31,9 +32,21 @@ Keep a directory **outside** this Git worktree, for example:
   apk/                  # hash only is recorded in Git
   hci/                  # Android HCI snoop, encrypted at rest if possible
   ios-gatt/             # read-only diagnostic notes
+  probe/                # private import JSON and local run record
   photos/               # package photos
   hashes.sha256
 ```
+
+The Device Test target may consume the existing Probe JSON through its
+scan-only provisioning bridge. The exact expected local name and resulting
+CoreBluetooth UUID remain device-only: do not place either in filenames,
+terminal output, logs, diagnostics, issue/PR text, or Git. The bridge never
+exports a converted JSON document.
+
+The macOS Device Test may consume the same private Probe JSON only through a
+user-selected read-only file URL and the shared zeroizing import buffer. Its
+scan result and normalized Keychain item are Mac-local and remain subject to
+the same no-filename, no-log, no-report, and no-Git rule.
 
 Record in the private inventory (P0): package UDI/GTIN/SKU/lot/expiry with
 full serials; Data Matrix and NDEF text; sensor state; official app
@@ -50,6 +63,22 @@ phone models and OS versions; visible firmware/hardware/manufacturer.
 
 Fixtures derived from upstream source rather than hardware must be marked
 GPL and recorded in the provenance registry.
+
+One fixed, non-owner-specific V3 protocol constant is present in the GPL source
+under the scoped approval and exact provenance recorded in
+[`V3_AUTH_SOURCE_MAP_2026-08-30.md`](V3_AUTH_SOURCE_MAP_2026-08-30.md). That
+narrow interoperability record does not permit committing runtime material or
+other keys from private evidence. In particular, the separately observed fixed
+algorithm-glucose key and IV remain uncommitted pending their own explicit
+legal/provenance decision; the offline decoder accepts them only as redacted
+caller-supplied material.
+
+The developer probe imports a schema-v1 JSON file from Files after installation
+and stores only normalized binary material in a
+`kSecAttrAccessibleWhenUnlockedThisDeviceOnly` Keychain item. Keep the source
+JSON outside the repository and app bundle, do not place it in cloud-synced
+storage, and delete the file from the iPhone Files location after a successful
+import. Deleting material inside the probe removes the Keychain item.
 
 ## Diagnostic captures inside the app
 

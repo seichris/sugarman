@@ -138,6 +138,7 @@ public enum SyntheticDemoCatalog: Sendable {
 
         let workoutEnd = now.addingTimeInterval(-sampleAge)
         let workout = WorkoutContext(
+            sessionID: sessionID,
             start: workoutEnd.addingTimeInterval(-45 * 60),
             end: workoutEnd,
             activityType: "run",

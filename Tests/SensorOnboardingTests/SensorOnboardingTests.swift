@@ -94,8 +94,56 @@ struct SensorOnboardingTests {
 
     @Test func ndefUnknownFailsClosed() {
         let ndef = BoundedNDEFParser()
-        #expect(throws: OnboardingError.unsupportedFormat(reason: "owned-tag NDEF layout is not yet physically validated")) {
+        #expect(throws: OnboardingError.unsupportedFormat(reason: "no supported owned-tag NDEF profile")) {
             try ndef.parseTextRecords(["hello"])
+        }
+    }
+
+    @Test func observedGS3NDEFParsesAndRedactsIdentifiers() throws {
+        let ndef = BoundedNDEFParser()
+        let sanitizedPayload = "GJ,04CS000000000AA,6,ABC123"
+        let result = try ndef.parse(sanitizedPayload)
+
+        #expect(result.textRecords == ["GJ,…00AA,6,…"])
+        #expect(!result.textRecords.joined().contains("04CS000000000AA"))
+        #expect(!result.textRecords.joined().contains("ABC123"))
+        #expect(result.productName == "GS3")
+        #expect(result.sku == nil)
+        #expect(result.redactedSerial == "…00AA")
+        #expect(result.regionHypothesis.contains("region is not encoded"))
+        #expect(result.protocolHypothesis.rawValue == "unknown")
+        #expect(result.confidence == .high)
+        #expect(result.formatName == "sibionics-gs3-gj-ndef-v1")
+        #expect(!result.isSynthetic)
+    }
+
+    @Test func observedGS3NDEFRejectsMalformedOrAmbiguousRecords() {
+        let ndef = BoundedNDEFParser()
+        let malformed = [
+            "GJ,04CS00000000AA,6,ABC123",
+            "GJ,04CS000000000AAA,6,ABC123",
+            "GJ,04Cs000000000AA,6,ABC123",
+            "GJ,04CS000000000AA,5,ABC123",
+            "GJ,04CS000000000AA,6,ABC12",
+            "GJ,04CS000000000AA,6,ABC1234",
+            "GJ,04CS000000000AA,6,abc123",
+            "GJ,04CS000000000AA,6,ABC123,EXTRA",
+        ]
+        for payload in malformed {
+            #expect(throws: OnboardingError.unsupportedFormat(
+                reason: "malformed GS3 GJ NDEF record; expected four bounded ASCII fields"
+            )) {
+                try ndef.parse(payload)
+            }
+        }
+
+        #expect(throws: OnboardingError.unsupportedFormat(
+            reason: "ambiguous GS3 NDEF message; expected one text record"
+        )) {
+            try ndef.parseTextRecords([
+                "GJ,04CS000000000AA,6,ABC123",
+                "unexpected second record",
+            ])
         }
     }
 
@@ -151,6 +199,10 @@ struct SensorOnboardingTests {
         let withGS = try defaultParser.parse("010123456789012310LOT42" + gs + "21SER99ZZ")
         #expect(withGS.gtin == "01234567890123")
         #expect(withGS.redactedSerial == "…99ZZ")
+
+        let serialContainingAIs = try defaultParser.parse("010123456789012321ABC17DEF21XYZ")
+        #expect(serialContainingAIs.redactedSerial == "…1XYZ")
+        #expect(GS1ElementString.parse("010123456789012310LOT21SERIAL") == nil)
     }
 
     @Test func gs1UnknownTruncatedEmptyNULStillFailClosed() {
@@ -194,6 +246,11 @@ struct SensorOnboardingTests {
         #expect(payloads.isEmpty)
         await #expect(throws: OnboardingError.invalidEncoding) {
             try await scanner.payloads(fromImageData: Data([0x00, 0x01, 0x02]))
+        }
+        await #expect(throws: OnboardingError.payloadTooLarge) {
+            try await scanner.payloads(
+                fromImageData: Data(count: VisionDataMatrixScanner.maximumEncodedImageBytes + 1)
+            )
         }
     }
 #endif

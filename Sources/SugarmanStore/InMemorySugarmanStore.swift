@@ -15,6 +15,50 @@ public actor InMemorySugarmanStore: SugarmanStoring {
 
     public init() {}
 
+    public func prepareHistoryRequest(sessionID: UUID, startingAt: UInt32) async throws {
+        guard var session = sessions[sessionID] else { throw StoreError.notFound }
+        if let committed = session.lastCommittedIndex, startingAt != committed {
+            throw StoreError.historyRequestWouldSkipCommittedCursor
+        }
+        if session.lastCommittedIndex == nil,
+           let prepared = session.lastRequestedIndex,
+           startingAt != prepared {
+            throw StoreError.historyRequestWouldSkipCommittedCursor
+        }
+        session.lastRequestedIndex = startingAt
+        sessions[sessionID] = session
+    }
+
+    public func commitSamples(
+        _ incomingSamples: [GlucoseSample],
+        sessionID: UUID,
+        establishingTimeAnchor: SensorTimeAnchor?
+    ) async throws -> SampleBatchCommitResult {
+        guard var session = sessions[sessionID] else { throw StoreError.notFound }
+        let existing = samples.values.filter { $0.sessionID == sessionID }
+        let plan = try SampleBatchCommitPlanner.makePlan(
+            session: session,
+            existingSamples: existing,
+            incomingSamples: incomingSamples,
+            establishingTimeAnchor: establishingTimeAnchor
+        )
+
+        // All validation happens before this copy-on-commit mutation so a
+        // conflicting duplicate cannot leave a partial batch behind.
+        var nextSamples = samples
+        for sample in plan.samplesToInsert {
+            nextSamples[sample.id] = sample
+        }
+        session.lastReceivedIndex = plan.result.lastReceivedIndex
+        session.lastCommittedIndex = plan.result.lastCommittedIndex
+        if session.sensorTimeAnchor == nil {
+            session.sensorTimeAnchor = establishingTimeAnchor
+        }
+        samples = nextSamples
+        sessions[sessionID] = session
+        return plan.result
+    }
+
     public func insertSample(_ sample: GlucoseSample) async throws {
         let key = sample.id
         if samples[key] != nil {
@@ -65,6 +109,22 @@ public actor InMemorySugarmanStore: SugarmanStoring {
         sessions[session.id] = session
     }
 
+    public func updateSession(_ session: SensorSession) async throws {
+        guard sessions[session.id] != nil else { throw StoreError.notFound }
+        sessions[session.id] = session
+    }
+
+    public func setConnection(
+        _ connection: ConnectionState,
+        sessionID: UUID
+    ) async throws {
+        guard var session = sessions[sessionID] else {
+            throw StoreError.notFound
+        }
+        session.connection = connection
+        sessions[sessionID] = session
+    }
+
     public func session(id: UUID) async throws -> SensorSession? {
         sessions[id]
     }
@@ -74,12 +134,13 @@ public actor InMemorySugarmanStore: SugarmanStoring {
     }
 
     public func delete(sessionID: UUID) async throws {
+        guard sessions[sessionID] != nil else { throw StoreError.notFound }
         sessions[sessionID] = nil
         samples = samples.filter { $0.key.sessionID != sessionID }
-        // Workouts and identities are global (no sessionID) and are removed
-        // by deleteAll only. Session-scoped fueling is deleted here; unscoped
-        // fueling (sessionID == nil) is kept.
+        // Identities are global and are removed by deleteAll only. Scoped
+        // fueling and workouts are deleted with their session.
         fueling = fueling.filter { $0.value.sessionID != sessionID }
+        workoutRecords = workoutRecords.filter { $0.value.sessionID != sessionID }
     }
 
     public func deleteAll() async throws {
@@ -107,6 +168,7 @@ public actor InMemorySugarmanStore: SugarmanStoring {
     }
 
     public func deleteFueling(id: UUID) async throws {
+        guard fueling[id] != nil else { throw StoreError.notFound }
         fueling[id] = nil
     }
 

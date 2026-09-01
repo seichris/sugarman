@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Sugarman contributors
 
 import Foundation
+import GS3Session
 import Testing
 @testable import GS3Transport
 #if canImport(CoreBluetooth)
@@ -9,6 +10,48 @@ import CoreBluetooth
 #endif
 
 struct GS3TransportTests {
+    @Test func deviceTestLinkLossIsLiveOnlyAndAcceptedAtMostOnce() async {
+        let coordinator = StubForegroundController(phase: .synchronizing)
+        let injector = RecordingLinkLossInjector(result: true)
+        let controller = GS3ForegroundDeviceTestController(
+            coordinator: coordinator,
+            linkLossInjector: injector
+        )
+
+        #expect(await controller.injectLinkLossForDeviceTesting() == false)
+        #expect(await injector.callCount == 0)
+
+        await coordinator.setPhase(.live)
+        #expect(await controller.injectLinkLossForDeviceTesting() == true)
+        #expect(await controller.injectLinkLossForDeviceTesting() == false)
+        #expect(await injector.callCount == 1)
+    }
+
+    @Test func managedAndReadOnlyCentralsUseDistinctRestorationIdentifiers() {
+        #expect(
+            GS3ForegroundCoreBluetoothTransport.productionRestorationIdentifier
+                == "app.sugarman.ios.gs3.managed-session"
+        )
+        #expect(
+            GS3ForegroundCoreBluetoothTransport.productionRestorationIdentifier
+                != CoreBluetoothRuntime.restorationIdentifier
+        )
+    }
+
+    @Test func rejectedDeviceTestInjectionMayBeRetriedAfterBecomingLive() async {
+        let coordinator = StubForegroundController(phase: .live)
+        let injector = RecordingLinkLossInjector(result: false)
+        let controller = GS3ForegroundDeviceTestController(
+            coordinator: coordinator,
+            linkLossInjector: injector
+        )
+
+        #expect(await controller.injectLinkLossForDeviceTesting() == false)
+        await injector.setResult(true)
+        #expect(await controller.injectLinkLossForDeviceTesting() == true)
+        #expect(await injector.callCount == 2)
+    }
+
     @Test func scanConnectDiscoverReadPath() {
         var machine = TransportStateMachine()
         #expect(machine.send(.startScan) == [.startScan])
@@ -326,5 +369,37 @@ struct GS3TransportTests {
                 continue
             }
         }
+    }
+}
+
+private actor StubForegroundController: GS3ForegroundSessionControlling {
+    private var phase: GS3ForegroundPhase
+
+    init(phase: GS3ForegroundPhase) {
+        self.phase = phase
+    }
+
+    func start() async throws {}
+    func stop() async {}
+    func foregroundEnded() async {}
+    func currentPhase() async -> GS3ForegroundPhase { phase }
+    func setPhase(_ phase: GS3ForegroundPhase) { self.phase = phase }
+}
+
+private actor RecordingLinkLossInjector: GS3ForegroundLinkLossInjecting {
+    private var result: Bool
+    private(set) var callCount = 0
+
+    init(result: Bool) {
+        self.result = result
+    }
+
+    func injectLinkLossForDeviceTesting() -> Bool {
+        callCount += 1
+        return result
+    }
+
+    func setResult(_ result: Bool) {
+        self.result = result
     }
 }

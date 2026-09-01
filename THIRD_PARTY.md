@@ -39,6 +39,35 @@ extracted from an APK. Those binaries are **not** Sugarman dependencies and
 must never be added to this repository's application targets or release
 archives.
 
+## Owned vendor-app interoperability observation
+
+An owner-controlled copy of the official Mainland Android app and its native
+library were inspected as proprietary-or-unknown-licence evidence. They are not
+linked, copied, bundled, or redistributed with Sugarman. Separately authored
+GPL Swift source records only approved functional interoperability facts,
+public-standard algorithms, and one approved fixed non-account-specific
+protocol constant required for the offline V3 transport and authentication
+transform. The exact
+evidence hashes, source locations, destination files, and scope limits are in
+[`docs/V3_AUTH_SOURCE_MAP_2026-08-30.md`](docs/V3_AUTH_SOURCE_MAP_2026-08-30.md)
+and
+[`docs/V3_GLUCOSE_NOTIFICATION_SOURCE_MAP_2026-08-30.md`](docs/V3_GLUCOSE_NOTIFICATION_SOURCE_MAP_2026-08-30.md)
+and [`docs/provenance/registry.json`](docs/provenance/registry.json).
+
+This is a provenance record, not a conclusion that vendor code or binaries are
+GPL-compatible and not approval for App Store/binary distribution. Runtime IVs,
+registration material, authentication IDs, account data, device identifiers,
+and the newly observed algorithm-glucose key/IV bytes remain private and are
+never committed under the current approval.
+
+The separately authored `SugarmanProbe` developer target accepts those private
+values only through a post-install file import and stores normalized bytes in a
+device-only Keychain item. No vendor binary or vendor source is used at runtime,
+and no fixed algorithm-glucose key/IV is embedded. The normal `Sugarman` target
+does not link the probe module. This containment does not resolve App Store/GPL,
+vendor-terms, medical-positioning, or export-review questions; those remain
+distribution gates.
+
 ## Apple system frameworks
 
 The iOS app links only system frameworks provided by the SDK (SwiftUI,
@@ -73,7 +102,10 @@ in milestone M0. Before any later adaptation:
 2. Preserve upstream notices and add a modification date/author.
 3. Keep the adaptation in a narrow commit.
 4. Do not copy implementation text from an LLM transcript.
-5. Do not commit APKs, credentials, full UDI/serials, tokens, or embedded key
-   bytes.
+5. Do not commit APKs, credentials, full UDI/serials, tokens, runtime/account
+   keys, IVs, or other owner-specific secret bytes. A fixed, non-owner-specific
+   interoperability constant may be recorded only after scoped legal/provenance
+   approval, in one authoritative implementation location, with the vendor
+   binary excluded from every build and distribution artifact.
 
 Machine-readable registry: [docs/provenance/registry.json](docs/provenance/registry.json).

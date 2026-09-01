@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Sugarman contributors
 
 import AccountBinding
+import GS3DeviceProvisioning
 import SensorOnboarding
 import SugarmanDomain
 import SwiftUI
@@ -17,17 +18,45 @@ import CoreNFC
 #endif
 
 struct SensorOnboardingView: View {
+    private enum FileImportRoute: Equatable {
+        case sensorImage
+#if !SUGARMAN_DEVICE_TEST
+        case sensorConnection(GS3DeviceProvisioningFileImportRequest)
+#endif
+#if SUGARMAN_DEVICE_TEST
+        case deviceTest(GS3DeviceProvisioningFileImportRequest)
+#endif
+
+        var allowedContentTypes: [UTType] {
+            switch self {
+            case .sensorImage:
+                [.image]
+#if !SUGARMAN_DEVICE_TEST
+            case .sensorConnection:
+                [.json]
+#endif
+#if SUGARMAN_DEVICE_TEST
+            case .deviceTest:
+                [.json]
+#endif
+            }
+        }
+    }
+
     @Environment(AppModel.self) private var model
+    private let embeddedInNavigationStack: Bool
     @State private var packageText = ""
     @State private var ndefText = ""
     @State private var parseMessage = String(localized: "sensor.parse_idle")
     @State private var parsedIdentity: SensorIdentity?
     @State private var parsedRegion = ""
     @State private var parsedConfidence = ""
+    @State private var parsedIsSynthetic = true
     @State private var ownerID = ""
     @State private var ownerStatus = String(localized: "onboarding.owner_idle")
     @State private var confirmStore = false
-    @State private var showFileImporter = false
+    @State private var fileImportRoute: FileImportRoute?
+    @State private var isFileImporterPresented = false
 #if os(iOS) && canImport(AVFoundation) && canImport(UIKit) && canImport(Vision) && !targetEnvironment(simulator)
     @State private var showCamera = false
 #endif
@@ -46,9 +75,23 @@ struct SensorOnboardingView: View {
     private let imageScanner: any BarcodeImageScanning = StubBarcodeImageScanner()
 #endif
 
+    init(embeddedInNavigationStack: Bool = false) {
+        self.embeddedInNavigationStack = embeddedInNavigationStack
+    }
+
+    @ViewBuilder
     var body: some View {
-        NavigationStack {
-            Form {
+        if embeddedInNavigationStack {
+            onboardingContent
+        } else {
+            NavigationStack {
+                onboardingContent
+            }
+        }
+    }
+
+    private var onboardingContent: some View {
+        Form {
                 Section("sensor.hardware") {
 #if os(iOS) && canImport(AVFoundation) && canImport(UIKit) && canImport(Vision) && !targetEnvironment(simulator)
                     Button {
@@ -84,7 +127,7 @@ struct SensorOnboardingView: View {
                     .accessibilityHint(Text("sensor.import_image_hint"))
 #endif
                     Button("sensor.import_file") {
-                        showFileImporter = true
+                        presentFileImporter(.sensorImage)
                     }
                     .accessibilityLabel(Text("sensor.import_file"))
                     .accessibilityHint(Text("sensor.import_file_hint"))
@@ -114,7 +157,7 @@ struct SensorOnboardingView: View {
                         LabeledContent("sensor.region", value: parsedRegion)
                         LabeledContent("sensor.protocol", value: identity.protocolVariant.rawValue)
                         LabeledContent("sensor.confidence", value: parsedConfidence)
-                        Text("sensor.synthetic_notice")
+                        Text(parsedIsSynthetic ? "sensor.synthetic_notice" : "sensor.owned_hardware_notice")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                         Button("sensor.confirm") {
@@ -139,6 +182,15 @@ struct SensorOnboardingView: View {
                         }
                     }
                 }
+#if SUGARMAN_DEVICE_TEST
+                DeviceTestProvisioningSection { request in
+                    presentFileImporter(.deviceTest(request))
+                }
+#else
+                SensorConnectionSection { request in
+                    presentFileImporter(.sensorConnection(request))
+                }
+#endif
                 Section("onboarding.owner") {
                     TextField("onboarding.owner_field", text: $ownerID)
                         .textInputAutocapitalization(.never)
@@ -161,29 +213,22 @@ struct SensorOnboardingView: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
-            }
-            .navigationTitle("sensor.title")
-            .confirmationDialog("sensor.confirm_title", isPresented: $confirmStore) {
+        }
+        .navigationTitle("sensor.title")
+        .confirmationDialog("sensor.confirm_title", isPresented: $confirmStore) {
                 Button("sensor.confirm") {
                     Task { await storeParsedIdentity() }
                 }
             } message: {
                 Text("sensor.confirm_body")
             }
-            .fileImporter(
-                isPresented: $showFileImporter,
-                allowedContentTypes: [.image],
-                allowsMultipleSelection: false
-            ) { result in
-                switch result {
-                case .success(let urls):
-                    if let url = urls.first {
-                        Task { await importFile(url) }
-                    }
-                case .failure(let error):
-                    parseMessage = error.localizedDescription
-                }
-            }
+        .fileImporter(
+            isPresented: $isFileImporterPresented,
+            allowedContentTypes: fileImportRoute?.allowedContentTypes ?? [.data],
+            allowsMultipleSelection: false,
+            onCompletion: handleFileImportResult,
+            onCancellation: cancelFileImport
+        )
 #if canImport(PhotosUI)
             .onChange(of: pickerItem) { _, item in
                 guard let item else { return }
@@ -205,11 +250,112 @@ struct SensorOnboardingView: View {
                 .ignoresSafeArea()
             }
 #endif
-        }
     }
 
     private func parsePayloads() {
         applyParsedPackage(packageText, ndef: ndefText)
+    }
+
+    private func presentFileImporter(_ route: FileImportRoute) {
+        guard !isFileImporterPresented else { return }
+        fileImportRoute = route
+        isFileImporterPresented = true
+    }
+
+    private func handleFileImportResult(_ result: Result<[URL], Error>) {
+        guard let route = fileImportRoute else {
+            isFileImporterPresented = false
+            return
+        }
+        fileImportRoute = nil
+        isFileImporterPresented = false
+
+        switch result {
+        case .success(let urls):
+            guard let url = urls.first else {
+                handleFileImportFailure(for: route)
+                return
+            }
+            switch route {
+            case .sensorImage:
+                Task { await importFile(url) }
+#if !SUGARMAN_DEVICE_TEST
+            case .sensorConnection(let request):
+                Task {
+                    await model.prepareSensorProbeBridge(
+                        from: url,
+                        linkedSensorID: request.linkedSensorID
+                    )
+                }
+#endif
+#if SUGARMAN_DEVICE_TEST
+            case .deviceTest(let request):
+                Task {
+                    switch request.kind {
+                    case .managedProvisioning:
+                        await model.importDeviceTestProvisioning(
+                            from: url,
+                            linkedSensorID: request.linkedSensorID
+                        )
+                    case .existingProbe:
+                        await model.prepareDeviceTestProbeBridge(
+                            from: url,
+                            linkedSensorID: request.linkedSensorID
+                        )
+                    }
+                }
+#endif
+            }
+        case .failure(let error):
+            switch route {
+            case .sensorImage:
+                parseMessage = error.localizedDescription
+#if !SUGARMAN_DEVICE_TEST
+            case .sensorConnection:
+                model.sensorConnectionStatus =
+                    "Private handover file selection failed closed."
+#endif
+#if SUGARMAN_DEVICE_TEST
+            case .deviceTest:
+                model.deviceTestStatus =
+                    "Private provisioning file selection failed closed."
+#endif
+            }
+        }
+    }
+
+    private func cancelFileImport() {
+#if !SUGARMAN_DEVICE_TEST
+        if case .sensorConnection = fileImportRoute {
+            model.sensorConnectionStatus =
+                "Private handover file selection was cancelled. Nothing was imported."
+        }
+#endif
+#if SUGARMAN_DEVICE_TEST
+        if case .deviceTest = fileImportRoute {
+            model.deviceTestStatus =
+                "Private provisioning file selection cancelled. No material imported."
+        }
+#endif
+        fileImportRoute = nil
+        isFileImporterPresented = false
+    }
+
+    private func handleFileImportFailure(for route: FileImportRoute) {
+        switch route {
+        case .sensorImage:
+            parseMessage = String(localized: "sensor.no_barcode")
+#if !SUGARMAN_DEVICE_TEST
+        case .sensorConnection:
+            model.sensorConnectionStatus =
+                "Private handover file selection failed closed."
+#endif
+#if SUGARMAN_DEVICE_TEST
+        case .deviceTest:
+            model.deviceTestStatus =
+                "Private provisioning file selection failed closed."
+#endif
+        }
     }
 
 #if canImport(CoreNFC)
@@ -239,6 +385,9 @@ struct SensorOnboardingView: View {
             var serial = "…"
             var region = String(localized: "sensor.unknown_region")
             var confidence = EvidenceConfidence.unsupported
+            var protocolVariant = ProtocolVariant.unknown
+            var evidenceFormats: [String] = []
+            var isSynthetic = true
 
             if !package.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 let parsed = try packageParser.parse(package)
@@ -248,6 +397,9 @@ struct SensorOnboardingView: View {
                 serial = parsed.redactedSerial
                 region = parsed.regionHypothesis
                 confidence = parsed.confidence
+                protocolVariant = parsed.protocolHypothesis
+                evidenceFormats.append(parsed.formatName)
+                isSynthetic = isSynthetic && parsed.isSynthetic
             }
             if !ndef.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 let parsed = try ndefParser.parse(ndef)
@@ -256,6 +408,9 @@ struct SensorOnboardingView: View {
                 serial = parsed.redactedSerial ?? serial
                 region = parsed.regionHypothesis
                 confidence = parsed.confidence
+                protocolVariant = parsed.protocolHypothesis
+                evidenceFormats.append(parsed.formatName)
+                isSynthetic = isSynthetic && parsed.isSynthetic
             }
 
             parsedIdentity = SensorIdentity(
@@ -263,11 +418,12 @@ struct SensorOnboardingView: View {
                 sku: sku,
                 gtin: gtin,
                 redactedSerial: serial,
-                protocolVariant: .unknown,
-                classificationEvidenceRevision: "synthetic-demo"
+                protocolVariant: protocolVariant,
+                classificationEvidenceRevision: evidenceFormats.joined(separator: "+")
             )
             parsedRegion = region
             parsedConfidence = confidence.rawValue
+            parsedIsSynthetic = isSynthetic
             parseMessage = String(localized: "sensor.parse_ok")
         } catch {
             parseMessage = error.localizedDescription
@@ -278,7 +434,17 @@ struct SensorOnboardingView: View {
     private func importImageData(_ data: Data) async {
         do {
             let payloads = try await imageScanner.payloads(fromImageData: data)
-            guard let first = payloads.first else {
+            var firstParseable: String?
+            for payload in payloads {
+                do {
+                    _ = try packageParser.parse(payload)
+                    firstParseable = payload
+                    break
+                } catch {
+                    continue
+                }
+            }
+            guard let first = firstParseable else {
                 parseMessage = String(localized: "sensor.no_barcode")
                 parsedIdentity = nil
                 return
@@ -322,9 +488,13 @@ struct SensorOnboardingView: View {
 
     private func storeParsedIdentity() async {
         guard let parsedIdentity else { return }
-        await model.confirmIdentity(parsedIdentity)
-        parseMessage = String(localized: "sensor.stored_ok")
-        self.parsedIdentity = nil
+        do {
+            try await model.confirmIdentity(parsedIdentity)
+            parseMessage = String(localized: "sensor.stored_ok")
+            self.parsedIdentity = nil
+        } catch {
+            parseMessage = error.localizedDescription
+        }
     }
 }
 

@@ -107,11 +107,11 @@ struct WorkoutView: View {
     @ViewBuilder
     private var recordedWorkoutsSection: some View {
         Section("workout.recorded") {
-            if model.workouts.isEmpty {
+            if model.visibleWorkouts.isEmpty {
                 Text("workout.recorded_empty")
                     .foregroundStyle(.secondary)
             } else {
-                ForEach(model.workouts) { workout in
+                ForEach(model.visibleWorkouts) { workout in
                     recordedWorkoutRow(workout)
                 }
             }

@@ -81,4 +81,30 @@ struct SugarmanDiagnosticsTests {
         #expect(!ProbeDisplayCharacteristic.all.contains(DocumentedReadableCharacteristic.serialNumber))
         #expect(ProbeDisplayCharacteristic.all.contains(DocumentedReadableCharacteristic.firmwareRevision))
     }
+
+    @Test func redactedGATTMapOmitsValuesAndStaysUnknownCipher() {
+        let probe = ReadOnlyDiagnosticProbe(isEnabled: true, runtime: RecordingBluetoothRuntime())
+        let map = probe.redactedGATTMap(peripheralID: UUID(), localName: "SyntheticLab")
+        #expect(map.cipherHypothesis == .unknownUntilCapture)
+        #expect(map.sixByteAddressSource == .notFound)
+        let described = String(describing: map)
+        #expect(!described.contains("RC4"))
+        #expect(!described.contains("AES"))
+        #expect(map.localName == "redacted-name(len:12)")
+        #expect(!String(decoding: try! RedactedGATTMapBuilder.jsonData(from: map), as: UTF8.self).contains("SyntheticLab"))
+    }
+
+    @Test func disconnectCancelsThePeripheralConnection() async throws {
+        let runtime = RecordingBluetoothRuntime()
+        let probe = ReadOnlyDiagnosticProbe(isEnabled: true, runtime: runtime)
+        let id = UUID()
+        try await probe.scan()
+        try await probe.connect(peripheralID: id)
+        try await probe.disconnect()
+        #expect(runtime.log.effects.contains(.cancelConnection(id)))
+        #expect(!runtime.log.effects.contains { effect in
+            if case .waitBackoff = effect { return true }
+            return false
+        })
+    }
 }

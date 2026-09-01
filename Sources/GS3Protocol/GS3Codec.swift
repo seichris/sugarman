@@ -11,7 +11,9 @@ public enum GS3ProtocolRequest: Sendable, Equatable, CaseIterable {
 }
 
 /// Opaque frame wrapper. Production logs must never print `bytes`.
-public struct EncodedFrame: Sendable, Equatable, CustomStringConvertible, CustomDebugStringConvertible {
+public struct EncodedFrame:
+    Sendable, Equatable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable
+{
     public let bytes: [UInt8]
     public let byteCount: Int
 
@@ -27,6 +29,10 @@ public struct EncodedFrame: Sendable, Equatable, CustomStringConvertible, Custom
     public var debugDescription: String {
         description
     }
+
+    public var customMirror: Mirror {
+        Mirror(self, children: ["byteCount": byteCount], displayStyle: .struct)
+    }
 }
 
 public enum GS3ProtocolEvent: Sendable, Equatable {
@@ -40,8 +46,8 @@ public protocol GS3Codec: Sendable {
     func decode(_ frame: EncodedFrame) throws -> GS3ProtocolEvent
 }
 
-/// Placeholder codec for `.unknown` and `.v120RC4`. Does not implement a
-/// cipher, checksum, or packet builder.
+/// Placeholder live codec. Even `.v3AES` stays unavailable here: its current
+/// implementation surface consists only of isolated offline codecs.
 public struct UnimplementedGS3Codec: GS3Codec {
     public let variant: ProtocolVariant
 
@@ -52,7 +58,7 @@ public struct UnimplementedGS3Codec: GS3Codec {
     public func encode(_ request: GS3ProtocolRequest) throws -> EncodedFrame {
         _ = request
         switch variant {
-        case .unknown, .v120RC4:
+        case .unknown, .v120RC4, .v3AES:
             throw GS3ProtocolError.unimplementedVariant(variant)
         }
     }

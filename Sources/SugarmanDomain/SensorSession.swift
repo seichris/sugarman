@@ -16,6 +16,7 @@ public struct SensorSession: Sendable, Equatable, Codable, Identifiable, Hashabl
     public var lastRequestedIndex: UInt32?
     public var lastReceivedIndex: UInt32?
     public var lastCommittedIndex: UInt32?
+    public var sensorTimeAnchor: SensorTimeAnchor?
     public var protocolVariant: ProtocolVariant
     public var lifecycle: SensorLifecycleState
     public var connection: ConnectionState
@@ -32,6 +33,7 @@ public struct SensorSession: Sendable, Equatable, Codable, Identifiable, Hashabl
         lastRequestedIndex: UInt32? = nil,
         lastReceivedIndex: UInt32? = nil,
         lastCommittedIndex: UInt32? = nil,
+        sensorTimeAnchor: SensorTimeAnchor? = nil,
         protocolVariant: ProtocolVariant = .unknown,
         lifecycle: SensorLifecycleState = .unknown,
         connection: ConnectionState = .disconnected,
@@ -47,6 +49,7 @@ public struct SensorSession: Sendable, Equatable, Codable, Identifiable, Hashabl
         self.lastRequestedIndex = lastRequestedIndex
         self.lastReceivedIndex = lastReceivedIndex
         self.lastCommittedIndex = lastCommittedIndex
+        self.sensorTimeAnchor = sensorTimeAnchor
         self.protocolVariant = protocolVariant
         self.lifecycle = lifecycle
         self.connection = connection

@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "status": "historical-search-result-superseded-in-part",
+  "supersededInPartBy": "docs/evidence/owned-mainland-gs3-v3-glucose-summary-v1.json",
+  "supersessionNote": "Later authorized static analysis and private replay verified the address-plus-zero runtime IV, recovered the registered block privately, verified authentication-ID encoding, and reproduced the official ciphertext. The original owner-readable search still correctly found no named envelope or IV record.",
+  "scope": "Payload-free read-only search for legitimate V3 runtime registration inputs using one owner's official app, owner-readable Android logs, and existing owned HCI captures.",
+  "inputs": {
+    "officialApp": {
+      "package": "com.sibionics.gstoc",
+      "version": "01.10.00.00",
+      "apkSHA256": "0357d558c221a62129dca632fec2c73de70a978862228024f63f45d0b88fc1d7"
+    },
+    "processFilteredLogcat": {
+      "sha256": "c2754841bf877864bd4924998f26dfaa4364718b48a8307b5de6c80865f60922",
+      "byteCount": 836474
+    },
+    "canonicalOwnerReadableExternalLog": {
+      "sha256": "74894891046cd8e19b32b4425991300ae640150192e7c730f6849d27259ca149",
+      "byteCount": 2389290
+    },
+    "privateHCICorpus": {
+      "fileCount": 5,
+      "completePayloadBearingCaptureCount": 3,
+      "headersOnlyCaptureCount": 1,
+      "truncatedFilteredCaptureCount": 1
+    }
+  },
+  "verifiedEvidence": {
+    "ownerReadableLogs": {
+      "linkAndUserMetadataPresent": true,
+      "namedRegistrationEnvelopeFound": false,
+      "namedRuntimeIVFound": false,
+      "nativeRegisterKeyRecordFound": false,
+      "authIdRecordFound": false,
+      "opaqueMQTTCredentialsExcluded": true
+    },
+    "hci": {
+      "officialAuthenticationCiphertextAvailablePrivately": true,
+      "officialAuthenticationCiphertextByteCount": 38,
+      "registrationEnvelopeAvailable": false,
+      "runtimeIVDirectlyVisibleInCapture": false,
+      "rawPayloadsOmitted": true
+    },
+    "ownedAPK": {
+      "nativeRegistrationInputShapeMapped": true,
+      "protectedManagedPayloadBypassed": false,
+      "vendorBinaryCommittedOrLinked": false
+    }
+  },
+  "historicalInferencesAtTimeOfSearch": [
+    {
+      "claim": "The package/NDEF link field may be the native expected registration marker.",
+      "confidence": "medium",
+      "acceptedAsImplementationInput": false
+    },
+    {
+      "claim": "The owner-visible user identifier may map to the native authentication ID.",
+      "confidence": "low-to-medium",
+      "acceptedAsImplementationInput": false
+    }
+  ],
+  "correctedCurrentState": {
+    "runtimeIVShapeVerified": true,
+    "registeredBlockRecoveredPrivately": true,
+    "authenticationIDEncodingVerified": true,
+    "privateOfficialCiphertextReplayExact": true
+  },
+  "missingFreshActivationInputs": [
+    "Legitimate config/AppKey and encoded registration-envelope route",
+    "Verified expected registration marker"
+  ],
+  "offlineOwnedReplayStatus": "exact private replay passed for this already-active owned sensor/config",
+  "liveProbeStatus": "separate bounded developer target implemented and host-verified; not installed, physically run, or authorized by this record",
+  "decision": "Keep owner and algorithm material private through post-install import. Review the corrected source map, provenance, and implemented bounded already-active probe, then obtain fresh exact physical confirmation. Fresh activation remains a separate later gate."
+}

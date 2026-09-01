@@ -31,8 +31,26 @@ extension AccountBindingError: LocalizedError, CustomStringConvertible {
 public struct OwnerAccountID: Sendable, Hashable, Codable, Equatable {
     public let value: String
 
-    public init(validated value: String) {
+    init(validated value: String) {
         self.value = value
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case value
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let raw = try container.decode(String.self, forKey: .value)
+        do {
+            self = try ManualOwnerBinding().validate(raw)
+        } catch {
+            throw DecodingError.dataCorruptedError(
+                forKey: .value,
+                in: container,
+                debugDescription: error.localizedDescription
+            )
+        }
     }
 }
 

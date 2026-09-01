@@ -6,14 +6,20 @@ import SugarmanDomain
 
 public struct SafetyPolicy: Sendable, Equatable {
     public var staleAfterSeconds: TimeInterval
+    public var futureToleranceSeconds: TimeInterval
 
-    public init(staleAfterSeconds: TimeInterval = 11 * 60) {
+    public init(
+        staleAfterSeconds: TimeInterval = 11 * 60,
+        futureToleranceSeconds: TimeInterval = 60
+    ) {
         self.staleAfterSeconds = staleAfterSeconds
+        self.futureToleranceSeconds = futureToleranceSeconds
     }
 }
 
-/// How the live UI may present glucose. `.current` is the only case that may
-/// display a milligram value as the live reading.
+/// How the live UI may classify glucose. `.current` is the only case validated
+/// as a current reading; `SafetyAssessment.unvalidatedGlucoseMgdl` may expose a
+/// recent live value separately while preserving the warning state.
 public enum ReadingPresentation: Sendable, Equatable {
     case empty
     case connectedNoData
@@ -33,6 +39,7 @@ public struct SafetyAssessment: Sendable, Equatable {
     public var isDisconnected: Bool
     public var noDosingNotice: String
     public var notCurrentNotice: String?
+    public var unvalidatedGlucoseMgdl: Int?
 
     public var showsValueAsCurrent: Bool {
         if case .current = presentation { return true }
@@ -53,14 +60,19 @@ public struct SafetyEngine: Sendable {
         lifecycle: SensorLifecycleState,
         latestSample: GlucoseSample?
     ) -> SafetyAssessment {
-        let age = latestSample.map { now.timeIntervalSince($0.receiptTimestamp) }
+        let sensorAge = latestSample.map { now.timeIntervalSince($0.sensorTimestamp) }
+        let receiptAge = latestSample.map { now.timeIntervalSince($0.receiptTimestamp) }
+        let age = latestSample.map { sample in
+            max(0, max(now.timeIntervalSince(sample.sensorTimestamp), now.timeIntervalSince(sample.receiptTimestamp)))
+        }
         let disconnected = isDisconnected(connection)
         let noDosing = ProductCopy.noDosing
 
         func assessment(
             _ presentation: ReadingPresentation,
             stale: Bool,
-            notCurrent: String?
+            notCurrent: String?,
+            unvalidatedGlucoseMgdl: Int? = nil
         ) -> SafetyAssessment {
             SafetyAssessment(
                 presentation: presentation,
@@ -68,7 +80,8 @@ public struct SafetyEngine: Sendable {
                 isStale: stale,
                 isDisconnected: disconnected,
                 noDosingNotice: noDosing,
-                notCurrentNotice: notCurrent
+                notCurrentNotice: notCurrent,
+                unvalidatedGlucoseMgdl: unvalidatedGlucoseMgdl
             )
         }
 
@@ -112,6 +125,26 @@ public struct SafetyEngine: Sendable {
             )
         }
 
+
+        if sensorAge.map({ $0 < -policy.futureToleranceSeconds }) == true
+            || receiptAge.map({ $0 < -policy.futureToleranceSeconds }) == true {
+            return assessment(
+                .questionable,
+                stale: false,
+                notCurrent: ProductCopy.questionableSample
+            )
+        }
+
+        guard lifecycle == .live,
+              connection == .subscribed,
+              latestSample.source == .live else {
+            return assessment(
+                .questionable,
+                stale: false,
+                notCurrent: ProductCopy.questionableSample
+            )
+        }
+
         switch latestSample.quality {
         case .error:
             return assessment(
@@ -123,9 +156,16 @@ public struct SafetyEngine: Sendable {
             return assessment(
                 .questionable,
                 stale: false,
+                notCurrent: ProductCopy.questionableSample,
+                unvalidatedGlucoseMgdl: latestSample.milligramsPerDeciliter
+            )
+        case .unknown:
+            return assessment(
+                .questionable,
+                stale: false,
                 notCurrent: ProductCopy.questionableSample
             )
-        case .ok, .unknown:
+        case .ok:
             break
         }
 
@@ -138,9 +178,9 @@ public struct SafetyEngine: Sendable {
 
     private func isDisconnected(_ connection: ConnectionState) -> Bool {
         switch connection {
-        case .disconnected, .idle, .bluetoothUnavailable, .unauthorized:
+        case .disconnected, .idle, .scanning, .connecting, .bluetoothUnavailable, .unauthorized:
             return true
-        case .scanning, .connecting, .connected, .subscribed:
+        case .connected, .subscribed:
             return false
         }
     }

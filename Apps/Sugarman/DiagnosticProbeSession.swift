@@ -4,6 +4,7 @@
 import Foundation
 import GS3Transport
 import Observation
+import SensorOwnership
 import SugarmanDiagnostics
 
 enum ProbePlatform: Sendable {
@@ -26,28 +27,34 @@ final class DiagnosticProbeSession {
     var status = String(localized: "privacy.probe_disabled")
     var deviceInformation: DeviceInformationSnapshot?
     var selectedPeripheralID: UUID?
+    var gattMap: RedactedGATTMap?
+    var gattMapFileURL: URL?
 
     private var probe: ReadOnlyDiagnosticProbe?
     #if canImport(CoreBluetooth)
     private var liveRuntime: CoreBluetoothRuntime?
     #endif
     private var pollTask: Task<Void, Never>?
+    private var activeConnectionOperationID: UUID?
+    private var ownerLease: SensorOwnerLease?
 
     var canEnable: Bool { ProbePlatform.supportsLiveCoreBluetooth }
 
     func setEnabled(_ enabled: Bool) async {
+        activeConnectionOperationID = nil
         pollTask?.cancel()
         pollTask = nil
         if let probe {
-            try? await probe.disconnect()
+            do {
+                try await probe.disconnect()
+            } catch {
+                clearSession()
+                isEnabled = false
+                status = error.localizedDescription
+                return
+            }
         }
-        probe = nil
-        #if canImport(CoreBluetooth)
-        liveRuntime = nil
-        #endif
-        peripherals = []
-        deviceInformation = nil
-        selectedPeripheralID = nil
+        clearSession()
 
         guard enabled else {
             isEnabled = false
@@ -61,6 +68,13 @@ final class DiagnosticProbeSession {
         }
 
         #if os(iOS) && !targetEnvironment(simulator) && canImport(CoreBluetooth)
+        do {
+            ownerLease = try SharedSensorOwnerLease.acquire()
+        } catch {
+            isEnabled = false
+            status = error.localizedDescription
+            return
+        }
         let runtime = CoreBluetoothRuntime()
         runtime.onDiscover = { [weak self] snapshot in
             Task { @MainActor in
@@ -82,6 +96,10 @@ final class DiagnosticProbeSession {
             status = String(localized: "privacy.probe_disabled")
             return
         }
+        guard selectedPeripheralID == nil else {
+            status = TransportError.commandInFlight.localizedDescription
+            return
+        }
         deviceInformation = nil
         do {
             try await probe.scan()
@@ -97,15 +115,77 @@ final class DiagnosticProbeSession {
             status = String(localized: "privacy.probe_disabled")
             return
         }
+        guard selectedPeripheralID == nil else {
+            status = TransportError.commandInFlight.localizedDescription
+            return
+        }
+        let operationID = UUID()
+        activeConnectionOperationID = operationID
         selectedPeripheralID = peripheralID
         status = String(localized: "privacy.probe_connecting")
         do {
             let snapshot = try await probe.connectAndReadDeviceInformation(peripheralID: peripheralID)
+            guard activeConnectionOperationID == operationID, isEnabled else { return }
             deviceInformation = snapshot
+            try writeCurrentMap(probe: probe, peripheralID: peripheralID)
+            try await probe.disconnect()
+            guard activeConnectionOperationID == operationID, isEnabled else { return }
+            activeConnectionOperationID = nil
+            selectedPeripheralID = nil
             status = String(localized: "privacy.probe_dis_ok")
+        } catch {
+            guard activeConnectionOperationID == operationID, isEnabled else { return }
+            let operationError = error
+            var messages = [operationError.localizedDescription]
+            do {
+                try writeCurrentMap(probe: probe, peripheralID: peripheralID)
+            } catch {
+                messages.append(error.localizedDescription)
+            }
+            do {
+                try await probe.disconnect()
+            } catch {
+                messages.append(error.localizedDescription)
+            }
+            guard activeConnectionOperationID == operationID, isEnabled else { return }
+            activeConnectionOperationID = nil
+            selectedPeripheralID = nil
+            status = messages.joined(separator: " ")
+        }
+    }
+
+    func disconnect() async {
+        guard let probe else { return }
+        activeConnectionOperationID = nil
+        do {
+            try await probe.disconnect()
+            selectedPeripheralID = nil
+            status = String(localized: "privacy.probe_disconnected")
         } catch {
             status = error.localizedDescription
         }
+    }
+
+    private func writeCurrentMap(probe: ReadOnlyDiagnosticProbe, peripheralID: UUID) throws {
+        let name = peripherals.first(where: { $0.peripheralID == peripheralID })?.name
+        let map = probe.redactedGATTMap(peripheralID: peripheralID, localName: name)
+        gattMap = map
+        gattMapFileURL = try GATTMapFileWriter().write(map, to: FileManager.default.temporaryDirectory)
+    }
+
+    private func clearSession() {
+        activeConnectionOperationID = nil
+        probe = nil
+        #if canImport(CoreBluetooth)
+        liveRuntime = nil
+        #endif
+        peripherals = []
+        deviceInformation = nil
+        selectedPeripheralID = nil
+        gattMap = nil
+        gattMapFileURL = nil
+        ownerLease?.release()
+        ownerLease = nil
     }
 
     private func upsert(_ snapshot: AdvertisementSnapshot) {

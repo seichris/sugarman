@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "scope": "Sanitized NDEF shape from one owned, already-active Mainland China GS3 read with an owned iPhone. No full serial, link identifier, screenshot, account data, key material, registration envelope, authentication payload, or glucose value is included.",
+  "capture": {
+    "observedAt": "2026-08-30T14:31:47+08:00",
+    "privateScreenshotSHA256": "1e6cf59d002faea4fe0c3e533d1fa6a37e02665d336f48e8ebd1a06610794426",
+    "sugarmanSourceCommit": "5481e78cf37e00fc1823ba7f5f4ee4ff277726b1",
+    "signedAppFileManifestSHA256": "0871bb34a7ca43788d22de335e5edaee1fdde86ca8658438de2e41a4645eeb50",
+    "iphoneModel": "iPhone 16 Pro Max",
+    "iosVersion": "26.6.1",
+    "nfcAPI": "NFCNDEFReaderSession",
+    "writeCapableNFCAPIImplemented": false
+  },
+  "verifiedRecordShape": {
+    "extractedTextPayloadCount": 1,
+    "recordKind": "Text payload returned by Sugarman's NDEF extractor; the NDEF TNF/type was not retained in the private screenshot",
+    "fieldDelimiter": ",",
+    "fieldCount": 4,
+    "fields": [
+      {
+        "index": 0,
+        "literal": "GJ"
+      },
+      {
+        "index": 1,
+        "valueOmitted": true,
+        "utf8ByteCount": 15,
+        "characterClass": "ASCII uppercase alphanumeric"
+      },
+      {
+        "index": 2,
+        "literal": "6"
+      },
+      {
+        "index": 3,
+        "valueOmitted": true,
+        "utf8ByteCount": 6,
+        "characterClass": "ASCII uppercase alphanumeric"
+      }
+    ],
+    "finalFieldMatchesOwnerVisibleOfficialAppLinkCode": true,
+    "containsRegistrationEnvelopeCandidate": false,
+    "rawRecordCommitted": false
+  },
+  "corroboration": {
+    "jugglucoCommit": "11d016eb3aeffe77e86d9522f5192e83790b5a21",
+    "androidNDEFReaderSource": "Common/src/mobileSi/java/tk/glucodata/Sib3Scan.java",
+    "androidNDEFReaderSourceSHA256": "2effca422165bd40274b5406f4d0c881e59aa7a54232226cb3325c921f2fa5b6",
+    "parserSource": "Common/src/main/cpp/sibionics3/java.cpp",
+    "parserSourceSHA256": "047c8ae0d411170d2f26b881e74f08f5768415943c98ee2aef41639084d8ebd4",
+    "sourceCopiedIntoSugarman": false
+  },
+  "inferences": [
+    {
+      "claim": "The 15-character second field is the sensor serial.",
+      "confidence": "high",
+      "basis": "Its value matched the owner-visible official-app sensor serial; the committed evidence omits it."
+    },
+    {
+      "claim": "The literal third field declares the six-character final-field length.",
+      "confidence": "medium",
+      "basis": "Its numeric value equals the final field length in the owned observation and pinned reference example; the field semantics are not independently documented."
+    },
+    {
+      "claim": "The six-character final field may be the expectedId supplied to V3 registration decoding.",
+      "confidence": "medium",
+      "basis": "It matches the owner-visible link code, but no legitimate nativeRegisterKey call arguments were observed."
+    }
+  ],
+  "notYetVerified": [
+    "The same NDEF layout on a second sensor lot",
+    "The exact nativeRegisterKey expectedId mapping",
+    "A legitimate product-and-region registration/AppKey envelope",
+    "The authentication ID supplied to the V3 authentication command",
+    "Fresh-sensor activation"
+  ],
+  "decision": "Accept only this exact bounded shape for redacted identity classification. Do not persist or expose the link identifier as a parsed field, infer protocol support from NDEF, or send any sensor command."
+}

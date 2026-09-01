@@ -31,7 +31,7 @@ jobs:
         run: swift test --enable-swift-testing
 
   xcodebuild-ios:
-    name: xcodebuild iOS Simulator
+    name: xcodebuild iOS
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -39,20 +39,46 @@ jobs:
           submodules: false
       - name: Show toolchain
         run: xcodebuild -version && xcodebuild -showsdks
-      - name: Build iOS app for Simulator
+      - name: Build iOS apps for Simulator
+        env:
+          CC: ${{ github.workspace }}/Scripts/xcode-clang-wrapper.sh
         run: |
           set -euo pipefail
           SDK_LINE="$(xcodebuild -showsdks | awk '/iphonesimulator/{print $NF}' | tail -n 1 || true)"
           if [ -z "${SDK_LINE}" ]; then
-            echo "No iOS Simulator SDK on this runner; skipping xcodebuild."
-            exit 0
+            echo "No iOS Simulator SDK on this runner."
+            exit 1
           fi
           SDK_VERSION="$(echo "${SDK_LINE}" | sed -E 's/[^0-9]*([0-9]+).*/\1/')"
           echo "Using ${SDK_LINE} (major ${SDK_VERSION})"
           if [ "${SDK_VERSION}" -lt 26 ]; then
-            echo "iOS Simulator SDK ${SDK_VERSION} cannot build the iOS 26 deployment target; skipping."
-            echo "Prefer a runner with Xcode 26 / iOS 26 SDK so this job actually compiles."
-            exit 0
+            echo "iOS Simulator SDK ${SDK_VERSION} cannot build the iOS 26 deployment target."
+            exit 1
           fi
           xcodebuild -scheme Sugarman -destination 'generic/platform=iOS Simulator' -configuration Debug build CODE_SIGNING_ALLOWED=NO
+          xcodebuild -scheme SugarmanDeviceTest -destination 'generic/platform=iOS Simulator' -configuration Debug build CODE_SIGNING_ALLOWED=NO
+          xcodebuild -scheme SugarmanProbe -destination 'generic/platform=iOS Simulator' -configuration Debug build CODE_SIGNING_ALLOWED=NO
+      - name: Build iOS apps for generic device
+        env:
+          CC: ${{ github.workspace }}/Scripts/xcode-clang-wrapper.sh
+        run: |
+          set -euo pipefail
+          xcodebuild -scheme Sugarman -destination 'generic/platform=iOS' -configuration Debug build CODE_SIGNING_ALLOWED=NO
+          xcodebuild -scheme SugarmanDeviceTest -destination 'generic/platform=iOS' -configuration Debug build CODE_SIGNING_ALLOWED=NO
+          xcodebuild -scheme SugarmanProbe -destination 'generic/platform=iOS' -configuration Debug build CODE_SIGNING_ALLOWED=NO
 
+  xcodebuild-macos:
+    name: xcodebuild macOS
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - name: Show toolchain
+        run: xcodebuild -version && xcodebuild -showsdks
+      - name: Build isolated macOS Device Test
+        env:
+          CC: ${{ github.workspace }}/Scripts/xcode-clang-wrapper.sh
+        run: |
+          set -euo pipefail
+          xcodebuild -scheme SugarmanMacDeviceTest -destination 'generic/platform=macOS' -configuration Debug build CODE_SIGNING_ALLOWED=NO SDK_STAT_CACHE_ENABLE=NO

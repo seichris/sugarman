@@ -61,4 +61,28 @@ public enum ActiveSessionSelection: Sendable {
         }
         return insertedID
     }
+
+    public static func samples(_ samples: [GlucoseSample], for sessionID: UUID?) -> [GlucoseSample] {
+        guard let sessionID else { return [] }
+        return samples
+            .filter { $0.sessionID == sessionID }
+            .sorted { lhs, rhs in
+                if lhs.sensorIndex != rhs.sensorIndex { return lhs.sensorIndex < rhs.sensorIndex }
+                return lhs.sensorTimestamp < rhs.sensorTimestamp
+            }
+    }
+
+    /// Unscoped events remain visible; scoped events follow the active sensor
+    /// session and cannot bleed in from another session.
+    public static func fuelingEvents(_ events: [FuelingEvent], for sessionID: UUID?) -> [FuelingEvent] {
+        events.filter { event in
+            event.sessionID == nil || event.sessionID == sessionID
+        }
+        .sorted { $0.timestamp < $1.timestamp }
+    }
+
+    public static func workouts(_ workouts: [WorkoutContext], for sessionID: UUID?) -> [WorkoutContext] {
+        guard let sessionID else { return [] }
+        return workouts.filter { $0.sessionID == sessionID }.sorted { $0.start < $1.start }
+    }
 }

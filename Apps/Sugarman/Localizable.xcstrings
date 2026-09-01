@@ -202,6 +202,304 @@
         }
       }
     },
+    "dashboard.connected_no_data": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sensor connected. Waiting for the first reading."
+          }
+        }
+      }
+    },
+    "live.age_unknown": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No reading"
+          }
+        }
+      }
+    },
+    "live.age_now": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "~now"
+          }
+        }
+      }
+    },
+    "live.age_minutes_format": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "~%d mins"
+          }
+        }
+      },
+      "comment": "Approximate reading age in minutes"
+    },
+    "live.age_hours_format": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "~%d hrs"
+          }
+        }
+      },
+      "comment": "Approximate reading age in hours"
+    },
+    "live.range.label": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chart time range"
+          }
+        }
+      }
+    },
+    "live.range.three_hours": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3 Hours"
+          }
+        }
+      }
+    },
+    "live.range.six_hours": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "6"
+          }
+        }
+      }
+    },
+    "live.range.twelve_hours": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "12"
+          }
+        }
+      }
+    },
+    "live.range.twenty_four_hours": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "24"
+          }
+        }
+      }
+    },
+    "live.range.hours_accessibility_format": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d hours"
+          }
+        }
+      }
+    },
+    "live.range.selected": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selected"
+          }
+        }
+      }
+    },
+    "live.range.not_selected": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not selected"
+          }
+        }
+      }
+    },
+    "live.chart_empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No readings in this range"
+          }
+        }
+      }
+    },
+    "live.chart_not_current": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Historical readings only — the latest value is not validated as current."
+          }
+        }
+      }
+    },
+    "live.chart_native_state_unvalidated": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Historical readings only — the latest sensor status is not yet validated as current."
+          }
+        }
+      }
+    },
+    "live.connection.not_configured": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Set up the sensor connection to receive readings." } } }
+    },
+    "live.connection.stopped": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Sensor connection is stopped." } } }
+    },
+    "live.connection.connecting": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Connecting to the sensor…" } } }
+    },
+    "live.connection.synchronizing": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Synchronizing sensor history…" } } }
+    },
+    "live.connection.live": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Sensor connection is live." } } }
+    },
+    "live.connection.reconnecting": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Reconnecting to the sensor…" } } }
+    },
+    "live.connection.failed": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Sensor connection stopped after a safe failure." } } }
+    },
+    "live.connection_background_hint": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "You can leave Sugarman; iOS can continue or restore this managed connection." } } }
+    },
+    "live.chart_accessibility_label": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Glucose history chart"
+          }
+        }
+      }
+    },
+    "live.chart_accessibility_value_format": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d readings in the last %d hours"
+          }
+        }
+      }
+    },
+    "live.sensor_setup_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set up your sensor"
+          }
+        }
+      }
+    },
+    "live.sensor_setup_body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sugarman needs an identified sensor before it can show glucose. Scan the package Data Matrix, read the NFC tag, or import a package image to begin."
+          }
+        }
+      }
+    },
+    "live.sensor_setup_action": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start sensor setup"
+          }
+        }
+      }
+    },
+    "live.sensor_setup_hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opens sensor setup from the Live screen."
+          }
+        }
+      }
+    },
+    "live.no_reading_accessibility": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No glucose reading"
+          }
+        }
+      }
+    },
+    "live.unit_toggle_hint_format": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Switch all glucose values to %@."
+          }
+        }
+      }
+    },
     "onboarding.title": {
       "extractionState": "manual",
       "localizations": {
@@ -375,6 +673,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Read-only Bluetooth probe"
+          }
+        }
+      }
+    },
+    "privacy.local_storage": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local storage"
           }
         }
       }
@@ -677,13 +986,24 @@
         }
       }
     },
-    "demo.replaces_data": {
+    "demo.isolated_data": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Loading a demo replaces locally stored Sugarman data with synthetic fixtures."
+            "value": "Demo data is isolated. Your persistent local data is not changed."
+          }
+        }
+      }
+    },
+    "demo.exit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exit demo and return to local data"
           }
         }
       }
@@ -937,6 +1257,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Rising quickly"
+          }
+        }
+      }
+    },
+    "history.source.unknown": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unknown source"
           }
         }
       }
@@ -1772,7 +2103,18 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Protocol confidence"
+            "value": "Evidence confidence"
+          }
+        }
+      }
+    },
+    "sensor.owned_hardware_notice": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Owned-hardware format match. Identity fields are redacted; protocol support remains unimplemented."
           }
         }
       }
@@ -1985,6 +2327,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "This reading is questionable. It is not a current glucose value."
+          }
+        }
+      }
+    },
+    "dashboard.native_state_unvalidated": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The latest sensor reading is recent, but its sensor status is not yet validated."
           }
         }
       }
@@ -2344,6 +2697,28 @@
         }
       }
     },
+    "privacy.probe_disconnect": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disconnect"
+          }
+        }
+      }
+    },
+    "privacy.probe_disconnected": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disconnected from the peripheral."
+          }
+        }
+      }
+    },
     "privacy.probe_scan": {
       "extractionState": "manual",
       "localizations": {
@@ -2362,6 +2737,50 @@
           "stringUnit": {
             "state": "translated",
             "value": "Starts a Bluetooth scan. Discovered names, UUIDs, and RSSI are listed. Frame bytes are not logged."
+          }
+        }
+      }
+    },
+    "privacy.probe_search": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search device names"
+          }
+        }
+      }
+    },
+    "privacy.probe_search_hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filters the discovered list by advertised device name."
+          }
+        }
+      }
+    },
+    "privacy.probe_no_matches": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No discovered device names match this search."
+          }
+        }
+      }
+    },
+    "privacy.probe_likely_gs3": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Likely GS3 (name-format match)"
           }
         }
       }
@@ -2464,6 +2883,52 @@
           }
         }
       }
+    },
+    "privacy.probe_share_gatt": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Share redacted GATT map"
+          }
+        }
+      },
+      "comment": "Share a JSON GATT map with UUIDs and byte counts only"
+    },
+    "privacy.probe_share_gatt_hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shares a JSON file of service and characteristic UUIDs, properties, and value lengths. Raw values and serials are omitted."
+          }
+        }
+      }
+    },
+    "privacy.probe_gatt_body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The GATT map lists UUIDs, properties, and value byte counts. It never includes raw serials or characteristic value bytes."
+          }
+        }
+      }
+    },
+    "live.session_start_failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Live sensor access stopped before connecting. No sensor command was sent."
+          }
+        }
+      },
+      "comment": "Payload-free foreground session startup failure"
     }
   },
   "version": "1.1"

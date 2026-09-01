@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "status": "protocol-identification-valid-later-gates-superseded-in-part",
+  "supersededInPartBy": "docs/evidence/owned-mainland-gs3-v3-glucose-summary-v1.json",
+  "scope": "Payload-free P2 comparison for one owned, already-active Mainland China GS3 and an owned copy of its official Android app. No vendor binary, key, IV, device identifier, account data, authentication payload, or glucose payload is included.",
+  "inputs": {
+    "canonicalHCISnapshotSHA256": "8f59200f694c51c533a30ae6e7398c35b46ced2bce3d7a6ec200e8e072302c19",
+    "officialApp": {
+      "package": "com.sibionics.gstoc",
+      "version": "01.10.00.00",
+      "apkSHA256": "0357d558c221a62129dca632fec2c73de70a978862228024f63f45d0b88fc1d7"
+    },
+    "nativeLibrary": {
+      "pathInsideAPK": "lib/arm64-v8a/libcxm_protocol.so",
+      "sha256": "19238019b9aca5f8ffae6a81fad98bb9f6525750b914367378f1ac1bbf765964",
+      "committedOrLinked": false
+    },
+    "juggluco": {
+      "commit": "11d016eb3aeffe77e86d9522f5192e83790b5a21",
+      "authenticationSource": "Common/src/main/cpp/sibionics/interpret_data.cpp",
+      "authenticationSourceSHA256": "f796c1d1f4407439943f85671e9c29e74cf7abcc6d006889e9b141b689083fb7",
+      "callSiteSource": "Common/src/main/cpp/sibionics/handleData.cpp",
+      "callSiteSourceSHA256": "36de28f7e9d09c72118e25593ef5e6cbdc426bf8b49557a77371ab9a1636d4a9"
+    }
+  },
+  "verifiedEvidence": {
+    "hci": {
+      "firstApplicationWriteCharacteristicUUID": "0000FF32-0000-1000-8000-00805F9B34FB",
+      "firstApplicationWriteHandle": 41,
+      "firstApplicationWriteByteCountsByConnection": [
+        38,
+        38,
+        38,
+        38
+      ],
+      "authenticationLikeWriteCount": 4,
+      "authenticationLikeWriteUniquePayloadCount": 1,
+      "twentySixByteWriteCount": 0,
+      "rawPayloadsOmitted": true
+    },
+    "pinnedJuggluco": {
+      "authenticationByteCount": 26,
+      "cipher": "RC4",
+      "capturedFramesPassingPinnedRC4LengthHeaderChecksumFamily": 0,
+      "sourceCopiedIntoSugarman": false
+    },
+    "ownedAPKStaticInspection": {
+      "dynamicSymbolsObserved": [
+        "Java_com_sisensing_cxmsdk_protocol_v3_V3ProtocolJNI_nativeBuildAuthIdCommand",
+        "sdk_authid",
+        "AesFixedIvXorWithKey",
+        "AES_OFB_encrypt_buffer"
+      ],
+      "verifiedCallEdges": [
+        "nativeBuildAuthIdCommand -> sdk_authid",
+        "sdk_authid -> AesFixedIvXorWithKey",
+        "AesFixedIvXorWithKey -> AES_OFB_encrypt_buffer"
+      ],
+      "sdkAuthIdEncryptByteCount": 38,
+      "sdkAuthIdReturnByteCount": 38,
+      "inspectionMethod": "Read-only dynamic-symbol and targeted ARM64 disassembly inspection of the owned APK library",
+      "binaryCopiedIntoRepository": false
+    }
+  },
+  "conclusion": {
+    "protocolGeneration": "V3",
+    "authenticationCipherFamily": "AES-OFB",
+    "confidence": "high for this owned app, sensor, and firmware",
+    "pinnedV120RC4Compatible": false,
+    "followUpSourceMap": "docs/V3_AUTH_SOURCE_MAP_2026-08-30.md",
+    "offlineEncoderStatus": "implemented; later private owned replay matched exactly; not live-connected"
+  },
+  "notYetVerified": [
+    "Already-active handover authentication",
+    "Fresh-sensor activation",
+    "A second sensor lot"
+  ],
+  "decision": "Later private replay resolves the already-active runtime material, authentication parity, and one glucose-notification point. Keep both codecs offline until independent review, private-material handling, the second fixed-key publication decision, and a fresh exact physical-write confirmation pass. Never ship or link the Android APK or shared library."
+}

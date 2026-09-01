@@ -13,16 +13,19 @@ struct SafetyEngineTests {
     func sample(
         age: TimeInterval,
         mgdl: Int = 110,
-        quality: SampleQuality = .unknown
+        quality: SampleQuality = .ok,
+        source: SampleSource = .live,
+        receiptAge: TimeInterval? = nil
     ) -> GlucoseSample {
         let now = Date(timeIntervalSince1970: 1_700_000_000)
         return GlucoseSample(
             sessionID: sessionID,
             sensorIndex: 1,
             sensorTimestamp: now.addingTimeInterval(-age),
-            receiptTimestamp: now.addingTimeInterval(-age),
+            receiptTimestamp: now.addingTimeInterval(-(receiptAge ?? age)),
             milligramsPerDeciliter: mgdl,
             quality: quality,
+            source: source,
             decoderRevision: "none"
         )
     }
@@ -123,6 +126,7 @@ struct SafetyEngineTests {
         #expect(result.showsValueAsCurrent == false)
         #expect(result.presentation == .questionable)
         #expect(result.notCurrentNotice == ProductCopy.questionableSample)
+        #expect(result.unvalidatedGlucoseMgdl == 180)
         if case .current = result.presentation {
             Issue.record("questionable quality must never present as current")
         }
@@ -165,7 +169,7 @@ struct SafetyEngineTests {
         #expect(result.noDosingNotice.contains("dose insulin"))
     }
 
-    @Test func scanningIsNotDisconnected() {
+    @Test func scanningIsNotCurrentOrConnected() {
         let now = Date(timeIntervalSince1970: 1_700_000_000)
         let result = engine.evaluate(
             now: now,
@@ -173,7 +177,71 @@ struct SafetyEngineTests {
             lifecycle: .live,
             latestSample: sample(age: 30, mgdl: 120)
         )
-        #expect(result.isDisconnected == false)
+        #expect(result.isDisconnected)
+        #expect(!result.showsValueAsCurrent)
+    }
+
+    @Test func sensorTimestampControlsStalenessEvenWhenReceiptIsFresh() {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let result = engine.evaluate(
+            now: now,
+            connection: .subscribed,
+            lifecycle: .live,
+            latestSample: sample(age: 1200, receiptAge: 5)
+        )
+        #expect(result.isStale)
+        #expect(!result.showsValueAsCurrent)
+    }
+
+    @Test func backfillUnknownQualityAndFutureDatesAreNeverCurrent() {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let backfill = engine.evaluate(
+            now: now,
+            connection: .subscribed,
+            lifecycle: .live,
+            latestSample: sample(age: 10, source: .backfill)
+        )
+        let unknown = engine.evaluate(
+            now: now,
+            connection: .subscribed,
+            lifecycle: .live,
+            latestSample: sample(age: 10, quality: .unknown)
+        )
+        let future = engine.evaluate(
+            now: now,
+            connection: .subscribed,
+            lifecycle: .live,
+            latestSample: sample(age: -120)
+        )
+        #expect(backfill.presentation == .questionable)
+        #expect(unknown.presentation == .questionable)
+        #expect(future.presentation == .questionable)
+        #expect(!backfill.showsValueAsCurrent)
+        #expect(!unknown.showsValueAsCurrent)
+        #expect(!future.showsValueAsCurrent)
+        #expect(backfill.unvalidatedGlucoseMgdl == nil)
+        #expect(unknown.unvalidatedGlucoseMgdl == nil)
+        #expect(future.unvalidatedGlucoseMgdl == nil)
+    }
+
+    @Test func connectedAndUnknownLifecycleAreNeverCurrent() {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let connected = engine.evaluate(
+            now: now,
+            connection: .connected,
+            lifecycle: .live,
+            latestSample: sample(age: 10)
+        )
+        let unidentified = engine.evaluate(
+            now: now,
+            connection: .subscribed,
+            lifecycle: .unknown,
+            latestSample: sample(age: 10)
+        )
+        #expect(connected.presentation == .questionable)
+        #expect(unidentified.presentation == .questionable)
+        #expect(!connected.showsValueAsCurrent)
+        #expect(!unidentified.showsValueAsCurrent)
     }
 
     @Test func connectedWithNilSampleIsConnectedNoData() {

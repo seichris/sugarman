@@ -6,11 +6,29 @@ import Testing
 @testable import SugarmanDomain
 
 struct SugarmanDomainTests {
-    @Test func protocolVariantHasNoV3AES() {
+    @Test func liveDashboardShowsOnboardingUntilARealReadingExists() {
+        #expect(
+            LiveDashboardContentMode.resolve(sampleCount: 0, isSyntheticDemo: false)
+                == .sensorOnboarding
+        )
+        #expect(
+            LiveDashboardContentMode.resolve(sampleCount: 1, isSyntheticDemo: false)
+                == .readings
+        )
+        #expect(
+            LiveDashboardContentMode.resolve(sampleCount: 0, isSyntheticDemo: true)
+                == .readings
+        )
+    }
+
+    @Test func protocolVariantsRemainLiveUnimplemented() {
         let names = ProtocolVariant.allCases.map(\.rawValue)
-        #expect(names == ["unknown", "v120RC4"])
-        #expect(!names.contains("v3AES"))
+        #expect(names == ["unknown", "v120RC4", "v3AES"])
         #expect(ProtocolVariant.allCases.allSatisfy { $0.isImplemented == false })
+        #expect(
+            ProtocolVariant.v3AES.classificationEvidenceRevision
+                == "owned-mainland-gs3-v3-source-map-2026-08-30-offline-only"
+        )
     }
 
     @Test func glucoseSampleKeyIsSessionAndIndex() {
@@ -25,6 +43,44 @@ struct SugarmanDomainTests {
         )
         #expect(sample.id == SampleKey(sessionID: session, sensorIndex: 7))
         #expect(sample.milligramsPerDeciliter == 100)
+    }
+
+    @Test func sensorTimeAnchorPersistsItsMappingAndRejectsInvalidValues() throws {
+        let timestamp = Date(timeIntervalSince1970: 1_800_000_000)
+        let anchor = try SensorTimeAnchor(
+            sensorIndex: 42,
+            timestamp: timestamp,
+            sampleIntervalSeconds: 60,
+            mappingRevision: "synthetic-test-v1"
+        )
+        #expect(try anchor.timestamp(for: 40) == timestamp.addingTimeInterval(-120))
+        #expect(try anchor.timestamp(for: 43) == timestamp.addingTimeInterval(60))
+
+        let encoded = try JSONEncoder().encode(anchor)
+        #expect(try JSONDecoder().decode(SensorTimeAnchor.self, from: encoded) == anchor)
+        #expect(throws: SensorTimeAnchorError.invalidSampleInterval) {
+            try SensorTimeAnchor(
+                sensorIndex: 42,
+                timestamp: timestamp,
+                sampleIntervalSeconds: .nan,
+                mappingRevision: "synthetic-test-v1"
+            )
+        }
+        #expect(throws: SensorTimeAnchorError.invalidMappingRevision) {
+            try SensorTimeAnchor(
+                sensorIndex: 42,
+                timestamp: timestamp,
+                sampleIntervalSeconds: 60,
+                mappingRevision: " "
+            )
+        }
+
+        var dumped = ""
+        dump(anchor, to: &dumped)
+        let diagnostics = "\(anchor) \(String(reflecting: anchor)) \(dumped)"
+        #expect(!diagnostics.contains("1800000000"))
+        #expect(!diagnostics.contains("42"))
+        #expect(!diagnostics.contains("synthetic-test-v1"))
     }
 
     @Test func identityStoresRedactedSerialOnly() {
@@ -150,6 +206,51 @@ struct SugarmanDomainTests {
         #expect(withTenths.value(in: .millimolesPerLiter) == Double(61) / 10.0)
         #expect(GlucoseUnit.milligramsPerDeciliter.displaySymbol == "mg/dL")
         #expect(GlucoseUnit.millimolesPerLiter.displaySymbol == "mmol/L")
+        #expect(GlucoseUnit.milligramsPerDeciliter.alternate == .millimolesPerLiter)
+        #expect(GlucoseUnit.millimolesPerLiter.alternate == .milligramsPerDeciliter)
+    }
+
+    @Test func glucoseTimelineFiltersBoundsAndSortsSourceOrder() {
+        let session = UUID()
+        let end = Date(timeIntervalSince1970: 1_800_000_000)
+        func sample(index: UInt32, offset: TimeInterval) -> GlucoseSample {
+            GlucoseSample(
+                sessionID: session,
+                sensorIndex: index,
+                sensorTimestamp: end.addingTimeInterval(offset),
+                receiptTimestamp: end.addingTimeInterval(offset + 1),
+                milligramsPerDeciliter: 100,
+                decoderRevision: "test"
+            )
+        }
+
+        let timeline = GlucoseTimeline(
+            samples: [
+                sample(index: 4, offset: 1),
+                sample(index: 3, offset: 0),
+                sample(index: 2, offset: -60),
+                sample(index: 1, offset: -(3 * 60 * 60)),
+                sample(index: 0, offset: -(3 * 60 * 60) - 1),
+            ],
+            endingAt: end,
+            range: .threeHours
+        )
+
+        #expect(timeline.start == end.addingTimeInterval(-3 * 60 * 60))
+        #expect(timeline.end == end)
+        #expect(timeline.samples.map(\.sensorIndex) == [1, 2, 3])
+    }
+
+    @Test func glucoseChartScaleMatchesEachDisplayUnit() {
+        let mmol = GlucoseChartScale(unit: .millimolesPerLiter)
+        #expect(mmol.domain == 0...15)
+        #expect(mmol.gridValues == Array(0...15).map(Double.init))
+        #expect(mmol.tickValues == [0, 3, 6, 9, 12, 15])
+
+        let mgdl = GlucoseChartScale(unit: .milligramsPerDeciliter)
+        #expect(mgdl.domain == 0...270)
+        #expect(mgdl.gridValues == stride(from: 0.0, through: 270.0, by: 18.0).map(\.self))
+        #expect(mgdl.tickValues == [0, 50, 100, 150, 200, 250])
     }
 
     @Test func activeSessionPrefersDemoThenSelectionNotUUIDSort() {
@@ -217,5 +318,37 @@ struct SugarmanDomainTests {
                 currentSelection: earlyID
             ) == earlyID
         )
+    }
+
+    @Test func activeSessionFiltersSamplesAndScopedFueling() {
+        let a = UUID()
+        let b = UUID()
+        let sampleA = GlucoseSample(
+            sessionID: a,
+            sensorIndex: 1,
+            sensorTimestamp: Date(timeIntervalSince1970: 1),
+            receiptTimestamp: Date(timeIntervalSince1970: 2),
+            milligramsPerDeciliter: 100,
+            decoderRevision: "test"
+        )
+        let sampleB = GlucoseSample(
+            sessionID: b,
+            sensorIndex: 1,
+            sensorTimestamp: Date(timeIntervalSince1970: 1),
+            receiptTimestamp: Date(timeIntervalSince1970: 2),
+            milligramsPerDeciliter: 110,
+            decoderRevision: "test"
+        )
+        #expect(ActiveSessionSelection.samples([sampleB, sampleA], for: a) == [sampleA])
+        #expect(ActiveSessionSelection.samples([sampleB, sampleA], for: nil).isEmpty)
+
+        let scopedA = FuelingEvent(timestamp: Date(timeIntervalSince1970: 1), label: "a", sessionID: a)
+        let scopedB = FuelingEvent(timestamp: Date(timeIntervalSince1970: 2), label: "b", sessionID: b)
+        let unscoped = FuelingEvent(timestamp: Date(timeIntervalSince1970: 3), label: "all")
+        #expect(ActiveSessionSelection.fuelingEvents([scopedB, unscoped, scopedA], for: a) == [scopedA, unscoped])
+        let workoutA = WorkoutContext(sessionID: a, start: Date(timeIntervalSince1970: 1), activityType: "run")
+        let workoutB = WorkoutContext(sessionID: b, start: Date(timeIntervalSince1970: 2), activityType: "ride")
+        #expect(ActiveSessionSelection.workouts([workoutB, workoutA], for: a) == [workoutA])
+        #expect(ActiveSessionSelection.workouts([workoutB, workoutA], for: nil).isEmpty)
     }
 }

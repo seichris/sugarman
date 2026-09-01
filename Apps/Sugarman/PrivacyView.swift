@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Sugarman contributors
 
+import GS3Transport
+import SugarmanDiagnostics
 import SugarmanDomain
 import SwiftUI
 
@@ -10,6 +12,7 @@ struct PrivacyView: View {
     @State private var sessionPendingDelete: UUID?
     @State private var exportFileURL: URL?
     @State private var exportError: String?
+    @State private var peripheralSearchText = ""
 
     var body: some View {
         NavigationStack {
@@ -99,19 +102,41 @@ struct PrivacyView: View {
                         Button("privacy.probe_scan") {
                             Task { await model.probeSession.startScan() }
                         }
+                        .disabled(model.probeSession.selectedPeripheralID != nil)
                         .accessibilityHint(Text("privacy.probe_scan_hint"))
+                        if model.probeSession.selectedPeripheralID != nil {
+                            Button("privacy.probe_disconnect") {
+                                Task { await model.probeSession.disconnect() }
+                            }
+                        }
                         Text(model.probeSession.status)
                             .font(.footnote)
                         if model.probeSession.peripherals.isEmpty {
                             Text("privacy.probe_empty")
                                 .foregroundStyle(.secondary)
                         } else {
-                            ForEach(model.probeSession.peripherals, id: \.peripheralID) { item in
+                            TextField("privacy.probe_search", text: $peripheralSearchText)
+                                .textInputAutocapitalization(.characters)
+                                .autocorrectionDisabled()
+                                .accessibilityHint(Text("privacy.probe_search_hint"))
+                            if visiblePeripherals.isEmpty {
+                                Text("privacy.probe_no_matches")
+                                    .foregroundStyle(.secondary)
+                            }
+                            ForEach(visiblePeripherals, id: \.peripheralID) { item in
                                 Button {
                                     Task { await model.probeSession.connectAndRead(item.peripheralID) }
                                 } label: {
                                     VStack(alignment: .leading) {
                                         Text(item.name ?? String(localized: "privacy.probe_unnamed"))
+                                        if PeripheralDiscoveryList.hasObservedGS3NameFormat(item.name) {
+                                            Label(
+                                                "privacy.probe_likely_gs3",
+                                                systemImage: "sensor.tag.radiowaves.forward"
+                                            )
+                                            .font(.footnote.weight(.semibold))
+                                            .foregroundStyle(.secondary)
+                                        }
                                         Text(item.peripheralID.uuidString)
                                             .font(.footnote)
                                             .foregroundStyle(.secondary)
@@ -129,6 +154,7 @@ struct PrivacyView: View {
                                     }
                                 }
                                 .accessibilityHint(Text("privacy.probe_connect_hint"))
+                                .disabled(model.probeSession.selectedPeripheralID != nil)
                             }
                         }
                         if let dis = model.probeSession.deviceInformation {
@@ -138,11 +164,25 @@ struct PrivacyView: View {
                             LabeledContent("privacy.probe_firmware", value: dis.firmwareRevision ?? "—")
                             LabeledContent("privacy.probe_software", value: dis.softwareRevision ?? "—")
                         }
+                        if let gattMapFileURL = model.probeSession.gattMapFileURL {
+                            ShareLink(item: gattMapFileURL) {
+                                Label("privacy.probe_share_gatt", systemImage: "square.and.arrow.up")
+                            }
+                            .accessibilityHint(Text("privacy.probe_share_gatt_hint"))
+                            Text("privacy.probe_gatt_body")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
                 Section("privacy.deletion") {
                     Button("privacy.delete_all", role: .destructive) {
                         confirmDeleteAll = true
+                    }
+                }
+                if let storeErrorMessage = model.storeErrorMessage {
+                    Section("privacy.local_storage") {
+                        Text(storeErrorMessage).foregroundStyle(.red)
                     }
                 }
                 Section("privacy.licence") {
@@ -152,7 +192,13 @@ struct PrivacyView: View {
             .navigationTitle("privacy.title")
             .confirmationDialog("privacy.delete_confirm_title", isPresented: $confirmDeleteAll) {
                 Button("privacy.delete_all", role: .destructive) {
-                    Task { await model.deleteAllLocalData() }
+                    Task {
+                        do {
+                            try await model.deleteAllLocalData()
+                        } catch {
+                            model.storeErrorMessage = error.localizedDescription
+                        }
+                    }
                 }
             } message: {
                 Text("privacy.delete_confirm_body")
@@ -166,7 +212,13 @@ struct PrivacyView: View {
             ) {
                 Button("privacy.delete_session", role: .destructive) {
                     if let id = sessionPendingDelete {
-                        Task { await model.deleteSession(id) }
+                        Task {
+                            do {
+                                try await model.deleteSession(id)
+                            } catch {
+                                model.storeErrorMessage = error.localizedDescription
+                            }
+                        }
                     }
                     sessionPendingDelete = nil
                 }
@@ -174,6 +226,13 @@ struct PrivacyView: View {
                 Text("privacy.delete_session_body")
             }
         }
+    }
+
+    private var visiblePeripherals: [AdvertisementSnapshot] {
+        PeripheralDiscoveryList.results(
+            from: model.probeSession.peripherals,
+            searchText: peripheralSearchText
+        )
     }
 
     private enum ExportKind {

@@ -8,7 +8,8 @@ Copy this file **out of Git**. Fill it locally under gitignored `private-evidenc
 
 **Never put in Git:** APKs, `.so` / `.aar` / DEX, tokens, cookies, passwords,
 Keychain dumps, full serials, full UDI strings, unredacted package photographs,
-embedded keys, registration tokens, or raw authentication payloads.
+runtime/account keys, IVs, registration tokens, authentication IDs, or raw
+authentication payloads.
 
 See [EVIDENCE_STORAGE.md](EVIDENCE_STORAGE.md) and
 [P1_CAPTURE_RUNBOOK.md](P1_CAPTURE_RUNBOOK.md).

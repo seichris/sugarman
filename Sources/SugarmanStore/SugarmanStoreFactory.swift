@@ -15,8 +15,10 @@ public struct SugarmanStoreBootstrap: Sendable {
     }
 }
 
-/// Constructs the app's `SugarmanStoring` implementation. Prefers on-disk
-/// SwiftData when the OS supports it; falls back to the in-memory store.
+/// Constructs the app's `SugarmanStoring` implementation. A persistent-store
+/// failure is surfaced through a fail-closed store so the app cannot claim to
+/// save data that will disappear. In-memory fallback is only used when the
+/// caller explicitly requests an in-memory store.
 public enum SugarmanStoreFactory: Sendable {
     public static func makePersistent() -> SugarmanStoreBootstrap {
         make(inMemory: false)
@@ -30,7 +32,7 @@ public enum SugarmanStoreFactory: Sendable {
                 return SugarmanStoreBootstrap(store: store, loadError: nil, usesSwiftData: true)
             } catch {
                 return SugarmanStoreBootstrap(
-                    store: InMemorySugarmanStore(),
+                    store: inMemory ? InMemorySugarmanStore() : UnavailableSugarmanStore(),
                     loadError: error.localizedDescription,
                     usesSwiftData: false
                 )
@@ -38,8 +40,8 @@ public enum SugarmanStoreFactory: Sendable {
         }
         #endif
         return SugarmanStoreBootstrap(
-            store: InMemorySugarmanStore(),
-            loadError: nil,
+            store: inMemory ? InMemorySugarmanStore() : UnavailableSugarmanStore(),
+            loadError: inMemory ? nil : StoreError.persistenceUnavailable.localizedDescription,
             usesSwiftData: false
         )
     }

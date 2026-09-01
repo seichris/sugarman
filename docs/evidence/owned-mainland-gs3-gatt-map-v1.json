@@ -1,0 +1,137 @@
+{
+  "cipherHypothesis" : "unknownUntilCapture",
+  "localName" : "redacted-name(len:12)",
+  "notes" : [
+    "Raw characteristic values omitted.",
+    "Serial number bytes omitted; byteCount only.",
+    "CoreBluetooth peripheral identifier omitted.",
+    "Does not identify a cipher. CipherHypothesis remains unknownUntilCapture.",
+    "Simulator probe remains disabled; this map is produced on device only.",
+    "Device Information service was observed."
+  ],
+  "peripheralID" : "redacted-peer",
+  "schemaVersion" : 1,
+  "serialByteCount" : 17,
+  "services" : [
+    {
+      "characteristics" : [
+        {
+          "properties" : [
+            "read"
+          ],
+          "serialValueOmitted" : false,
+          "uuid" : "00002A24-0000-1000-8000-00805F9B34FB",
+          "uuidShort" : "2A24",
+          "valueByteCount" : 11
+        },
+        {
+          "properties" : [
+            "read"
+          ],
+          "serialValueOmitted" : true,
+          "uuid" : "00002A25-0000-1000-8000-00805F9B34FB",
+          "uuidShort" : "2A25",
+          "valueByteCount" : 17
+        },
+        {
+          "properties" : [
+            "read"
+          ],
+          "serialValueOmitted" : false,
+          "uuid" : "00002A26-0000-1000-8000-00805F9B34FB",
+          "uuidShort" : "2A26",
+          "valueByteCount" : 8
+        },
+        {
+          "properties" : [
+            "read"
+          ],
+          "serialValueOmitted" : false,
+          "uuid" : "00002A27-0000-1000-8000-00805F9B34FB",
+          "uuidShort" : "2A27",
+          "valueByteCount" : 12
+        },
+        {
+          "properties" : [
+            "read"
+          ],
+          "serialValueOmitted" : false,
+          "uuid" : "00002A28-0000-1000-8000-00805F9B34FB",
+          "uuidShort" : "2A28",
+          "valueByteCount" : 13
+        },
+        {
+          "properties" : [
+            "read"
+          ],
+          "serialValueOmitted" : false,
+          "uuid" : "00002A29-0000-1000-8000-00805F9B34FB",
+          "uuidShort" : "2A29",
+          "valueByteCount" : 12
+        },
+        {
+          "properties" : [
+            "read"
+          ],
+          "serialValueOmitted" : false,
+          "uuid" : "00002ABE-0000-1000-8000-00805F9B34FB",
+          "uuidShort" : "2ABE"
+        }
+      ],
+      "uuid" : "0000180A-0000-1000-8000-00805F9B34FB",
+      "uuidShort" : "180A"
+    },
+    {
+      "characteristics" : [
+        {
+          "properties" : [
+            "notify",
+            "read"
+          ],
+          "serialValueOmitted" : false,
+          "uuid" : "00002A19-0000-1000-8000-00805F9B34FB",
+          "uuidShort" : "2A19"
+        }
+      ],
+      "uuid" : "0000180F-0000-1000-8000-00805F9B34FB",
+      "uuidShort" : "180F"
+    },
+    {
+      "characteristics" : [
+        {
+          "properties" : [
+            "notify"
+          ],
+          "serialValueOmitted" : false,
+          "uuid" : "0000FF31-0000-1000-8000-00805F9B34FB",
+          "uuidShort" : "FF31"
+        },
+        {
+          "properties" : [
+            "write",
+            "writeWithoutResponse"
+          ],
+          "serialValueOmitted" : false,
+          "uuid" : "0000FF32-0000-1000-8000-00805F9B34FB",
+          "uuidShort" : "FF32"
+        }
+      ],
+      "uuid" : "0000FF30-0000-1000-8000-00805F9B34FB",
+      "uuidShort" : "FF30"
+    },
+    {
+      "characteristics" : [
+        {
+          "properties" : [
+            "notify",
+            "writeWithoutResponse"
+          ],
+          "serialValueOmitted" : false,
+          "uuid" : "DA2E7828-FBCE-4E01-AE9E-261174997C48"
+        }
+      ],
+      "uuid" : "8D53DC1D-1DB7-4CD3-868B-8A527460AA84"
+    }
+  ],
+  "sixByteAddressSource" : "notFound"
+}
