@@ -128,6 +128,16 @@ only the resulting known peripheral and never scans.
   without a second reconnect or rejection. This validates the integrated Mac
   reconnect path but is not evidence of spontaneous RF-loss classification or
   iPhone parity.
+- The exact signed iPhone Device Test artifact at commit `1bc52f3` subsequently
+  completed initial synchronization after one pre-sync unexpected
+  CoreBluetooth disconnect and one fresh reconnect. It then committed ten
+  consecutive one-sample live batches at exact 60-second intervals. One
+  Device-Test-only live link-loss injection produced exactly one further
+  reconnect with fresh subscription/authentication/history, a duplicate-only
+  inclusive overlap, one new live sample, zero gaps or rejection, return to
+  `live`, and ordered controlled stop. This passes iPhone five-reading and
+  injected-reconnect parity; spontaneous post-live RF loss, private
+  official-app comparison, and final handback remain open.
 - Two earlier attempts stopped before FF31 subscription while both Sugarman
   processes were running; a Probe-only run reached live data. That sequence is
   observed, but it does not isolate process contention as the cause.

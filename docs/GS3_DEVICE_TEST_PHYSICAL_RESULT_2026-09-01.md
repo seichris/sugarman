@@ -342,3 +342,57 @@ an official UI that rounds a timestamp to the nearest minute. The owner must
 perform this comparison locally in the two private app views and record only
 pass/fail and mismatch categories. Values, timestamps, indexes, screenshots,
 and imported material remain outside Git, PRs, chat, and shared diagnostics.
+
+## Exact iPhone durability and injected-reconnect pass
+
+The exact signed iPhone Device Test artifact used source commit
+`1bc52f3d08e1f7d512ed4242ecd7ba83abdd45b3`, bundle identifier
+`app.sugarman.ios.devicetest`, and signed-app manifest SHA-256
+`b2c6a8949082ed43df154218f954640e56996ad41a1dd375aa6e0e5a2f12d232`.
+Its signature, embedded provisioning for the separately confirmed owned
+iPhone, App Group entitlement, and bundle identifier were verified before
+installation. The exact device identifier, serial, and provisioning material
+remain outside Git.
+
+The final payload-free report established:
+
+1. connection one subscribed, authenticated, made one history request, and
+   observed one bounded preamble, then encountered one unexpected
+   allowlisted CoreBluetooth disconnect before committing a batch;
+2. exactly one reconnect schedule created connection two, which freshly
+   subscribed and authenticated, made one history request, observed one
+   preamble, and completed initial synchronization with zero duplicates or
+   gaps;
+3. connection two then committed ten consecutive one-sample live batches at
+   exact 60-second intervals, with no extra authentication/history request,
+   duplicate, gap, rejection, or protocol violation;
+4. one Device-Test-only link-loss injection while `live` produced exactly one
+   `link loss` disconnect and one reconnect schedule;
+5. connection three freshly subscribed and authenticated, made exactly one
+   history request, and observed one preamble;
+6. its first inclusive overlap inserted zero samples and counted one
+   equivalent duplicate with zero gaps; its next batch inserted one sample,
+   retained that single cumulative duplicate, and returned the reducer to
+   `live` with zero gaps;
+7. the UI totals were three authentication write acknowledgements and three
+   history write acknowledgements for the three connections; and
+8. explicit stop immediately after the return to `live` produced
+   `disconnectRequested`, then `transportDisconnected`, then `stopped`, with
+   no further reconnect.
+
+This physically passes the iPhone five-reading, exact 60-second cadence,
+single-flight reconnect, fresh per-connection authentication/history,
+inclusive-overlap deduplication, zero-gap, fail-closed protocol, and controlled
+stop gates for this exact artifact. The unexpected disconnect occurred before
+initial synchronization; the post-live reconnect was an explicit Device Test
+CoreBluetooth cancellation, not an uncontrolled RF or out-of-range loss.
+
+The report contained only the allowlisted header, acknowledgement totals, and
+typed lifecycle rows. It contained no sensor identifier, private material,
+packet body, arbitrary command byte, glucose value, record index, imported
+JSON content/hash, arbitrary error string, or non-diagnostic line.
+
+Official-app handback and the predeclared private five-reading timestamp/value
+comparison remain pending. Native quality-state meaning, sensor-index wrap,
+final product meaning for the observed preamble, background restoration, and
+fresh-sensor activation also remain outside this pass.
