@@ -48,10 +48,7 @@ struct DashboardView: View {
                 } else {
                     readingHero(assessment)
                     rangePicker
-                    glucoseChart(
-                        timeline: timeline,
-                        assessment: assessment
-                    )
+                    glucoseChart(timeline: timeline)
 
                     if !assessment.showsValueAsCurrent, !timeline.samples.isEmpty {
                         Label(
@@ -133,7 +130,7 @@ struct DashboardView: View {
     private func assessmentReadingHero(_ assessment: SafetyAssessment) -> some View {
         switch assessment.presentation {
             case .current(let mgdl, _):
-                currentReadingHero(mgdl: mgdl, assessment: assessment)
+                glucoseReadingHero(mgdl: mgdl, assessment: assessment)
             case .empty:
                 unavailableReadingHero(Text("dashboard.empty"), assessment: assessment)
             case .connectedNoData:
@@ -152,10 +149,14 @@ struct DashboardView: View {
             case .expired:
                 unavailableReadingHero(Text("dashboard.expired"), assessment: assessment)
             case .questionable:
-                unavailableReadingHero(
-                    Text("dashboard.native_state_unvalidated"),
-                    assessment: assessment
-                )
+                if let mgdl = assessment.unvalidatedGlucoseMgdl {
+                    glucoseReadingHero(mgdl: mgdl, assessment: assessment)
+                } else {
+                    unavailableReadingHero(
+                        Text("dashboard.native_state_unvalidated"),
+                        assessment: assessment
+                    )
+                }
         }
     }
 
@@ -230,7 +231,7 @@ struct DashboardView: View {
         .accessibilityElement(children: .contain)
     }
 
-    private func currentReadingHero(
+    private func glucoseReadingHero(
         mgdl: Int,
         assessment: SafetyAssessment
     ) -> some View {
@@ -309,36 +310,43 @@ struct DashboardView: View {
         .accessibilityLabel(Text("live.range.label"))
     }
 
-    private func glucoseChart(
-        timeline: GlucoseTimeline,
-        assessment: SafetyAssessment
-    ) -> some View {
+    private func glucoseChart(timeline: GlucoseTimeline) -> some View {
         let scale = GlucoseChartScale(unit: model.preferredUnit)
-        let latestID = model.latestSample?.id
         return VStack(alignment: .leading, spacing: 8) {
             Text(model.preferredUnit.displaySymbol)
                 .font(.caption)
                 .foregroundStyle(LivePalette.secondaryText)
 
-            Chart(timeline.samples) { sample in
-                PointMark(
-                    x: .value("Time", sample.sensorTimestamp),
-                    y: .value("Glucose", sample.value(in: model.preferredUnit))
-                )
-                .foregroundStyle(
-                    sample.id == latestID && assessment.showsValueAsCurrent
-                        ? LivePalette.currentPoint
-                        : LivePalette.historicalPoint
-                )
-                .symbolSize(sample.id == latestID ? 150 : 48)
+            Chart {
+                ForEach(scale.gridValues, id: \.self) { gridValue in
+                    RuleMark(y: .value("mmol/L guide", gridValue))
+                        .foregroundStyle(LivePalette.grid)
+                        .lineStyle(
+                            StrokeStyle(
+                                lineWidth: 0.5,
+                                lineCap: .round,
+                                dash: [1, 3]
+                            )
+                        )
+                }
+
+                ForEach(timeline.samples) { sample in
+                    PointMark(
+                        x: .value("Time", sample.sensorTimestamp),
+                        y: .value("Glucose", sample.value(in: model.preferredUnit))
+                    )
+                    .foregroundStyle(LivePalette.readingPoint)
+                    .symbol {
+                        Circle()
+                            .frame(width: 2, height: 2)
+                    }
+                }
             }
             .chartXScale(domain: timeline.start...timeline.end)
             .chartYScale(domain: scale.domain)
             .chartLegend(.hidden)
             .chartYAxis {
                 AxisMarks(position: .leading, values: scale.tickValues) { value in
-                    AxisGridLine(stroke: StrokeStyle(lineWidth: 0.75))
-                        .foregroundStyle(LivePalette.grid)
                     AxisValueLabel {
                         if let number = value.as(Double.self) {
                             Text(axisValueLabel(number))
@@ -506,9 +514,8 @@ private enum LivePalette {
     static let background = Color.black
     static let primaryText = Color.white
     static let secondaryText = Color.white.opacity(0.78)
-    static let historicalPoint = Color.white
-    static let currentPoint = Color(red: 0.57, green: 0.66, blue: 0.42)
-    static let grid = Color.white.opacity(0.58)
+    static let readingPoint = Color.white
+    static let grid = Color.gray.opacity(0.65)
     static let warning = Color.orange
 }
 

@@ -226,12 +226,14 @@ struct SugarmanDomainTests {
 
     @Test func glucoseChartScaleMatchesEachDisplayUnit() {
         let mmol = GlucoseChartScale(unit: .millimolesPerLiter)
-        #expect(mmol.domain == 0...21)
-        #expect(mmol.tickValues == [0, 3, 6, 9, 12, 15, 18, 21])
+        #expect(mmol.domain == 0...15)
+        #expect(mmol.gridValues == Array(0...15).map(Double.init))
+        #expect(mmol.tickValues == [0, 3, 6, 9, 12, 15])
 
         let mgdl = GlucoseChartScale(unit: .milligramsPerDeciliter)
-        #expect(mgdl.domain == 0...400)
-        #expect(mgdl.tickValues == [0, 50, 100, 150, 200, 250, 300, 350, 400])
+        #expect(mgdl.domain == 0...270)
+        #expect(mgdl.gridValues == stride(from: 0.0, through: 270.0, by: 18.0).map(\.self))
+        #expect(mgdl.tickValues == [0, 50, 100, 150, 200, 250])
     }
 
     @Test func activeSessionPrefersDemoThenSelectionNotUUIDSort() {

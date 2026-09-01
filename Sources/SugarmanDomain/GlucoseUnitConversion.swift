@@ -87,16 +87,19 @@ public struct GlucoseTimeline: Sendable, Equatable {
 /// Fixed cross-platform chart scale matching the product's mmol/L reference.
 public struct GlucoseChartScale: Sendable, Equatable {
     public var domain: ClosedRange<Double>
+    public var gridValues: [Double]
     public var tickValues: [Double]
 
     public init(unit: GlucoseUnit) {
         switch unit {
         case .millimolesPerLiter:
-            domain = 0...21
-            tickValues = stride(from: 0.0, through: 21.0, by: 3.0).map(\.self)
+            domain = 0...15
+            gridValues = stride(from: 0.0, through: 15.0, by: 1.0).map(\.self)
+            tickValues = stride(from: 0.0, through: 15.0, by: 3.0).map(\.self)
         case .milligramsPerDeciliter:
-            domain = 0...400
-            tickValues = stride(from: 0.0, through: 400.0, by: 50.0).map(\.self)
+            domain = 0...270
+            gridValues = stride(from: 0.0, through: 270.0, by: 18.0).map(\.self)
+            tickValues = stride(from: 0.0, through: 250.0, by: 50.0).map(\.self)
         }
     }
 }

@@ -17,8 +17,9 @@ public struct SafetyPolicy: Sendable, Equatable {
     }
 }
 
-/// How the live UI may present glucose. `.current` is the only case that may
-/// display a milligram value as the live reading.
+/// How the live UI may classify glucose. `.current` is the only case validated
+/// as a current reading; `SafetyAssessment.unvalidatedGlucoseMgdl` may expose a
+/// recent live value separately while preserving the warning state.
 public enum ReadingPresentation: Sendable, Equatable {
     case empty
     case connectedNoData
@@ -38,6 +39,7 @@ public struct SafetyAssessment: Sendable, Equatable {
     public var isDisconnected: Bool
     public var noDosingNotice: String
     public var notCurrentNotice: String?
+    public var unvalidatedGlucoseMgdl: Int?
 
     public var showsValueAsCurrent: Bool {
         if case .current = presentation { return true }
@@ -69,7 +71,8 @@ public struct SafetyEngine: Sendable {
         func assessment(
             _ presentation: ReadingPresentation,
             stale: Bool,
-            notCurrent: String?
+            notCurrent: String?,
+            unvalidatedGlucoseMgdl: Int? = nil
         ) -> SafetyAssessment {
             SafetyAssessment(
                 presentation: presentation,
@@ -77,7 +80,8 @@ public struct SafetyEngine: Sendable {
                 isStale: stale,
                 isDisconnected: disconnected,
                 noDosingNotice: noDosing,
-                notCurrentNotice: notCurrent
+                notCurrentNotice: notCurrent,
+                unvalidatedGlucoseMgdl: unvalidatedGlucoseMgdl
             )
         }
 
@@ -148,7 +152,14 @@ public struct SafetyEngine: Sendable {
                 stale: false,
                 notCurrent: ProductCopy.notCurrentReading
             )
-        case .questionable, .unknown:
+        case .questionable:
+            return assessment(
+                .questionable,
+                stale: false,
+                notCurrent: ProductCopy.questionableSample,
+                unvalidatedGlucoseMgdl: latestSample.milligramsPerDeciliter
+            )
+        case .unknown:
             return assessment(
                 .questionable,
                 stale: false,
