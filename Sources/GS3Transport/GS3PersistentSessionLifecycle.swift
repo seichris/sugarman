@@ -3,16 +3,11 @@
 
 import Foundation
 
-/// Main-actor lifecycle boundary between an application scene and one typed
-/// foreground GS3 controller.
-///
-/// Installing a factory is inert. Entering the foreground constructs and
-/// starts at most one controller, while leaving the foreground invalidates any
-/// in-progress start and stops both starting and active controllers. The
-/// generation check prevents a delayed start from becoming active after a
-/// scene has ended.
+/// Main-actor owner for one production session whose lifetime follows durable
+/// user intent rather than the foreground scene. Background transitions are
+/// intentionally inert; explicit removal is the sole stop boundary.
 @MainActor
-public final class GS3ForegroundSessionLifecycle {
+public final class GS3PersistentSessionLifecycle {
     public typealias Factory =
         @Sendable () async throws -> any GS3ForegroundSessionControlling
 
@@ -37,12 +32,7 @@ public final class GS3ForegroundSessionLifecycle {
         self.factory = factory
     }
 
-    public func removeFactory() async {
-        factory = nil
-        await leaveForeground()
-    }
-
-    public func enterForeground() async throws {
+    public func startIfNeeded() async throws {
         guard activeController == nil,
               startingController == nil,
               constructingGeneration == nil,
@@ -64,7 +54,7 @@ public final class GS3ForegroundSessionLifecycle {
             constructingGeneration = nil
         }
         guard generation == lifecycleGeneration else {
-            await controller.foregroundEnded()
+            await controller.stop()
             return
         }
 
@@ -85,7 +75,8 @@ public final class GS3ForegroundSessionLifecycle {
         activeController = (generation, controller)
     }
 
-    public func leaveForeground() async {
+    public func removeFactory() async {
+        factory = nil
         lifecycleGeneration &+= 1
         constructingGeneration = nil
         let starting = startingController
@@ -93,10 +84,10 @@ public final class GS3ForegroundSessionLifecycle {
         startingController = nil
         activeController = nil
         if let starting {
-            await starting.controller.foregroundEnded()
+            await starting.controller.stop()
         }
         if let active {
-            await active.controller.foregroundEnded()
+            await active.controller.stop()
         }
     }
 }

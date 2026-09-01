@@ -9,9 +9,10 @@ import SugarmanStore
 #if canImport(CoreBluetooth)
 @preconcurrency import CoreBluetooth
 
-/// Foreground-only V3 adapter for one already-known, already-active owned
-/// sensor. It has no scan API, restoration identifier, activation, binding,
-/// reset, unacknowledged write, or arbitrary-frame entry point.
+/// Typed V3 adapter for one already-known, already-active owned sensor. The
+/// production configuration opts into CoreBluetooth restoration; the Device
+/// Test configuration remains foreground-only. Neither has a scan, activation,
+/// binding, reset, unacknowledged write, or arbitrary-frame entry point.
 package final class GS3ForegroundCoreBluetoothTransport:
     NSObject, GS3ForegroundTransporting, GS3ForegroundLinkLossInjecting,
     @unchecked Sendable, CustomReflectable
@@ -40,6 +41,8 @@ package final class GS3ForegroundCoreBluetoothTransport:
     }
 
     package static let queueLabel = "app.sugarman.ios.gs3.foreground"
+    package static let productionRestorationIdentifier =
+        "app.sugarman.ios.gs3.managed-session"
     package static let operationTimeoutSeconds: TimeInterval = 15
     package static let synchronizationTimeoutSeconds: TimeInterval = 120
 
@@ -53,6 +56,8 @@ package final class GS3ForegroundCoreBluetoothTransport:
     private let operationTimeout: TimeInterval
     private let synchronizationTimeout: TimeInterval
     private let receiptClock: @Sendable () -> Date
+    private let restorationIdentifier: String?
+    private let persistentConnection: Bool
 
     private var eventHandler: (@Sendable (GS3ForegroundTransportEvent) -> Void)?
     private var central: CBCentralManager?
@@ -84,6 +89,8 @@ package final class GS3ForegroundCoreBluetoothTransport:
             .operationTimeoutSeconds,
         synchronizationTimeoutSeconds: TimeInterval = GS3ForegroundCoreBluetoothTransport
             .synchronizationTimeoutSeconds,
+        restorationIdentifier: String? = nil,
+        persistentConnection: Bool = false,
         receiptClock: @escaping @Sendable () -> Date = { Date() }
     ) {
         precondition(
@@ -101,6 +108,8 @@ package final class GS3ForegroundCoreBluetoothTransport:
         self.queue = DispatchQueue(label: Self.queueLabel)
         self.operationTimeout = operationTimeoutSeconds
         self.synchronizationTimeout = synchronizationTimeoutSeconds
+        self.restorationIdentifier = restorationIdentifier
+        self.persistentConnection = persistentConnection
         self.receiptClock = receiptClock
         super.init()
     }
@@ -294,32 +303,59 @@ package final class GS3ForegroundCoreBluetoothTransport:
 
     private func ensureCentralLocked() {
         guard central == nil else { return }
-        central = CBCentralManager(delegate: self, queue: queue, options: nil)
+        let options = restorationIdentifier.map {
+            [CBCentralManagerOptionRestoreIdentifierKey: $0]
+        }
+        central = CBCentralManager(delegate: self, queue: queue, options: options)
     }
 
     private func connectIfPoweredOnLocked() {
         guard phase == .waitingForPower, let central else { return }
         switch central.state {
         case .poweredOn:
-            guard let found = central.retrievePeripherals(
+            let found = peripheral ?? central.retrievePeripherals(
                 withIdentifiers: [peripheralID]
-            ).first else {
+            ).first
+            guard let found else {
                 reportDisconnectedLocked(.timeout)
                 return
             }
             peripheral = found
             found.delegate = self
-            guard found.state == .disconnected else {
+            let action = GS3RestorationPolicy.action(
+                for: knownState(found.state),
+                persistentConnection: persistentConnection
+            )
+            switch action {
+            case .connect:
+                if found.state != .disconnected {
+                    pendingDisconnectReason = .timeout
+                    controlledDisconnect = false
+                    phase = .disconnecting
+                    scheduleDisconnectCompletionTimeoutLocked()
+                    central.cancelPeripheralConnection(found)
+                    return
+                }
+                phase = .connecting
+                if persistentConnection {
+                    cancelOperationTimeoutLocked()
+                } else {
+                    scheduleOperationTimeoutLocked()
+                }
+                central.connect(found, options: nil)
+            case .awaitConnection:
+                phase = .connecting
+                cancelOperationTimeoutLocked()
+            case .resumeConnected:
+                cancelOperationTimeoutLocked()
+                phase = .connected
+                emit(.connected)
+            case .awaitDisconnection:
                 pendingDisconnectReason = .timeout
                 controlledDisconnect = false
                 phase = .disconnecting
                 scheduleDisconnectCompletionTimeoutLocked()
-                central.cancelPeripheralConnection(found)
-                return
             }
-            phase = .connecting
-            scheduleOperationTimeoutLocked()
-            central.connect(found, options: nil)
         case .unauthorized:
             reportDisconnectedLocked(.permissionDenied)
         case .poweredOff, .unsupported, .resetting:
@@ -328,6 +364,16 @@ package final class GS3ForegroundCoreBluetoothTransport:
             break
         @unknown default:
             reportDisconnectedLocked(.bluetoothUnavailable)
+        }
+    }
+
+    private func knownState(_ state: CBPeripheralState) -> GS3KnownPeripheralState {
+        switch state {
+        case .disconnected: .disconnected
+        case .connecting: .connecting
+        case .connected: .connected
+        case .disconnecting: .disconnecting
+        @unknown default: .disconnected
         }
     }
 
@@ -666,7 +712,10 @@ public enum GS3ForegroundSessionFactory: Sendable {
     ) -> any GS3ForegroundSessionControlling {
         let transport = GS3ForegroundCoreBluetoothTransport(
             peripheralID: peripheralID,
-            material: material
+            material: material,
+            restorationIdentifier: GS3ForegroundCoreBluetoothTransport
+                .productionRestorationIdentifier,
+            persistentConnection: true
         )
         return GS3ForegroundSessionCoordinator(
             configuration: configuration,
@@ -741,6 +790,27 @@ package actor GS3ForegroundDeviceTestController:
 }
 
 extension GS3ForegroundCoreBluetoothTransport: CBCentralManagerDelegate {
+    public func centralManager(
+        _ central: CBCentralManager,
+        willRestoreState dict: [String: Any]
+    ) {
+        guard self.central === central, persistentConnection else { return }
+        let restored = dict[CBCentralManagerRestoredStatePeripheralsKey]
+            as? [CBPeripheral] ?? []
+        for candidate in restored {
+            let accepted = GS3RestorationPolicy.acceptsRestoredPeripheral(
+                identifierMatches: candidate.identifier == peripheralID,
+                persistentConnection: persistentConnection
+            )
+            if accepted, peripheral == nil {
+                peripheral = candidate
+                candidate.delegate = self
+            } else if candidate.state != .disconnected {
+                central.cancelPeripheralConnection(candidate)
+            }
+        }
+    }
+
     public func centralManagerDidUpdateState(_ central: CBCentralManager) {
         guard self.central === central else { return }
         if phase == .waitingForPower {

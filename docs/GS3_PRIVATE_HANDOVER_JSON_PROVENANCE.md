@@ -92,8 +92,11 @@ This is a provenance record, not a promise of an automated acquisition path:
 
 The current app validates this historical schema, copies it through a mutable
 non-memory-mapped buffer, normalizes the material into a production-specific
-`kSecAttrAccessibleWhenUnlockedThisDeviceOnly` Keychain item, and clears the
-import buffer. It never stores or exports the original JSON verbatim.
+`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly` Keychain item, and clears
+the import buffer. This remains device-only and non-migrating while allowing a
+previously opted-in managed connection to resume after lock-screen relaunch.
+It never stores or exports the original JSON verbatim. Device Test and the
+developer Probe retain `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`.
 
 ## What the QR code and sensor cannot provide
 

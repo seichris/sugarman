@@ -54,7 +54,10 @@ struct DashboardView: View {
                     )
 
                     if !assessment.showsValueAsCurrent, !timeline.samples.isEmpty {
-                        Label("live.chart_not_current", systemImage: "exclamationmark.triangle")
+                        Label(
+                            chartNotCurrentKey,
+                            systemImage: "exclamationmark.triangle"
+                        )
                             .font(.footnote.weight(.semibold))
                             .foregroundStyle(LivePalette.warning)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -82,32 +85,26 @@ struct DashboardView: View {
         VStack(spacing: 20) {
             readingHero(assessment)
 
-            Image(systemName: "sensor.tag.radiowaves.forward")
-                .font(.system(size: 52, weight: .light))
-                .foregroundStyle(LivePalette.secondaryText)
-                .accessibilityHidden(true)
-
-            VStack(spacing: 8) {
-                Text("live.sensor_setup_title")
-                    .font(.title2.weight(.semibold))
-                Text("live.sensor_setup_body")
-                    .font(.body)
+#if !SUGARMAN_DEVICE_TEST
+            if model.hasSensorProvisioning,
+               model.sensorConnectionActivity == .connecting
+                || model.sensorConnectionActivity == .synchronizing
+                || model.sensorConnectionActivity == .reconnecting {
+                ProgressView()
+                    .tint(.white)
+                sensorActivityText
+                    .font(.headline)
+                    .multilineTextAlignment(.center)
+                Text("live.connection_background_hint")
+                    .font(.footnote)
                     .foregroundStyle(LivePalette.secondaryText)
                     .multilineTextAlignment(.center)
+            } else {
+                sensorSetupContent
             }
-
-            NavigationLink {
-                SensorOnboardingView(embeddedInNavigationStack: true)
-            } label: {
-                Label("live.sensor_setup_action", systemImage: "arrow.right.circle.fill")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(.white)
-            .foregroundStyle(.black)
-            .accessibilityHint(Text("live.sensor_setup_hint"))
+#else
+            sensorSetupContent
+#endif
         }
         .frame(maxWidth: 560)
         .frame(maxWidth: .infinity)
@@ -119,7 +116,22 @@ struct DashboardView: View {
         if model.latestSample == nil {
             missingReadingHero
         } else {
-            switch assessment.presentation {
+#if !SUGARMAN_DEVICE_TEST
+            if model.isSensorConnectionEnabled,
+               model.sensorConnectionActivity != .live {
+                unavailableReadingHero(sensorActivityText, assessment: assessment)
+            } else {
+                assessmentReadingHero(assessment)
+            }
+#else
+            assessmentReadingHero(assessment)
+#endif
+        }
+    }
+
+    @ViewBuilder
+    private func assessmentReadingHero(_ assessment: SafetyAssessment) -> some View {
+        switch assessment.presentation {
             case .current(let mgdl, _):
                 currentReadingHero(mgdl: mgdl, assessment: assessment)
             case .empty:
@@ -140,10 +152,72 @@ struct DashboardView: View {
             case .expired:
                 unavailableReadingHero(Text("dashboard.expired"), assessment: assessment)
             case .questionable:
-                unavailableReadingHero(Text("dashboard.questionable"), assessment: assessment)
-            }
+                unavailableReadingHero(
+                    Text("dashboard.native_state_unvalidated"),
+                    assessment: assessment
+                )
         }
     }
+
+    @ViewBuilder
+    private var sensorSetupContent: some View {
+        Image(systemName: "sensor.tag.radiowaves.forward")
+            .font(.system(size: 52, weight: .light))
+            .foregroundStyle(LivePalette.secondaryText)
+            .accessibilityHidden(true)
+
+        VStack(spacing: 8) {
+            Text("live.sensor_setup_title")
+                .font(.title2.weight(.semibold))
+            Text("live.sensor_setup_body")
+                .font(.body)
+                .foregroundStyle(LivePalette.secondaryText)
+                .multilineTextAlignment(.center)
+        }
+
+        NavigationLink {
+            SensorOnboardingView(embeddedInNavigationStack: true)
+        } label: {
+            Label("live.sensor_setup_action", systemImage: "arrow.right.circle.fill")
+                .font(.headline)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(.white)
+        .foregroundStyle(.black)
+        .accessibilityHint(Text("live.sensor_setup_hint"))
+    }
+
+    private var chartNotCurrentKey: LocalizedStringKey {
+#if !SUGARMAN_DEVICE_TEST
+        if model.sensorConnectionActivity == .live {
+            return "live.chart_native_state_unvalidated"
+        }
+#endif
+        return "live.chart_not_current"
+    }
+
+#if !SUGARMAN_DEVICE_TEST
+    private var sensorActivityText: Text {
+        switch model.sensorConnectionActivity {
+        case .notConfigured:
+            return Text("live.connection.not_configured")
+        case .stopped:
+            return Text("live.connection.stopped")
+        case .connecting:
+            return Text("live.connection.connecting")
+        case .synchronizing:
+            return Text("live.connection.synchronizing")
+        case .live:
+            return Text("live.connection.live")
+        case .reconnecting:
+            return Text("live.connection.reconnecting")
+        case .failed:
+            return Text("live.connection.failed")
+        }
+    }
+#endif
 
     private var missingReadingHero: some View {
         HStack(alignment: .lastTextBaseline, spacing: 12) {

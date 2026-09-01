@@ -10,6 +10,11 @@ package protocol GS3DeviceProvisioningPersisting: Sendable {
     func delete() throws
 }
 
+package enum GS3KeychainAccessibilityPolicy: Sendable, Equatable {
+    case afterFirstUnlockThisDeviceOnly
+    case whenUnlockedThisDeviceOnly
+}
+
 /// Fixed storage scopes keep production and physical-test material isolated.
 /// Callers cannot supply an arbitrary Keychain service or access group.
 public enum GS3DeviceProvisioningScope: Sendable, Equatable {
@@ -28,13 +33,16 @@ package struct KeychainGS3DeviceProvisioningStore:
     private static let account = "owned-already-active-sensor"
 
     private let service: String
+    private let accessibilityPolicy: GS3KeychainAccessibilityPolicy
 
     package init(scope: GS3DeviceProvisioningScope) {
         self.service = Self.service(for: scope)
+        self.accessibilityPolicy = Self.accessibilityPolicy(for: scope)
     }
 
     package init(service: String) {
         self.service = service
+        self.accessibilityPolicy = .whenUnlockedThisDeviceOnly
     }
 
     package static func service(for scope: GS3DeviceProvisioningScope) -> String {
@@ -55,6 +63,15 @@ package struct KeychainGS3DeviceProvisioningStore:
         #endif
     }
 
+    package static func accessibilityPolicy(
+        for scope: GS3DeviceProvisioningScope
+    ) -> GS3KeychainAccessibilityPolicy {
+        switch scope {
+        case .production: .afterFirstUnlockThisDeviceOnly
+        case .deviceTest: .whenUnlockedThisDeviceOnly
+        }
+    }
+
     package func load() throws -> Data? {
         var query = baseQuery()
         query[kSecReturnData as String] = true
@@ -72,7 +89,10 @@ package struct KeychainGS3DeviceProvisioningStore:
     }
 
     package func replace(with data: Data) throws {
-        let update = [kSecValueData as String: data]
+        let update: [String: Any] = [
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: accessibility,
+        ]
         let updateStatus = SecItemUpdate(
             baseQuery() as CFDictionary,
             update as CFDictionary
@@ -84,7 +104,7 @@ package struct KeychainGS3DeviceProvisioningStore:
 
         var add = baseQuery()
         add[kSecValueData as String] = data
-        add[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+        add[kSecAttrAccessible as String] = accessibility
         let addStatus = SecItemAdd(add as CFDictionary, nil)
         guard addStatus == errSecSuccess else {
             throw GS3DeviceProvisioningError.keychain(addStatus)
@@ -105,5 +125,14 @@ package struct KeychainGS3DeviceProvisioningStore:
             kSecAttrAccount as String: Self.account,
             kSecAttrSynchronizable as String: kCFBooleanFalse as Any,
         ]
+    }
+
+    private var accessibility: CFString {
+        switch accessibilityPolicy {
+        case .afterFirstUnlockThisDeviceOnly:
+            kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        case .whenUnlockedThisDeviceOnly:
+            kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+        }
     }
 }

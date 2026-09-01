@@ -155,7 +155,7 @@ struct SensorConnectionSection: View {
             isPresented: $showConnectConfirmation,
             titleVisibility: .visible
         ) {
-            Button("Connect while foregrounded") {
+            Button("Keep sensor connected") {
                 model.confirmExclusiveSensorAccess()
                 Task { await model.connectSensor() }
             }
@@ -163,9 +163,10 @@ struct SensorConnectionSection: View {
         } message: {
             Text(
                 "First release the sensor from the official Android app and stop other "
-                    + "Sugarman targets. While foregrounded, Sugarman may subscribe, send "
+                    + "Sugarman targets. Sugarman may stay connected in the background, subscribe, send "
                     + "one typed authentication request and one typed history request, and "
-                    + "use the bounded reconnect path. Unknown traffic fails closed."
+                    + "use the bounded reconnect path. iOS may relaunch the app for Bluetooth "
+                    + "events. Unknown traffic fails closed."
             )
         }
         .confirmationDialog(

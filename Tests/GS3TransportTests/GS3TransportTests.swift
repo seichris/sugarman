@@ -27,6 +27,17 @@ struct GS3TransportTests {
         #expect(await injector.callCount == 1)
     }
 
+    @Test func managedAndReadOnlyCentralsUseDistinctRestorationIdentifiers() {
+        #expect(
+            GS3ForegroundCoreBluetoothTransport.productionRestorationIdentifier
+                == "app.sugarman.ios.gs3.managed-session"
+        )
+        #expect(
+            GS3ForegroundCoreBluetoothTransport.productionRestorationIdentifier
+                != CoreBluetoothRuntime.restorationIdentifier
+        )
+    }
+
     @Test func rejectedDeviceTestInjectionMayBeRetriedAfterBecomingLive() async {
         let coordinator = StubForegroundController(phase: .live)
         let injector = RecordingLinkLossInjector(result: false)

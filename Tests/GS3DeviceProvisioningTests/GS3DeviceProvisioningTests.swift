@@ -20,6 +20,14 @@ struct GS3DeviceProvisioningTests {
         #expect(deviceTest.contains(".devicetest."))
         #expect(!production.contains("owned-already-active-sensor"))
         #expect(!deviceTest.contains("owned-already-active-sensor"))
+        #expect(
+            KeychainGS3DeviceProvisioningStore.accessibilityPolicy(for: .production)
+                == .afterFirstUnlockThisDeviceOnly
+        )
+        #expect(
+            KeychainGS3DeviceProvisioningStore.accessibilityPolicy(for: .deviceTest)
+                == .whenUnlockedThisDeviceOnly
+        )
     }
 
     @Test func identitySelectionReconcilesAfterAsynchronousStoreLoad() throws {
@@ -89,6 +97,7 @@ struct GS3DeviceProvisioningTests {
         let summary = try await service.summary()
         let sessions = try await store.allSessions()
         #expect(summary?.linkedSensorID == identity.id)
+        #expect(summary?.connectionIntentEnabled == false)
         #expect(sessions.count == 1)
         #expect(sessions[0].id == generatedSessionID)
         #expect(sessions[0].sensorID == identity.id)
@@ -96,7 +105,75 @@ struct GS3DeviceProvisioningTests {
         #expect(sessions[0].protocolVariant == .v3AES)
         #expect(sessions[0].connection == .disconnected)
         #expect(persistence.data != data)
-        #expect(persistence.data?.count == 121)
+        #expect(persistence.data?.count == 122)
+    }
+
+    @Test func connectionIntentIsDeviceOnlyDurableAndSurvivesSameSensorReimport() async throws {
+        let persistence = InMemoryProvisioningPersistence()
+        let service = DeviceOnlyGS3Provisioning(persistence: persistence)
+        let store = InMemorySugarmanStore()
+        let identity = syntheticIdentity()
+        try await store.insertIdentity(identity)
+        try await service.importDocument(
+            Data(syntheticJSON().utf8),
+            linkedSensorID: identity.id,
+            into: store
+        )
+
+        try await service.setConnectionIntentEnabled(true)
+        #expect(try await service.summary()?.connectionIntentEnabled == true)
+        try await service.importDocument(
+            Data(syntheticJSON(historyStart: 0x1235).utf8),
+            linkedSensorID: identity.id,
+            into: store
+        )
+        #expect(try await service.summary()?.connectionIntentEnabled == true)
+
+        try await service.setConnectionIntentEnabled(false)
+        #expect(try await service.summary()?.connectionIntentEnabled == false)
+    }
+
+    @Test func versionOneMaterialMigratesWithConnectionIntentDisabled() async throws {
+        let persistence = InMemoryProvisioningPersistence()
+        let service = DeviceOnlyGS3Provisioning(persistence: persistence)
+        let store = InMemorySugarmanStore()
+        let identity = syntheticIdentity()
+        try await store.insertIdentity(identity)
+        try await service.importDocument(
+            Data(syntheticJSON().utf8),
+            linkedSensorID: identity.id,
+            into: store
+        )
+        var legacy = [UInt8](try #require(persistence.data))
+        legacy[4] = 1
+        legacy.removeLast()
+        try persistence.replace(with: Data(legacy))
+
+        let summary = try #require(try await service.summary())
+        #expect(summary.connectionIntentEnabled == false)
+        try await service.setConnectionIntentEnabled(true)
+        #expect(persistence.data?.count == 122)
+        #expect(try await service.summary()?.connectionIntentEnabled == true)
+    }
+
+    @Test func invalidStoredConnectionIntentFailsClosed() async throws {
+        let persistence = InMemoryProvisioningPersistence()
+        let service = DeviceOnlyGS3Provisioning(persistence: persistence)
+        let store = InMemorySugarmanStore()
+        let identity = syntheticIdentity()
+        try await store.insertIdentity(identity)
+        try await service.importDocument(
+            Data(syntheticJSON().utf8),
+            linkedSensorID: identity.id,
+            into: store
+        )
+        var corrupt = [UInt8](try #require(persistence.data))
+        corrupt[corrupt.count - 1] = 2
+        try persistence.replace(with: Data(corrupt))
+
+        await #expect(throws: GS3DeviceProvisioningError.invalidStoredMaterial) {
+            try await service.summary()
+        }
     }
 
     @Test func importRequiresAnExistingRedactedIdentity() async {

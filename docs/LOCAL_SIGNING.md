@@ -63,10 +63,15 @@ That is expected for unsigned CI simulator builds.
 
 ## Core Bluetooth restoration identifier
 
-`CoreBluetoothRuntime` registers `CBCentralManagerOptionRestoreIdentifierKey`
-as `app.sugarman.ios.gs3.transport`, matching Info.plist `bluetooth-central`.
-That identifier is restoration identity only. This build does **not** reconnect
-to a live sensor or resume authentication after `willRestoreState`.
+The production `GS3ForegroundCoreBluetoothTransport` registers
+`CBCentralManagerOptionRestoreIdentifierKey` as
+`app.sugarman.ios.gs3.managed-session`, matching Info.plist `bluetooth-central`.
+After an explicit user opt-in, the app reconstructs that manager on launch,
+accepts only the provisioned known peripheral from `willRestoreState`, and
+rediscovers, resubscribes, authenticates, and requests durable-overlap history.
+Device Test does not opt into restoration. Background relaunch and lock-screen
+behavior still require a separately confirmed physical test; an unsigned build
+is compile evidence only.
 
 `DEVELOPMENT_TEAM` is empty in Git (`Config/DevelopmentTeam.xcconfig` and
 `project.yml`). Fill it locally; do not invent or commit a team ID.

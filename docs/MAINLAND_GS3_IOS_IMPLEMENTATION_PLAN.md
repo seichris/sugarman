@@ -473,8 +473,11 @@ serial queue and exposes typed events to higher layers:
   command per connection, both written with response;
 - no audio background mode and no raw-frame production logging.
 
-Service-filtered scanning, jitter, state restoration, and a stable restoration
-identifier remain M5 work after the foreground physical gates pass.
+Production now has a stable restoration identifier, durable explicit user
+intent, known-peer restoration, and the existing bounded reconnect/backfill
+path under host tests. It intentionally adds no production scan. Locked-screen
+relaunch, background delivery, battery/latency, and fault-matrix acceptance
+remain M5 physical work.
 
 Transport state machine:
 
@@ -805,9 +808,10 @@ recorded correctly.
 
 Deliverables:
 
-- stable CoreBluetooth restoration identifier;
-- background central mode and service-filtered scans;
-- reconnect/backoff/resubscription/backfill;
+- stable CoreBluetooth restoration identifier (implemented; physical gate pending);
+- background central mode and known-peer restoration without a production scan
+  (implemented; physical gate pending);
+- reconnect/backoff/resubscription/backfill (host-tested; background physical gate pending);
 - permission/Bluetooth/reboot/force-quit education;
 - privacy-safe local diagnostics and battery/latency metrics.
 

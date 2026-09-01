@@ -70,10 +70,13 @@ final class AppModel {
     private var foregroundSessionBridge: GS3ForegroundSessionLifecycle
     private var currentScenePhase: ScenePhase
 #if !SUGARMAN_DEVICE_TEST
+    private var persistentSessionBridge: GS3PersistentSessionLifecycle
+    private var didBootstrapPersistentSensorConnection: Bool
     var hasSensorProvisioning: Bool
     var provisionedSensorID: UUID?
     var isSensorConnectionEnabled: Bool
     var sensorConnectionStatus: String
+    var sensorConnectionActivity: SensorConnectionActivity
     var hasSensorProbeBridgePending: Bool
     var isSensorProbeBridgeScanning: Bool
     @ObservationIgnored private let sensorProvisioning: DeviceOnlyGS3Provisioning
@@ -151,12 +154,15 @@ final class AppModel {
         self.foregroundSessionBridge = GS3ForegroundSessionLifecycle()
         self.currentScenePhase = .inactive
 #if !SUGARMAN_DEVICE_TEST
+        self.persistentSessionBridge = GS3PersistentSessionLifecycle()
+        self.didBootstrapPersistentSensorConnection = false
         let externalOwnershipGate = GS3ExternalOwnershipGate()
         self.hasSensorProvisioning = false
         self.provisionedSensorID = nil
         self.isSensorConnectionEnabled = false
         self.sensorConnectionStatus =
             "Import the private handover file for this already-active sensor."
+        self.sensorConnectionActivity = .notConfigured
         self.hasSensorProbeBridgePending = false
         self.isSensorProbeBridgeScanning = false
         self.sensorProvisioning = DeviceOnlyGS3Provisioning(scope: .production)
@@ -243,6 +249,7 @@ final class AppModel {
         currentScenePhase = phase
         switch phase {
         case .active:
+#if SUGARMAN_DEVICE_TEST
             do {
                 try await foregroundSessionBridge.enterForeground()
             } catch {
@@ -251,6 +258,9 @@ final class AppModel {
                 // persisted disconnected projection.
                 storeErrorMessage = String(localized: "live.session_start_failed")
             }
+#else
+            await bootstrapPersistentSensorConnectionIfNeeded()
+#endif
         case .inactive:
             // Transient foreground interruptions (for example, system UI)
             // must not churn ownership or manufacture a reconnect.
@@ -258,17 +268,19 @@ final class AppModel {
         case .background:
 #if SUGARMAN_DEVICE_TEST
             deviceTestProbeBridgeScanner.cancel()
+            await foregroundSessionBridge.leaveForeground()
 #else
             sensorProbeBridgeScanner.cancel()
+            await bootstrapPersistentSensorConnectionIfNeeded()
 #endif
-            await foregroundSessionBridge.leaveForeground()
         @unknown default:
 #if SUGARMAN_DEVICE_TEST
             deviceTestProbeBridgeScanner.cancel()
+            await foregroundSessionBridge.leaveForeground()
 #else
             sensorProbeBridgeScanner.cancel()
+            await bootstrapPersistentSensorConnectionIfNeeded()
 #endif
-            await foregroundSessionBridge.leaveForeground()
         }
         await refresh()
     }
@@ -298,11 +310,116 @@ final class AppModel {
     }
 
 #if !SUGARMAN_DEVICE_TEST
+    private func bootstrapPersistentSensorConnectionIfNeeded() async {
+        guard !didBootstrapPersistentSensorConnection else { return }
+        didBootstrapPersistentSensorConnection = true
+        do {
+            let summary = try await sensorProvisioning.summary()
+            hasSensorProvisioning = summary != nil
+            provisionedSensorID = summary?.linkedSensorID
+            guard summary?.connectionIntentEnabled == true else {
+                isSensorConnectionEnabled = false
+                sensorConnectionActivity = summary == nil ? .notConfigured : .stopped
+                return
+            }
+            installPersistentSensorFactory()
+            isSensorConnectionEnabled = true
+            sensorConnectionActivity = .connecting
+            sensorConnectionStatus = "Connecting to the sensor."
+            try await persistentSessionBridge.startIfNeeded()
+        } catch {
+            isSensorConnectionEnabled = false
+            sensorConnectionActivity = .failed
+            sensorConnectionStatus =
+                "The saved sensor connection failed closed. Open Sensor Connection to try again."
+            try? await sensorProvisioning.setConnectionIntentEnabled(false)
+            await persistentSessionBridge.removeFactory()
+        }
+    }
+
+    private func installPersistentSensorFactory() {
+        let provisioning = sensorProvisioning
+        let liveStore = primaryStore
+        let callbacks = makeSensorCallbacks()
+        persistentSessionBridge.install {
+            try await provisioning.makeController(
+                store: liveStore,
+                callbacks: callbacks
+            )
+        }
+    }
+
+    private func makeSensorCallbacks() -> GS3ForegroundSessionCallbacks {
+        GS3ForegroundSessionCallbacks(
+            onConnection: { [weak self] connection in
+                Task { @MainActor [weak self] in
+                    self?.connection = connection
+                    await self?.refresh()
+                }
+            },
+            onLifecycleEvent: { [weak self] event in
+                Task { @MainActor [weak self] in
+                    guard let self, self.isSensorConnectionEnabled else { return }
+                    self.sensorConnectionActivity = SensorConnectionActivity(
+                        phase: event.phase
+                    )
+                    self.sensorConnectionStatus = self.sensorActivityStatus
+                }
+            },
+            onSamplesCommitted: { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    await self?.refresh()
+                }
+            },
+            onFailure: { [weak self] failure in
+                Task { @MainActor [weak self] in
+                    await self?.handleSensorSessionFailure(failure)
+                }
+            }
+        )
+    }
+
+    private func handleSensorSessionFailure(
+        _ failure: GS3ForegroundCoordinatorFailure
+    ) async {
+        sensorConnectionActivity = .failed
+        sensorConnectionStatus =
+            "The sensor connection failed closed. Open Sensor Connection to try again."
+        isSensorConnectionEnabled = false
+        if failure != .ownershipUnavailable {
+            try? await sensorProvisioning.setConnectionIntentEnabled(false)
+        }
+        await persistentSessionBridge.removeFactory()
+        await refresh()
+    }
+
+    var sensorActivityStatus: String {
+        switch sensorConnectionActivity {
+        case .notConfigured:
+            "Set up the sensor connection to receive readings."
+        case .stopped:
+            "Sensor connection is stopped."
+        case .connecting:
+            "Connecting to the sensor."
+        case .synchronizing:
+            "Synchronizing sensor history."
+        case .live:
+            "Sensor connection is live."
+        case .reconnecting:
+            "Reconnecting to the sensor."
+        case .failed:
+            "The sensor connection failed closed."
+        }
+    }
+
     func refreshSensorProvisioningAvailability() async {
         do {
             let summary = try await sensorProvisioning.summary()
             hasSensorProvisioning = summary != nil
             provisionedSensorID = summary?.linkedSensorID
+            if !isSensorConnectionEnabled {
+                sensorConnectionActivity = summary == nil ? .notConfigured : .stopped
+            }
             if summary != nil, !isSensorConnectionEnabled {
                 sensorConnectionStatus =
                     "Private connection material is available in this iPhone's Keychain."
@@ -423,23 +540,19 @@ final class AppModel {
             return
         }
 
-        let provisioning = sensorProvisioning
-        let liveStore = primaryStore
-        installForegroundSessionFactory { callbacks in
-            try await provisioning.makeController(
-                store: liveStore,
-                callbacks: callbacks
-            )
-        }
-        isSensorConnectionEnabled = true
-        sensorConnectionStatus =
-            "Sensor connection enabled while Sugarman is foregrounded."
-        guard currentScenePhase == .active else { return }
         do {
-            try await foregroundSessionBridge.enterForeground()
+            didBootstrapPersistentSensorConnection = true
+            try await sensorProvisioning.setConnectionIntentEnabled(true)
+            installPersistentSensorFactory()
+            isSensorConnectionEnabled = true
+            sensorConnectionActivity = .connecting
+            sensorConnectionStatus = "Connecting to the sensor."
+            try await persistentSessionBridge.startIfNeeded()
         } catch {
             isSensorConnectionEnabled = false
-            await foregroundSessionBridge.removeFactory()
+            sensorConnectionActivity = .failed
+            try? await sensorProvisioning.setConnectionIntentEnabled(false)
+            await persistentSessionBridge.removeFactory()
             sensorConnectionStatus =
                 "The sensor connection failed closed. No private details were retained."
         }
@@ -447,8 +560,10 @@ final class AppModel {
 
     func stopSensorConnection() async {
         isSensorConnectionEnabled = false
+        sensorConnectionActivity = hasSensorProvisioning ? .stopped : .notConfigured
         sensorExternalOwnershipGate.revoke()
-        await foregroundSessionBridge.removeFactory()
+        try? await sensorProvisioning.setConnectionIntentEnabled(false)
+        await persistentSessionBridge.removeFactory()
         if hasSensorProvisioning {
             sensorConnectionStatus =
                 "Sensor disconnected. Private material remains device-only."
@@ -468,6 +583,7 @@ final class AppModel {
             isSensorProbeBridgeScanning = false
             sensorConnectionStatus =
                 "Private sensor connection material was deleted from this iPhone."
+            sensorConnectionActivity = .notConfigured
         } catch {
             sensorConnectionStatus = sensorProvisioningFailureMessage(error)
         }
@@ -514,6 +630,11 @@ final class AppModel {
                     case .effectiveData:
                         self?.deviceTestHistoryAcknowledgementCount += 1
                     }
+                }
+            },
+            onNativeStateObserved: { [weak self] summary in
+                Task { @MainActor [weak self] in
+                    self?.recordDeviceTestLifecycle(summary.description)
                 }
             },
             onFailure: { [weak self] failure in

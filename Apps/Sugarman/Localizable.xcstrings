@@ -369,6 +369,49 @@
         }
       }
     },
+    "live.chart_native_state_unvalidated": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Historical readings only — the latest sensor status is not yet validated as current."
+          }
+        }
+      }
+    },
+    "live.connection.not_configured": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Set up the sensor connection to receive readings." } } }
+    },
+    "live.connection.stopped": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Sensor connection is stopped." } } }
+    },
+    "live.connection.connecting": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Connecting to the sensor…" } } }
+    },
+    "live.connection.synchronizing": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Synchronizing sensor history…" } } }
+    },
+    "live.connection.live": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Sensor connection is live." } } }
+    },
+    "live.connection.reconnecting": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Reconnecting to the sensor…" } } }
+    },
+    "live.connection.failed": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Sensor connection stopped after a safe failure." } } }
+    },
+    "live.connection_background_hint": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "You can leave Sugarman; iOS can continue or restore this managed connection." } } }
+    },
     "live.chart_accessibility_label": {
       "extractionState": "manual",
       "localizations": {
@@ -1800,6 +1843,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "This reading is questionable. It is not a current glucose value."
+          }
+        }
+      }
+    },
+    "dashboard.native_state_unvalidated": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The latest sensor reading is recent, but its sensor status is not yet validated."
           }
         }
       }
