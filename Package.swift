@@ -18,6 +18,7 @@ let package = Package(
         .library(name: "GS3Transport", targets: ["GS3Transport"]),
         .library(name: "GS3Session", targets: ["GS3Session"]),
         .library(name: "GS3DeviceProvisioning", targets: ["GS3DeviceProvisioning"]),
+        .library(name: "GS3ProvisioningScan", targets: ["GS3ProvisioningScan"]),
         .library(name: "GS3DeviceTesting", targets: ["GS3DeviceTesting"]),
         .library(name: "GS3DeveloperProbe", targets: ["GS3DeveloperProbe"]),
         .library(name: "PrivateDocumentImport", targets: ["PrivateDocumentImport"]),
@@ -58,15 +59,21 @@ let package = Package(
             linkerSettings: [.linkedFramework("Security")]
         ),
         .target(
+            name: "GS3ProvisioningScan",
+            dependencies: [
+                "GS3DeviceProvisioning",
+                "SensorOwnership",
+            ],
+            linkerSettings: [.linkedFramework("CoreBluetooth")]
+        ),
+        .target(
             name: "GS3DeviceTesting",
             dependencies: [
                 "GS3DeviceProvisioning",
                 "GS3Session",
                 "GS3Transport",
-                "SensorOwnership",
                 "SugarmanStore",
-            ],
-            linkerSettings: [.linkedFramework("CoreBluetooth")]
+            ]
         ),
         .target(
             name: "GS3DeveloperProbe",
@@ -111,7 +118,7 @@ let package = Package(
         ),
         .testTarget(
             name: "GS3DeviceTestingTests",
-            dependencies: ["GS3DeviceTesting"]
+            dependencies: ["GS3DeviceTesting", "GS3ProvisioningScan"]
         ),
         .testTarget(
             name: "GS3DeveloperProbeTests",

@@ -2,9 +2,7 @@
 // Copyright (C) 2026 Sugarman contributors
 
 import AccountBinding
-#if SUGARMAN_DEVICE_TEST
 import GS3DeviceProvisioning
-#endif
 import SensorOnboarding
 import SugarmanDomain
 import SwiftUI
@@ -22,6 +20,9 @@ import CoreNFC
 struct SensorOnboardingView: View {
     private enum FileImportRoute: Equatable {
         case sensorImage
+#if !SUGARMAN_DEVICE_TEST
+        case sensorConnection(GS3DeviceProvisioningFileImportRequest)
+#endif
 #if SUGARMAN_DEVICE_TEST
         case deviceTest(GS3DeviceProvisioningFileImportRequest)
 #endif
@@ -30,6 +31,10 @@ struct SensorOnboardingView: View {
             switch self {
             case .sensorImage:
                 [.image]
+#if !SUGARMAN_DEVICE_TEST
+            case .sensorConnection:
+                [.json]
+#endif
 #if SUGARMAN_DEVICE_TEST
             case .deviceTest:
                 [.json]
@@ -181,6 +186,10 @@ struct SensorOnboardingView: View {
                 DeviceTestProvisioningSection { request in
                     presentFileImporter(.deviceTest(request))
                 }
+#else
+                SensorConnectionSection { request in
+                    presentFileImporter(.sensorConnection(request))
+                }
 #endif
                 Section("onboarding.owner") {
                     TextField("onboarding.owner_field", text: $ownerID)
@@ -270,6 +279,15 @@ struct SensorOnboardingView: View {
             switch route {
             case .sensorImage:
                 Task { await importFile(url) }
+#if !SUGARMAN_DEVICE_TEST
+            case .sensorConnection(let request):
+                Task {
+                    await model.prepareSensorProbeBridge(
+                        from: url,
+                        linkedSensorID: request.linkedSensorID
+                    )
+                }
+#endif
 #if SUGARMAN_DEVICE_TEST
             case .deviceTest(let request):
                 Task {
@@ -292,6 +310,11 @@ struct SensorOnboardingView: View {
             switch route {
             case .sensorImage:
                 parseMessage = error.localizedDescription
+#if !SUGARMAN_DEVICE_TEST
+            case .sensorConnection:
+                model.sensorConnectionStatus =
+                    "Private handover file selection failed closed."
+#endif
 #if SUGARMAN_DEVICE_TEST
             case .deviceTest:
                 model.deviceTestStatus =
@@ -302,6 +325,12 @@ struct SensorOnboardingView: View {
     }
 
     private func cancelFileImport() {
+#if !SUGARMAN_DEVICE_TEST
+        if case .sensorConnection = fileImportRoute {
+            model.sensorConnectionStatus =
+                "Private handover file selection was cancelled. Nothing was imported."
+        }
+#endif
 #if SUGARMAN_DEVICE_TEST
         if case .deviceTest = fileImportRoute {
             model.deviceTestStatus =
@@ -316,6 +345,11 @@ struct SensorOnboardingView: View {
         switch route {
         case .sensorImage:
             parseMessage = String(localized: "sensor.no_barcode")
+#if !SUGARMAN_DEVICE_TEST
+        case .sensorConnection:
+            model.sensorConnectionStatus =
+                "Private handover file selection failed closed."
+#endif
 #if SUGARMAN_DEVICE_TEST
         case .deviceTest:
             model.deviceTestStatus =

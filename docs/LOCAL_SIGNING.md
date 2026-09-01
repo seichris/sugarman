@@ -33,12 +33,14 @@ not paste it into `project.yml` until that is an intentional, reviewed change.
   physical parity gates pass)
 - Installing the app on a physical iPhone
 
-The separate `SugarmanDeviceTest` scheme is the only normal-app target that
-links device-only GS3 provisioning. Its App ID must also be assigned to
-`group.app.sugarman.sensor-owner`. A development profile for a physical test
-must be constrained to the exact owner-confirmed device. Building, installing,
-launching, private import, and arming are separate approval gates. The normal
-`Sugarman` scheme remains fail closed.
+The normal `Sugarman` scheme now links the production provisioning and
+scan-only products, but every process begins disconnected: private import,
+scan-only lookup, and foreground connection are separate explicit UI gates.
+`SugarmanDeviceTest` additionally links the isolated link-loss test surface.
+Both App IDs must be assigned to `group.app.sugarman.sensor-owner`. A
+development profile for a physical test must be constrained to the exact
+owner-confirmed device. Building, installing, launching, private import,
+scan-only lookup, and connecting are separate approval gates.
 
 `SugarmanMacDeviceTest` is a separate macOS application and Keychain namespace.
 Its App ID must also be assigned to `group.app.sugarman.sensor-owner`. That

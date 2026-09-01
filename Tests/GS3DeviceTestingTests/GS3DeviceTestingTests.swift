@@ -3,13 +3,14 @@
 
 import Testing
 @testable import GS3DeviceTesting
+@testable import GS3ProvisioningScan
 
 struct GS3DeviceTestingTests {
     @Test func externalOwnershipConfirmationIsProcessLocalAndRevocable() throws {
-        let gate = GS3DeviceTestExternalOwnershipGate()
+        let gate = GS3ExternalOwnershipGate()
 
         #expect(!gate.isConfirmed)
-        #expect(throws: GS3DeviceTestExternalOwnershipError.confirmationRequired) {
+        #expect(throws: GS3ExternalOwnershipError.confirmationRequired) {
             try gate.requireConfirmation()
         }
 
@@ -19,16 +20,16 @@ struct GS3DeviceTestingTests {
 
         gate.revoke()
         #expect(!gate.isConfirmed)
-        #expect(throws: GS3DeviceTestExternalOwnershipError.confirmationRequired) {
+        #expect(throws: GS3ExternalOwnershipError.confirmationRequired) {
             try gate.requireConfirmation()
         }
     }
 
     @Test func separateGateNeverInheritsAnotherProcessesConfirmation() {
-        let firstProcess = GS3DeviceTestExternalOwnershipGate()
+        let firstProcess = GS3ExternalOwnershipGate()
         firstProcess.confirmExclusiveAccess()
 
-        let nextProcess = GS3DeviceTestExternalOwnershipGate()
+        let nextProcess = GS3ExternalOwnershipGate()
         #expect(firstProcess.isConfirmed)
         #expect(!nextProcess.isConfirmed)
     }

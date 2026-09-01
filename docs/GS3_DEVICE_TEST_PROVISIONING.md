@@ -9,13 +9,16 @@ foreground coordinator, bounded single-flight reconnect, history cursor,
 deduplication, and payload-free lifecycle events. It does not link or extend
 the historical one-shot `SugarmanProbe` runtime.
 
-The release `Sugarman` target remains fail closed and does not link
-`GS3DeviceProvisioning`. This target is not an App Store distribution path.
+The release `Sugarman` target now links the ordinary provisioning and scan-only
+products for its explicit already-active-sensor onboarding flow. It does not
+link `GS3DeviceTesting` or its link-loss injection surface. This Device Test
+target is not an App Store distribution path.
 
 The reusable scan-only adapter and non-persisted external-owner confirmation
-live in the separate `GS3DeviceTesting` package product. The iOS Device Test
-and isolated `SugarmanMacDeviceTest` share those boundaries without linking
-them into the release app. The Mac shell is future-product groundwork, but
+live in the separate `GS3ProvisioningScan` package product. The release app,
+iOS Device Test, and isolated `SugarmanMacDeviceTest` share those boundaries.
+Only the two Device Test targets link `GS3DeviceTesting`. The Mac shell is
+future-product groundwork, but
 remains a development target; see [`MACOS_DEVICE_TEST.md`](MACOS_DEVICE_TEST.md).
 
 ## Provisioning and live gates
@@ -124,7 +127,9 @@ It also requires a non-persisted external-owner confirmation before acquiring
 the same-machine process lease. Scanning consumes that confirmation; arming
 requires a fresh confirmation.
 
-The separate `GS3DeviceTesting` product may wrap that typed controller with one
+Production and Device Test Keychain records use fixed, separate service names;
+neither target can silently inherit the other's private material. The separate
+`GS3DeviceTesting` product may wrap that typed controller with one
 Device-Test-only link-loss control. It can cancel an already-streaming
 CoreBluetooth connection at most once per controller. It is inert before
 `live`, cannot encode or dispatch a frame, and is not linked into the release

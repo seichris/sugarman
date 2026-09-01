@@ -10,7 +10,14 @@ package protocol GS3DeviceProvisioningPersisting: Sendable {
     func delete() throws
 }
 
-/// Device-only Keychain storage for normalized production-test material.
+/// Fixed storage scopes keep production and physical-test material isolated.
+/// Callers cannot supply an arbitrary Keychain service or access group.
+public enum GS3DeviceProvisioningScope: Sendable, Equatable {
+    case production
+    case deviceTest
+}
+
+/// Device-only Keychain storage for normalized sensor connection material.
 ///
 /// The item is readable only while this device is unlocked, does not migrate
 /// through backups, and is not shared with the developer Probe target. The
@@ -18,19 +25,34 @@ package protocol GS3DeviceProvisioningPersisting: Sendable {
 package struct KeychainGS3DeviceProvisioningStore:
     GS3DeviceProvisioningPersisting
 {
-    #if os(macOS)
-    package static let defaultService =
-        "app.sugarman.macos.devicetest.gs3-v3-provisioning"
-    #else
-    package static let defaultService =
-        "app.sugarman.ios.devicetest.gs3-v3-provisioning"
-    #endif
     private static let account = "owned-already-active-sensor"
 
     private let service: String
 
-    package init(service: String = defaultService) {
+    package init(scope: GS3DeviceProvisioningScope) {
+        self.service = Self.service(for: scope)
+    }
+
+    package init(service: String) {
         self.service = service
+    }
+
+    package static func service(for scope: GS3DeviceProvisioningScope) -> String {
+        #if os(macOS)
+        switch scope {
+        case .production:
+            "app.sugarman.macos.gs3-v3-provisioning"
+        case .deviceTest:
+            "app.sugarman.macos.devicetest.gs3-v3-provisioning"
+        }
+        #else
+        switch scope {
+        case .production:
+            "app.sugarman.ios.gs3-v3-provisioning"
+        case .deviceTest:
+            "app.sugarman.ios.devicetest.gs3-v3-provisioning"
+        }
+        #endif
     }
 
     package func load() throws -> Data? {

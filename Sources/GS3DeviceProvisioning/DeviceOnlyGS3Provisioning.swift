@@ -52,8 +52,8 @@ public actor DeviceOnlyGS3Provisioning {
     private var operationInProgress = false
     private var operationWaiters: [CheckedContinuation<Void, Never>] = []
 
-    public init() {
-        self.persistence = KeychainGS3DeviceProvisioningStore()
+    public init(scope: GS3DeviceProvisioningScope) {
+        self.persistence = KeychainGS3DeviceProvisioningStore(scope: scope)
         self.uuidGenerator = { UUID() }
         self.requestTokenGenerator = { UUID() }
     }

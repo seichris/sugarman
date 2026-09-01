@@ -10,6 +10,18 @@ import Testing
 
 @Suite("GS3 device-only provisioning")
 struct GS3DeviceProvisioningTests {
+    @Test func productionAndDeviceTestUseFixedSeparateKeychainServices() {
+        let production = KeychainGS3DeviceProvisioningStore.service(for: .production)
+        let deviceTest = KeychainGS3DeviceProvisioningStore.service(for: .deviceTest)
+
+        #expect(production != deviceTest)
+        #expect(production.hasSuffix(".gs3-v3-provisioning"))
+        #expect(!production.contains("devicetest"))
+        #expect(deviceTest.contains(".devicetest."))
+        #expect(!production.contains("owned-already-active-sensor"))
+        #expect(!deviceTest.contains("owned-already-active-sensor"))
+    }
+
     @Test func identitySelectionReconcilesAfterAsynchronousStoreLoad() throws {
         let first = UUID(uuidString: "AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE")!
         let linked = UUID(uuidString: "11111111-2222-3333-4444-555555555555")!

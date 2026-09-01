@@ -1,6 +1,6 @@
 # Mainland China SiBionics GS3 support for Sugarman
 
-- Status: P1/P2 and one-value already-active iPhone interoperability passed for one owned sensor on 2026-08-30; official Android handback also passed. Typed payload-free diagnostics and an exact bounded receive-only preamble policy subsequently isolated and passed the authenticated/history-dispatch race. The isolated signed macOS Device Test completed managed history/live synchronization, five consecutive approximately 60-second live commits, and one Device-Test-only injected-link-loss reconnect with fresh subscription/authentication/history, inclusive-overlap deduplication, zero gaps, and correct stop ordering. The exact signed iPhone Device Test at commit `1bc52f3` has now passed ten consecutive exact 60-second one-sample live commits plus the same injected-reconnect, fresh-auth/history, duplicate-only overlap, zero-gap, return-to-live, and controlled-stop path. The normal release bootstrap still installs no controller factory or active-session material. The predeclared private official-app timestamp/value comparison, final handback, spontaneous post-live RF-loss classification, final `0x36` product meaning, native state mapping, sensor-index wrap, and fresh activation remain incomplete. A signed exact artifact and fresh device/action confirmation gate every physical run. See [`GS3_FOREGROUND_PRODUCTION_DESIGN.md`](GS3_FOREGROUND_PRODUCTION_DESIGN.md), [`GS3_DEVICE_TEST_PROVISIONING.md`](GS3_DEVICE_TEST_PROVISIONING.md), [`GS3_DEVICE_TEST_PHYSICAL_RESULT_2026-09-01.md`](GS3_DEVICE_TEST_PHYSICAL_RESULT_2026-09-01.md), and [`MACOS_DEVICE_TEST.md`](MACOS_DEVICE_TEST.md).
+- Status: P1/P2 and one-value already-active iPhone interoperability passed for one owned sensor on 2026-08-30; official Android handback also passed. Typed payload-free diagnostics and an exact bounded receive-only preamble policy subsequently isolated and passed the authenticated/history-dispatch race. The isolated signed macOS Device Test completed managed history/live synchronization, five consecutive approximately 60-second live commits, and one Device-Test-only injected-link-loss reconnect with fresh subscription/authentication/history, inclusive-overlap deduplication, zero gaps, and correct stop ordering. The exact signed iPhone Device Test at commit `1bc52f3` has now passed ten consecutive exact 60-second one-sample live commits plus the same injected-reconnect, fresh-auth/history, duplicate-only overlap, zero-gap, return-to-live, and controlled-stop path. The normal app now has an explicit already-active handover import, scan-only host lookup, and separately confirmed typed foreground connection path; every process remains disconnected until the user completes those gates. The predeclared private official-app timestamp/value comparison, final handback, spontaneous post-live RF-loss classification, final `0x36` product meaning, native state mapping, sensor-index wrap, and fresh activation remain incomplete. A signed exact artifact and fresh device/action confirmation gate every physical run. See [`GS3_FOREGROUND_PRODUCTION_DESIGN.md`](GS3_FOREGROUND_PRODUCTION_DESIGN.md), [`GS3_DEVICE_TEST_PROVISIONING.md`](GS3_DEVICE_TEST_PROVISIONING.md), [`GS3_DEVICE_TEST_PHYSICAL_RESULT_2026-09-01.md`](GS3_DEVICE_TEST_PHYSICAL_RESULT_2026-09-01.md), and [`MACOS_DEVICE_TEST.md`](MACOS_DEVICE_TEST.md).
 - Date: 2026-08-28
 - Product: Sugarman — glucose monitoring and fueling insight for endurance athletes
 
@@ -767,9 +767,11 @@ The current foreground slice implements process ownership, deterministic
 reconnect sequencing, per-connection subscribe/auth/history, a typed known-peer
 CoreBluetooth adapter, atomic time-anchor (including cadence/revision),
 overlap/deduplication persistence, and
-fail-closed UI projection. The release bootstrap provides no material or
-controller factory, and no adapter instance has been physically run. Binding,
-scanning, background restoration, and physical validation remain out of scope.
+fail-closed UI projection. The release UI can now import the strict private
+already-active handover schema, resolve one Apple-host UUID through a separate
+scan-only adapter, and install the controller after explicit confirmation.
+Binding, fresh activation, autonomous background restoration, and physical
+validation of this release flow remain out of scope.
 See
 [`GS3_FOREGROUND_PRODUCTION_DESIGN.md`](GS3_FOREGROUND_PRODUCTION_DESIGN.md).
 
