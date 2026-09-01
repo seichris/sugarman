@@ -66,3 +66,26 @@ state mapping, and final protocol classification remain open.
 
 This report authorizes no build, installation, launch, scan, connection, or
 sensor action.
+
+## Newer follow-up report after narrow preamble handling
+
+A genuinely newer payload-free export contains the added
+`historyPreambles=0` field and establishes this order:
+
+1. one authentication write acknowledgement and exact authentication
+   acceptance;
+2. exactly one history request;
+3. no history write acknowledgement and no observed history preamble;
+4. an immediate protocol-violation disconnect while the reducer was in
+   `requestingHistory`; and
+5. no inserted sample, duplicate, or gap.
+
+This physically disproves validation of the current narrow preamble handling.
+It does not prove the rejected frame, command, or failure origin. In particular,
+the report cannot distinguish an inbound classification rejection from a
+write-callback, transport/coordinator state, or request invariant failure. The
+next safe production step is typed payload-free first-rejection observability;
+the existing classifier and exactly-one typed write policy remain unchanged.
+
+The follow-up report contains no exact signed-artifact identity, so it does not
+replace the exact artifact record above or authorize a further physical action.

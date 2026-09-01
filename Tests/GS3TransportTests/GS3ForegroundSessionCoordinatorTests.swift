@@ -709,6 +709,89 @@ struct GS3ForegroundSessionCoordinatorTests {
         #expect(harness.callbackLog.snapshot().failures.contains(.protocolViolation))
         #expect(await harness.transport.commands().last == .disconnect)
         #expect(harness.ownership.latestLease?.isActive == true)
+        let events = harness.callbackLog.snapshot().events
+        let rejectionIndex = try #require(
+            events.firstIndex(where: { $0.kind == .protocolRejected })
+        )
+        let disconnectIndex = try #require(
+            events.firstIndex(where: { $0.kind == .disconnectRequested })
+        )
+        #expect(rejectionIndex < disconnectIndex)
+        #expect(events[rejectionIndex].protocolRejection?.origin == .stateInvariant)
+    }
+
+    @Test func typedTransportRejectionsAreDeduplicatedAndRecordedBeforeDisconnect() async throws {
+        for origin in GS3ProtocolRejectionOrigin.allCases {
+            let harness = try await ForegroundHarness.make()
+            try await harness.advanceToHistoryRequest()
+            let commandsBeforeRejection = await harness.transport.commands()
+            let rejection = GS3ProtocolRejection(
+                origin: origin,
+                frameCategory: .notificationCandidate,
+                frameByteCount: 24,
+                timingWindow: .historyWritePending
+            )
+
+            await harness.transport.emit([
+                .protocolRejected(rejection),
+                .protocolRejected(rejection),
+                .disconnected(.protocolViolation),
+            ])
+            for _ in 0..<200 where await harness.coordinator.currentPhase() != .stopped {
+                await Task.yield()
+            }
+
+            let snapshot = harness.callbackLog.snapshot()
+            let diagnostics = snapshot.events.filter { $0.kind == .protocolRejected }
+            #expect(diagnostics.count == 1)
+            #expect(diagnostics.first?.protocolRejection == rejection)
+            let rejectionIndex = try #require(
+                snapshot.events.firstIndex(where: { $0.kind == .protocolRejected })
+            )
+            let disconnectIndex = try #require(
+                snapshot.events.firstIndex(where: { $0.kind == .disconnected })
+            )
+            let stoppedIndex = try #require(
+                snapshot.events.firstIndex(where: { $0.kind == .stopped })
+            )
+            #expect(rejectionIndex < disconnectIndex)
+            #expect(disconnectIndex < stoppedIndex)
+            #expect(await harness.coordinator.currentPhase() == .stopped)
+            #expect(harness.ownership.latestLease?.isActive == false)
+            #expect(await harness.scheduler.pending().isEmpty)
+            #expect(
+                await harness.transport.commands()
+                    == commandsBeforeRejection + [.disconnect]
+            )
+        }
+    }
+
+    @Test func outOfRangeHistoryRequestReportsRequestInvariantWithoutWriting() async throws {
+        let harness = try await ForegroundHarness.make(captureStart: 65_536)
+        try await harness.coordinator.start()
+        await harness.coordinator.receive(.connected)
+        await harness.coordinator.receive(.servicesDiscovered)
+        await harness.coordinator.receive(.characteristicsDiscovered)
+        await harness.coordinator.receive(.notificationSubscriptionEnabled)
+        await harness.coordinator.receive(.authenticationAccepted)
+
+        #expect(await harness.coordinator.currentPhase() == .disconnecting)
+        #expect(
+            await harness.transport.commands().filter {
+                if case .requestHistory = $0 { true } else { false }
+            }.isEmpty
+        )
+        let rejection = try #require(
+            harness.callbackLog.snapshot().events.first(where: {
+                $0.kind == .protocolRejected
+            })?.protocolRejection
+        )
+        #expect(rejection.origin == .requestInvariant)
+        #expect(rejection.frameCategory == .unavailable)
+        #expect(rejection.frameByteCount == nil)
+        #expect(rejection.timingWindow == .historyRequestPreparing)
+        #expect(harness.ownership.latestLease?.isActive == true)
+        #expect(await harness.transport.commands().last == .disconnect)
     }
 
     @Test func observedHistoryPreambleDoesNotWriteRetryOrBlockValidHistory() async throws {
@@ -1075,6 +1158,30 @@ struct GS3ForegroundSessionCoordinatorTests {
         #expect(!text.contains("1800123456"))
         #expect(!text.contains("Data"))
         #expect(!text.contains("bytes"))
+    }
+
+    @Test func protocolRejectionTransportEventExposesOnlyAllowlistedMetadata() {
+        let rejection = GS3ProtocolRejection(
+            origin: .inboundClassification,
+            frameCategory: .notificationCandidate,
+            frameByteCount: 24,
+            timingWindow: .historyWritePending
+        )
+        let event = GS3ForegroundTransportEvent.protocolRejected(rejection)
+        var dumped = ""
+        dump(event, to: &dumped)
+        let text = "\(event) \(String(reflecting: event)) \(dumped)"
+
+        #expect(text.contains("origin=inboundClassification"))
+        #expect(text.contains("frame=notificationCandidate"))
+        #expect(text.contains("bytes=24"))
+        #expect(text.contains("window=historyWritePending"))
+        for forbidden in [
+            "0x36", "sensor-identifier", "private-material", "glucose-value",
+            "record-index", "json-contents", "json-hash", "command-body",
+        ] {
+            #expect(!text.contains(forbidden))
+        }
     }
 }
 

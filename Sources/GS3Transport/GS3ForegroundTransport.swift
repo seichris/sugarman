@@ -25,6 +25,7 @@ package enum GS3ForegroundTransportEvent: Sendable, Equatable {
     case authenticationRejected
     case historyWriteAcknowledged
     case historyPreambleObserved
+    case protocolRejected(GS3ProtocolRejection)
     case historyAcknowledged
     case glucoseBatch(V3GlucoseBatch, receivedAt: Date)
     case transportDisconnected
@@ -45,6 +46,7 @@ extension GS3ForegroundTransportEvent:
         case .authenticationRejected: "authenticationRejected"
         case .historyWriteAcknowledged: "historyWriteAcknowledged"
         case .historyPreambleObserved: "historyPreambleObserved"
+        case .protocolRejected(let rejection): "protocolRejected(\(rejection))"
         case .historyAcknowledged: "historyAcknowledged"
         case .glucoseBatch(let batch, _):
             "glucoseBatch(source: \(batch.source), recordCount: \(batch.records.count), payload: omitted)"

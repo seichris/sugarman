@@ -91,6 +91,7 @@ public enum GS3ForegroundInput: Sendable, Equatable {
     case notificationSubscriptionEnabled
     case authenticationAccepted
     case authenticationRejected
+    case protocolRejectionObserved(GS3ProtocolRejection)
     case protocolViolation
     case historyPlanLoaded(HistoryRequestPlan)
     case historyRequestDurablyPrepared(HistoryRequestPlan)
@@ -118,6 +119,8 @@ extension GS3ForegroundInput: CustomStringConvertible {
         case .notificationSubscriptionEnabled: "notificationSubscriptionEnabled"
         case .authenticationAccepted: "authenticationAccepted"
         case .authenticationRejected: "authenticationRejected"
+        case .protocolRejectionObserved(let rejection):
+            "protocolRejectionObserved(\(rejection))"
         case .protocolViolation: "protocolViolation"
         case .historyPlanLoaded: "historyPlanLoaded(index: redacted)"
         case .historyRequestDurablyPrepared: "historyRequestDurablyPrepared(index: redacted)"
@@ -209,6 +212,7 @@ public struct GS3ForegroundSessionMachine:
     private var pendingReconnect: GS3ReconnectSchedule?
     private var pendingHistoryPlan: HistoryRequestPlan?
     private var pendingTerminalFailure: GS3ForegroundError?
+    private var protocolRejectionReported = false
     private var insertedSampleCount = 0
     private var duplicateSampleCount = 0
     private var gapRangeCount = 0
@@ -334,6 +338,18 @@ public struct GS3ForegroundSessionMachine:
                 elapsed: elapsed
             )
 
+        case .protocolRejectionObserved(let rejection):
+            guard phase != .idle, phase != .stopped else { return [] }
+            guard !protocolRejectionReported else { return [] }
+            protocolRejectionReported = true
+            return [
+                record(
+                    .protocolRejected,
+                    rejection: rejection,
+                    elapsed: elapsed
+                )
+            ]
+
         case .protocolViolation:
             if isConnectionPhase(phase) {
                 return stopAfterTerminalFailure(
@@ -454,6 +470,7 @@ public struct GS3ForegroundSessionMachine:
         authenticationRequestCount = 0
         historyRequestCount = 0
         historyPreambleCount = 0
+        protocolRejectionReported = false
         pendingHistoryPlan = nil
         pendingTerminalFailure = nil
         insertedSampleCount = 0
@@ -634,6 +651,7 @@ public struct GS3ForegroundSessionMachine:
         authenticationRequestCount = 0
         historyRequestCount = 0
         historyPreambleCount = 0
+        protocolRejectionReported = false
         stopReason = nil
         pendingReconnect = nil
         pendingHistoryPlan = nil
@@ -646,6 +664,7 @@ public struct GS3ForegroundSessionMachine:
     private func record(
         _ kind: GS3LifecycleKind,
         reason: GS3DisconnectReason? = nil,
+        rejection: GS3ProtocolRejection? = nil,
         elapsed: Int
     ) -> GS3ForegroundEffect {
         .record(
@@ -656,6 +675,7 @@ public struct GS3ForegroundSessionMachine:
                 phase: phase,
                 kind: kind,
                 disconnectReason: reason,
+                protocolRejection: rejection,
                 reconnectAttempt: reconnectAttempt,
                 authenticationRequestCount: authenticationRequestCount,
                 historyRequestCount: historyRequestCount,

@@ -136,7 +136,8 @@ struct DeviceTestProvisioningSection: View {
             if !model.deviceTestLifecycleLines.isEmpty {
                 Text(
                     "Payload-free lifecycle only. Sensor identifiers, record indexes, "
-                        + "packet bodies, private material, and glucose values are omitted."
+                        + "packet bodies, arbitrary command bytes, private material, "
+                        + "glucose values, and imported JSON contents or hashes are omitted."
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)

@@ -119,6 +119,74 @@ struct GS3SessionTests {
         }
     }
 
+    @Test func protocolRejectionDiagnosticIsRecordedOncePerConnection() throws {
+        var machine = machine(at: .requestingHistory)
+        let rejection = GS3ProtocolRejection(
+            origin: .inboundClassification,
+            frameCategory: .notificationCandidate,
+            frameByteCount: 24,
+            timingWindow: .historyWritePending
+        )
+
+        let first = machine.send(
+            .protocolRejectionObserved(rejection),
+            elapsedWholeSeconds: 7
+        )
+        #expect(first.contains {
+            if case .record(let event) = $0 {
+                return event.kind == .protocolRejected
+                    && event.protocolRejection == rejection
+                    && event.elapsedWholeSeconds == 7
+            }
+            return false
+        })
+        #expect(machine.send(.protocolRejectionObserved(rejection)).isEmpty)
+
+        let disconnected = machine.send(.disconnected(.timeout))
+        let token = try #require(reconnectSchedule(in: disconnected)?.token)
+        _ = machine.send(.reconnectDelayElapsed(token: token))
+        #expect(machine.phase == .connecting)
+        #expect(machine.send(.protocolRejectionObserved(rejection)).contains {
+            if case .record(let event) = $0 {
+                return event.kind == .protocolRejected
+            }
+            return false
+        })
+    }
+
+    @Test func everyProtocolRejectionOriginIsTypedBoundedAndPayloadFree() {
+        #expect(GS3ProtocolFrameCategory.classify(byteCount: 0) == .missing)
+        #expect(GS3ProtocolFrameCategory.classify(byteCount: 5) == .controlCandidate)
+        #expect(GS3ProtocolFrameCategory.classify(byteCount: 24) == .notificationCandidate)
+        #expect(GS3ProtocolFrameCategory.classify(byteCount: 3) == .other)
+
+        for origin in GS3ProtocolRejectionOrigin.allCases {
+            let rejection = GS3ProtocolRejection(
+                origin: origin,
+                frameCategory: .notificationCandidate,
+                frameByteCount: Int.max,
+                timingWindow: .historyWritePending
+            )
+            var dumped = ""
+            dump(rejection, to: &dumped)
+            let text = "\(rejection) \(String(reflecting: rejection)) \(dumped)"
+
+            #expect(rejection.frameByteCount == 512)
+            #expect(rejection.frameByteCountWasCapped)
+            #expect(text.contains("origin=\(origin.rawValue)"))
+            #expect(text.contains("frame=notificationCandidate"))
+            #expect(text.contains("bytes=512+"))
+            #expect(text.contains("window=historyWritePending"))
+            for forbidden in [
+                "0x36", "sensor-identifier", "glucose-value", "record-index",
+                "private-material", "json-contents", "json-hash",
+                "arbitrary-command-bytes",
+            ] {
+                #expect(!text.contains(forbidden))
+            }
+        }
+    }
+
     @Test func reconnectIsSingleFlightAndRepeatsSubscriptionAuthenticationAndHistory() {
         var machine = machine(at: .live)
         let disconnected = machine.send(.disconnected(.timeout), elapsedWholeSeconds: 90)

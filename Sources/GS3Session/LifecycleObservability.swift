@@ -42,6 +42,126 @@ public enum GS3DisconnectReason: Sendable, Equatable {
     }
 }
 
+/// Allowlisted origin for one fail-closed protocol rejection. The enum has no
+/// packet, command, characteristic, peripheral, sensor, or arbitrary-text case.
+public enum GS3ProtocolRejectionOrigin: String, Sendable, Equatable, CaseIterable {
+    case inboundClassification
+    case writeCallbackInvariant
+    case stateInvariant
+    case requestInvariant
+}
+
+/// Coarse frame shape derived only from the notification byte count.
+public enum GS3ProtocolFrameCategory: String, Sendable, Equatable {
+    case unavailable
+    case missing
+    case controlCandidate
+    case notificationCandidate
+    case other
+
+    package static func classify(byteCount: Int) -> Self {
+        switch byteCount {
+        case 0: .missing
+        case 5: .controlCandidate
+        case 6...: .notificationCandidate
+        default: .other
+        }
+    }
+}
+
+/// Payload-free timing window for a rejection. These values intentionally omit
+/// request indexes, command bytes, material, and device identity.
+public enum GS3ProtocolTimingWindow: String, Sendable, Equatable {
+    case unavailable
+    case connectionSetup
+    case authentication
+    case authenticated
+    case historyRequestPreparing
+    case historyWritePending
+    case historyResponse
+    case streaming
+    case disconnecting
+}
+
+/// Privacy-safe metadata for the first protocol rejection in one connection.
+///
+/// Frame length is bounded before it reaches descriptions or reflection. A
+/// value above the CoreBluetooth attribute maximum is represented as `512+`.
+public struct GS3ProtocolRejection:
+    Sendable, Equatable, CustomStringConvertible, CustomDebugStringConvertible,
+    CustomReflectable
+{
+    public static let maximumReportedFrameByteCount = 512
+
+    public let origin: GS3ProtocolRejectionOrigin
+    public let frameCategory: GS3ProtocolFrameCategory
+    public let frameByteCount: Int?
+    public let frameByteCountWasCapped: Bool
+    public let timingWindow: GS3ProtocolTimingWindow
+
+    public init(
+        origin: GS3ProtocolRejectionOrigin,
+        frameCategory: GS3ProtocolFrameCategory = .unavailable,
+        frameByteCount: Int? = nil,
+        timingWindow: GS3ProtocolTimingWindow = .unavailable
+    ) {
+        self.origin = origin
+        self.frameCategory = frameCategory
+        if let frameByteCount, frameByteCount >= 0 {
+            self.frameByteCount = min(
+                frameByteCount,
+                Self.maximumReportedFrameByteCount
+            )
+            self.frameByteCountWasCapped =
+                frameByteCount > Self.maximumReportedFrameByteCount
+        } else {
+            self.frameByteCount = nil
+            self.frameByteCountWasCapped = false
+        }
+        self.timingWindow = timingWindow
+    }
+
+    package init(
+        origin: GS3ProtocolRejectionOrigin,
+        frameByteCount: Int,
+        timingWindow: GS3ProtocolTimingWindow
+    ) {
+        self.init(
+            origin: origin,
+            frameCategory: .classify(byteCount: frameByteCount),
+            frameByteCount: frameByteCount,
+            timingWindow: timingWindow
+        )
+    }
+
+    public var description: String {
+        let length: String
+        if let frameByteCount {
+            length = frameByteCountWasCapped ? "\(frameByteCount)+" : "\(frameByteCount)"
+        } else {
+            length = "unavailable"
+        }
+        return "origin=\(origin.rawValue), frame=\(frameCategory.rawValue), "
+            + "bytes=\(length), window=\(timingWindow.rawValue)"
+    }
+
+    public var debugDescription: String { description }
+
+    public var customMirror: Mirror {
+        Mirror(
+            self,
+            children: [
+                "origin": origin.rawValue,
+                "frameCategory": frameCategory.rawValue,
+                "frameByteCount": frameByteCount.map(String.init) ?? "unavailable",
+                "frameByteCountWasCapped": frameByteCountWasCapped,
+                "timingWindow": timingWindow.rawValue,
+            ],
+            displayStyle: .struct
+        )
+    }
+}
+
 extension GS3DisconnectReason: CustomStringConvertible, CustomDebugStringConvertible {
     public var description: String {
         switch self {
@@ -72,6 +192,7 @@ public enum GS3LifecycleKind: String, Sendable, Equatable {
     case historyRequestPrepared
     case historyRequested
     case historyPreambleObserved
+    case protocolRejected
     case batchCommitted
     case synchronizationCompleted
     case integrityFailure
@@ -97,6 +218,7 @@ public struct GS3LifecycleEvent:
     public let phase: GS3ForegroundPhase
     public let kind: GS3LifecycleKind
     public let disconnectReason: GS3DisconnectReason?
+    public let protocolRejection: GS3ProtocolRejection?
     public let reconnectAttempt: Int
     public let authenticationRequestCount: Int
     public let historyRequestCount: Int
@@ -112,6 +234,7 @@ public struct GS3LifecycleEvent:
         phase: GS3ForegroundPhase,
         kind: GS3LifecycleKind,
         disconnectReason: GS3DisconnectReason? = nil,
+        protocolRejection: GS3ProtocolRejection? = nil,
         reconnectAttempt: Int = 0,
         authenticationRequestCount: Int = 0,
         historyRequestCount: Int = 0,
@@ -126,6 +249,7 @@ public struct GS3LifecycleEvent:
         self.phase = phase
         self.kind = kind
         self.disconnectReason = disconnectReason
+        self.protocolRejection = protocolRejection
         self.reconnectAttempt = reconnectAttempt
         self.authenticationRequestCount = authenticationRequestCount
         self.historyRequestCount = historyRequestCount
@@ -147,6 +271,9 @@ public struct GS3LifecycleEvent:
         if let disconnectReason {
             text += ", transport=\(disconnectReason)"
         }
+        if let protocolRejection {
+            text += ", rejection={\(protocolRejection)}"
+        }
         return text + "."
     }
 
@@ -162,6 +289,7 @@ public struct GS3LifecycleEvent:
                 "phase": phase.rawValue,
                 "kind": kind.rawValue,
                 "disconnectReason": disconnectReason?.description ?? "none",
+                "protocolRejection": protocolRejection?.description ?? "none",
                 "reconnectAttempt": reconnectAttempt,
                 "authenticationRequestCount": authenticationRequestCount,
                 "historyRequestCount": historyRequestCount,

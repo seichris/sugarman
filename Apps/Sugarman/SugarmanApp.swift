@@ -277,7 +277,7 @@ final class AppModel {
     var redactedDeviceTestReport: String {
         ([
             "Sugarman managed foreground device-test diagnostics",
-            "Packet bodies, sensor identifiers, private material, glucose values, and record indexes are omitted.",
+            "Packet bodies, arbitrary command bytes, sensor identifiers, private material, glucose values, record indexes, and imported JSON contents or hashes are omitted.",
             "Authentication write acknowledgements: \(deviceTestAuthenticationAcknowledgementCount)",
             "History write acknowledgements: \(deviceTestHistoryAcknowledgementCount)",
             "",

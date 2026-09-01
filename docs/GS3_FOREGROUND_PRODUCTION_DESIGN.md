@@ -67,6 +67,14 @@ only the resulting known peripheral and never scans.
   the inbound command. The official Android app subsequently received a fresh
   reading, so handback passed and the sensor remained healthy for that
   observation.
+- A genuinely newer managed report after the narrow preamble handling was
+  added again recorded one authentication write acknowledgement and acceptance,
+  exactly one history request, no history write acknowledgement, no observed
+  preamble, and an immediate protocol-violation disconnect while requesting
+  history, with no inserted samples, duplicates, or gaps. This physically
+  disproves validation of the current narrow preamble handling. The report does
+  not establish the rejected frame or whether classification, a write callback,
+  transport state, or request invariant originated the failure.
 - Two earlier attempts stopped before FF31 subscription while both Sugarman
   processes were running; a Probe-only run reached live data. That sequence is
   observed, but it does not isolate process contention as the cause.
@@ -119,8 +127,9 @@ under `docs/evidence/`. The managed-run result is
 8. **Classify one exact observed history preamble without assigning semantic
    meaning.** The Probe physically observed one checksum-valid 24-byte `0x36`
    while the sole typed `0x39` CoreBluetooth acknowledgement was pending, then
-   received valid history and live data. The managed run failed at the same
-   lifecycle boundary but did not identify its command. A host policy may
+   received valid history and live data. Two managed reports failed at the same
+   lifecycle boundary but did not identify their command or failure origin. A
+   host policy may
    therefore recognize that exact shape before any glucose batch and in that
    window once per connection, emit a
    payload-free count, and continue receiving. It grants no write, retry,
@@ -333,6 +342,15 @@ and gap counts. It contains no UUID, peripheral name, owner field, history
 index, glucose value, packet body, private material, or arbitrary localized
 error text. History plans, commit results, effects, and ownership leases redact
 their operational index/path fields from description, debug, and reflection.
+
+The first protocol rejection in each connection is recorded before disconnect
+as one typed, payload-free diagnostic. Its origin is limited to inbound
+classification, write-callback, state, or request invariant; optional frame
+metadata is limited to a coarse category and byte count capped at 512; and its
+timing is an allowlisted lifecycle window. Duplicate diagnostics are suppressed.
+Packet bodies, arbitrary command bytes, sensor identifiers, private material,
+glucose values, record indexes, imported JSON contents or hashes, and arbitrary
+error text cannot enter this type.
 
 PR #17's developer-probe disconnect status is also sanitized before it becomes
 the exportable report's final status; non-CoreBluetooth error descriptions no

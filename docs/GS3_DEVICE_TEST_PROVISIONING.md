@@ -120,12 +120,16 @@ controller, raw frame, characteristic, connection, or arbitrary-write surface.
 The Device Test UI retains at most 128 in-memory `GS3LifecycleEvent`
 descriptions plus typed write-acknowledgement counts. Its shareable report
 contains process-local ordinals, phases, bounded counts, reconnect attempts,
-and allowlisted transport reasons only. It omits packet bodies, UUIDs,
-peripheral names, owner fields, private material, history indexes, glucose
-values, and arbitrary error strings. A typed `historyPreambleObserved` event and
-per-connection count distinguish the exact bounded empirical `0x36` policy from
-a generic protocol violation without retaining the command or packet body in
-the lifecycle report.
+and allowlisted transport reasons only. It omits packet bodies, arbitrary
+command bytes, UUIDs, peripheral names, owner fields, private material, history
+indexes, glucose values, imported JSON contents or hashes, and arbitrary error
+strings. The typed first-rejection diagnostic distinguishes inbound
+classification, write-callback, state, and request invariant failures. It may
+record only a coarse frame category, bounded byte count, and allowlisted timing
+window. It is ordered before the existing fail-closed disconnect and is
+suppressed after the first occurrence in each connection. A separate typed
+`historyPreambleObserved` event and per-connection count remain available when
+the exact bounded empirical preamble policy actually accepts a frame.
 
 Host and simulator verification cannot establish CoreBluetooth behavior. A
 new exact signed artifact and fresh owner confirmation must still gate every
