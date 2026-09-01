@@ -7,74 +7,79 @@ import Testing
 @testable import GS3Transport
 
 struct V3ForegroundInboundClassifierTests {
-    @Test func notificationOvertakingHistoryDispatchRemainsTerminalAndDiagnosable() throws {
+    @Test func exactPreambleMayOvertakeHistoryDispatchAtTransportBoundary() throws {
         let material = try syntheticActiveSessionMaterial()
         let frame = try syntheticUnsupportedNotification(command: 0x36)
-        let authenticatedBeforeHistoryDispatch = V3ForegroundInboundContext(
-            isAwaitingHistory: false,
-            authenticationAccepted: true,
-            historyWriteCallCount: 0,
-            historyWriteAcknowledgementPending: false,
-            historyControlAcknowledged: false,
-            historyReadyEmitted: false,
-            hasReceivedGlucoseBatch: false,
-            historyPreambleCount: 0
-        )
-
         #expect(
-            throws: V3ForegroundInboundClassifierError
-                .observedHistoryPreambleOutsideAllowedWindow
-        ) {
             try V3ForegroundInboundClassifier.classify(
                 frame,
                 using: material,
-                context: authenticatedBeforeHistoryDispatch
-            )
-        }
-
-        let rejection = GS3ProtocolRejection(
-            origin: .inboundClassification,
-            frameCategory: .observedHistoryPreambleCandidate,
-            frameByteCount: frame.byteCount,
-            timingWindow: .authenticated
-        )
-        #expect(
-            rejection.description
-                == "origin=inboundClassification, "
-                    + "frame=observedHistoryPreambleCandidate, "
-                    + "bytes=24, window=authenticated"
-        )
-        #expect(
-            V3ForegroundInboundClassifier.rejectionFrameCategory(
-                for: V3ForegroundInboundClassifierError
-                    .observedHistoryPreambleOutsideAllowedWindow,
-                frameByteCount: frame.byteCount
-            ) == .observedHistoryPreambleCandidate
+                context: authenticatedBeforeHistoryDispatchContext()
+            ) == .observedHistoryPreamble
         )
     }
 
-    @Test func exactObservedHistoryPreambleIsAcceptedOnlyInPendingWriteWindow() throws {
+    @Test func exactObservedHistoryPreambleIsAcceptedOnlyInAdjacentRaceWindows() throws {
         let material = try syntheticActiveSessionMaterial()
         let frame = try syntheticUnsupportedNotification(command: 0x36)
 
-        #expect(
-            try V3ForegroundInboundClassifier.classify(
-                frame,
-                using: material,
-                context: pendingHistoryWriteContext()
-            ) == .observedHistoryPreamble
-        )
+        for isAwaitingHistory in [false, true] {
+            for historyWriteCallCount in [0, 1, 2] {
+                for historyWriteAcknowledgementPending in [false, true] {
+                    let context = V3ForegroundInboundContext(
+                        isAwaitingHistory: isAwaitingHistory,
+                        authenticationAccepted: true,
+                        historyWriteCallCount: historyWriteCallCount,
+                        historyWriteAcknowledgementPending:
+                            historyWriteAcknowledgementPending,
+                        historyControlAcknowledged: false,
+                        historyReadyEmitted: false,
+                        hasReceivedGlucoseBatch: false,
+                        historyPreambleCount: 0
+                    )
+                    let isAllowed = (!isAwaitingHistory
+                        && historyWriteCallCount == 0
+                        && !historyWriteAcknowledgementPending)
+                        || (isAwaitingHistory
+                            && historyWriteCallCount == 1
+                            && historyWriteAcknowledgementPending)
+
+                    if isAllowed {
+                        #expect(
+                            try V3ForegroundInboundClassifier.classify(
+                                frame,
+                                using: material,
+                                context: context
+                            ) == .observedHistoryPreamble
+                        )
+                    } else {
+                        #expect(
+                            throws: V3ForegroundInboundClassifierError
+                                .observedHistoryPreambleOutsideAllowedWindow
+                        ) {
+                            try V3ForegroundInboundClassifier.classify(
+                                frame,
+                                using: material,
+                                context: context
+                            )
+                        }
+                    }
+                }
+            }
+        }
 
         let disallowedContexts = [
-            pendingHistoryWriteContext(isAwaitingHistory: false),
-            pendingHistoryWriteContext(authenticationAccepted: false),
-            pendingHistoryWriteContext(historyWriteCallCount: 0),
-            pendingHistoryWriteContext(historyWriteCallCount: 2),
-            pendingHistoryWriteContext(historyWriteAcknowledgementPending: false),
+            authenticatedBeforeHistoryDispatchContext(authenticationAccepted: false),
+            authenticatedBeforeHistoryDispatchContext(historyPreambleCount: 1),
             pendingHistoryWriteContext(historyControlAcknowledged: true),
             pendingHistoryWriteContext(historyReadyEmitted: true),
             pendingHistoryWriteContext(hasReceivedGlucoseBatch: true),
             pendingHistoryWriteContext(historyPreambleCount: 1),
+            authenticatedBeforeHistoryDispatchContext(
+                historyControlAcknowledged: true
+            ),
+            authenticatedBeforeHistoryDispatchContext(historyReadyEmitted: true),
+            authenticatedBeforeHistoryDispatchContext(hasReceivedGlucoseBatch: true),
         ]
         for context in disallowedContexts {
             #expect(
@@ -87,6 +92,52 @@ struct V3ForegroundInboundClassifierTests {
                     context: context
                 )
             }
+        }
+    }
+
+    @Test func exactPreambleOutsideRaceRetainsPrivacySafeRejectionCategory() throws {
+        let material = try syntheticActiveSessionMaterial()
+        let frame = try syntheticUnsupportedNotification(command: 0x36)
+        let context = authenticatedBeforeHistoryDispatchContext(
+            authenticationAccepted: false
+        )
+
+        #expect(
+            throws: V3ForegroundInboundClassifierError
+                .observedHistoryPreambleOutsideAllowedWindow
+        ) {
+            try V3ForegroundInboundClassifier.classify(
+                frame,
+                using: material,
+                context: context
+            )
+        }
+        #expect(
+            V3ForegroundInboundClassifier.rejectionFrameCategory(
+                for: V3ForegroundInboundClassifierError
+                    .observedHistoryPreambleOutsideAllowedWindow,
+                frameByteCount: frame.byteCount
+            ) == .observedHistoryPreambleCandidate
+        )
+
+        let rejection = GS3ProtocolRejection(
+            origin: .inboundClassification,
+            frameCategory: .observedHistoryPreambleCandidate,
+            frameByteCount: frame.byteCount,
+            timingWindow: .authentication
+        )
+        let text = rejection.description
+        #expect(
+            text == "origin=inboundClassification, "
+                + "frame=observedHistoryPreambleCandidate, "
+                + "bytes=24, window=authentication"
+        )
+        for forbidden in [
+            "0x36", "sensor-identifier", "private-material", "glucose-value",
+            "record-index", "json-contents", "json-hash", "packet-body",
+            "arbitrary-command-bytes",
+        ] {
+            #expect(!text.contains(forbidden))
         }
     }
 
@@ -145,6 +196,27 @@ struct V3ForegroundInboundClassifierTests {
     ) -> V3ForegroundInboundContext {
         V3ForegroundInboundContext(
             isAwaitingHistory: isAwaitingHistory,
+            authenticationAccepted: authenticationAccepted,
+            historyWriteCallCount: historyWriteCallCount,
+            historyWriteAcknowledgementPending: historyWriteAcknowledgementPending,
+            historyControlAcknowledged: historyControlAcknowledged,
+            historyReadyEmitted: historyReadyEmitted,
+            hasReceivedGlucoseBatch: hasReceivedGlucoseBatch,
+            historyPreambleCount: historyPreambleCount
+        )
+    }
+
+    private func authenticatedBeforeHistoryDispatchContext(
+        authenticationAccepted: Bool = true,
+        historyWriteCallCount: Int = 0,
+        historyWriteAcknowledgementPending: Bool = false,
+        historyControlAcknowledged: Bool = false,
+        historyReadyEmitted: Bool = false,
+        hasReceivedGlucoseBatch: Bool = false,
+        historyPreambleCount: Int = 0
+    ) -> V3ForegroundInboundContext {
+        V3ForegroundInboundContext(
+            isAwaitingHistory: false,
             authenticationAccepted: authenticationAccepted,
             historyWriteCallCount: historyWriteCallCount,
             historyWriteAcknowledgementPending: historyWriteAcknowledgementPending,

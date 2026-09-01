@@ -8,12 +8,17 @@ the iPhone Device Test. It is also the first reusable application shell for a
 possible future Sugarman Mac product. It is not a production Mac release and it
 does not replace final iPhone acceptance.
 
-The target first passed an unsigned generic macOS build, then one separately
-confirmed exact artifact was signed, launched, provisioned through the bounded
-scan-only route, armed for one managed foreground connection, stopped, and
-quit. That first run reproduced the iPhone's payload-free inbound-classification
-failure before the history-write acknowledgement; it did not produce a glucose
-sample or pass durability. See
+The target first passed an unsigned generic macOS build, then separately
+confirmed exact artifacts were signed, launched, provisioned through the
+bounded scan-only route, armed for one managed foreground connection, stopped,
+and quit. The first run reproduced the iPhone's payload-free inbound-
+classification failure before the history-write acknowledgement. The next
+exact diagnostic run proved that the rejected frame reached the known,
+checksum-valid 24-byte observed-preamble branch after durable coordinator
+history intent but while the transport was still `authenticated`. It did not
+produce a glucose sample or pass durability. The official Android app then
+received a new reading and displayed history, establishing handback and sensor
+history availability only. See
 [`GS3_DEVICE_TEST_PHYSICAL_RESULT_2026-09-01.md`](GS3_DEVICE_TEST_PHYSICAL_RESULT_2026-09-01.md).
 Every future build and physical action remains separately gated.
 

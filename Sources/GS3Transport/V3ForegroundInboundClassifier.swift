@@ -37,14 +37,21 @@ package struct V3ForegroundInboundContext: Sendable, Equatable {
     }
 
     fileprivate var permitsObservedHistoryPreamble: Bool {
-        isAwaitingHistory
-            && authenticationAccepted
+        guard authenticationAccepted,
+              !historyControlAcknowledged,
+              !historyReadyEmitted,
+              !hasReceivedGlucoseBatch,
+              historyPreambleCount == 0 else {
+            return false
+        }
+
+        let authenticatedBeforeHistoryDispatch = !isAwaitingHistory
+            && historyWriteCallCount == 0
+            && !historyWriteAcknowledgementPending
+        let pendingHistoryWrite = isAwaitingHistory
             && historyWriteCallCount == 1
             && historyWriteAcknowledgementPending
-            && !historyControlAcknowledged
-            && !historyReadyEmitted
-            && !hasReceivedGlucoseBatch
-            && historyPreambleCount == 0
+        return authenticatedBeforeHistoryDispatch || pendingHistoryWrite
     }
 }
 
@@ -63,12 +70,15 @@ package enum V3ForegroundInboundClassifierError: Error, Sendable, Equatable {
 /// Pure, host-testable inbound policy for the foreground transport.
 ///
 /// Public capture evidence does not establish the product meaning of command
-/// `0x36`. It does establish one checksum-valid 24-byte occurrence while the
-/// sole typed history write acknowledgement was pending, followed by valid
-/// history and live data. The classifier therefore recognizes that exact
-/// shape and window once per connection, emits no payload, and grants no
-/// write, retry, glucose, or readiness semantics. Every other unsupported or
-/// malformed notification still throws and remains terminal.
+/// `0x36`. It does establish checksum-valid 24-byte occurrences immediately
+/// after authentication, including one that overtook dispatch of the sole
+/// typed history write after the coordinator had durably prepared that
+/// request. The classifier therefore recognizes that exact shape in either
+/// adjacent transport window once per connection. The coordinator separately
+/// requires its durable history-request state before accepting the event. The
+/// event carries no payload and grants no write, retry, glucose, or readiness
+/// semantics. Every other unsupported or malformed notification still throws
+/// and remains terminal.
 package enum V3ForegroundInboundClassifier: Sendable {
     package static let observedHistoryPreambleCommand: UInt8 = 0x36
     package static let observedHistoryPreambleByteCount = 24

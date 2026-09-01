@@ -766,7 +766,7 @@ struct GS3ForegroundSessionCoordinatorTests {
         }
     }
 
-    @Test func authenticatedInboundRejectionAfterHistoryIntentMatchesPhysicalOrdering() async throws {
+    @Test func preambleOvertakingTransportDispatchRequiresDurableCoordinatorIntent() async throws {
         let harness = try await ForegroundHarness.make()
         try await harness.coordinator.start()
         await harness.coordinator.receive(.connected)
@@ -783,18 +783,12 @@ struct GS3ForegroundSessionCoordinatorTests {
             }.count == 1
         )
         #expect(harness.callbackLog.snapshot().acknowledgements == [.authentication])
+        let commandsBeforePreamble = await harness.transport.commands()
 
-        let rejection = GS3ProtocolRejection(
-            origin: .inboundClassification,
-            frameCategory: .observedHistoryPreambleCandidate,
-            frameByteCount: 24,
-            timingWindow: .authenticated
-        )
-        await harness.transport.emit([
-            .protocolRejected(rejection),
-            .disconnected(.protocolViolation),
-        ])
-        for _ in 0..<200 where await harness.coordinator.currentPhase() != .stopped {
+        await harness.transport.emit([.historyPreambleObserved])
+        for _ in 0..<200 where !harness.callbackLog.snapshot().events.contains(where: {
+            $0.kind == .historyPreambleObserved
+        }) {
             await Task.yield()
         }
 
@@ -802,38 +796,18 @@ struct GS3ForegroundSessionCoordinatorTests {
         let historyIntent = try #require(
             snapshot.events.firstIndex(where: { $0.kind == .historyRequested })
         )
-        let rejectionIndex = try #require(
-            snapshot.events.firstIndex(where: { $0.kind == .protocolRejected })
+        let preambleIndex = try #require(
+            snapshot.events.firstIndex(where: { $0.kind == .historyPreambleObserved })
         )
-        let disconnectedIndex = try #require(
-            snapshot.events.firstIndex(where: { $0.kind == .disconnected })
-        )
-        let stoppedIndex = try #require(
-            snapshot.events.firstIndex(where: { $0.kind == .stopped })
-        )
-        #expect(historyIntent < rejectionIndex)
-        #expect(rejectionIndex < disconnectedIndex)
-        #expect(disconnectedIndex < stoppedIndex)
-        #expect(snapshot.events.filter { $0.kind == .protocolRejected }.count == 1)
-        #expect(
-            snapshot.events[rejectionIndex].protocolRejection?.frameCategory
-                == .observedHistoryPreambleCandidate
-        )
-        #expect(
-            snapshot.events[rejectionIndex].protocolRejection?.timingWindow
-                == .authenticated
-        )
-        let diagnosticText = snapshot.events[rejectionIndex].description
-        #expect(diagnosticText.contains("frame=observedHistoryPreambleCandidate"))
-        for forbidden in [
-            "0x36", "sensor-identifier", "private-material", "glucose-value",
-            "record-index", "json-contents", "json-hash", "packet-body",
-        ] {
-            #expect(!diagnosticText.contains(forbidden))
-        }
+        #expect(historyIntent < preambleIndex)
+        #expect(snapshot.events[preambleIndex].historyPreambleCount == 1)
+        #expect(snapshot.events.allSatisfy { $0.kind != .protocolRejected })
         #expect(snapshot.acknowledgements == [.authentication])
         #expect(try await harness.store.samples(sessionID: harness.sessionID).isEmpty)
-        #expect(harness.ownership.latestLease?.isActive == false)
+        #expect(await harness.coordinator.currentPhase() == .requestingHistory)
+        #expect(await harness.transport.commands() == commandsBeforePreamble)
+        #expect(harness.ownership.latestLease?.isActive == true)
+        #expect(snapshot.failures.isEmpty)
     }
 
     @Test func outOfRangeHistoryRequestReportsRequestInvariantWithoutWriting() async throws {

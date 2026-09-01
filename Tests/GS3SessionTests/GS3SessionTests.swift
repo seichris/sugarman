@@ -107,6 +107,8 @@ struct GS3SessionTests {
     @Test func observedHistoryPreambleOutsideHistoryRequestFailsClosed() {
         for phase in [
             GS3ForegroundPhase.authenticating,
+            .loadingHistoryPlan,
+            .preparingHistoryRequest,
             .synchronizing,
             .live,
         ] {

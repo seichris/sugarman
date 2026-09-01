@@ -101,20 +101,18 @@ dependencies. See [docs/UPSTREAMS.md](docs/UPSTREAMS.md).
   and the [earlier probe results](docs/V3_PROBE_PHYSICAL_RESULT_2026-08-30.md).
 - The first managed Device Test run reached its durably prepared history
   request, then failed closed before the CoreBluetooth history-write
-  acknowledgement; official Android handback again passed. Its generic report
-  cannot prove the triggering command. The host policy now recognizes one
-  exact checksum-valid 24-byte `0x36` only in the sole pending-history-write
-  window as a payload-free observed preamble, with no added write, retry, data,
-  or readiness semantics. Every duplicate, late, malformed, or different
-  unsupported frame remains terminal. See the
+  acknowledgement; official Android handback again passed. The host policy
+  recognizes one exact checksum-valid 24-byte `0x36` as a payload-free observed
+  preamble, with no added write, retry, data, or readiness semantics. See the
   [managed-run result](docs/GS3_DEVICE_TEST_PHYSICAL_RESULT_2026-09-01.md).
-- The first exact Mac Device Test run reproduced the typed iPhone ordering:
-  authentication succeeded, one history intent was emitted, no history write
-  acknowledgement arrived, and a 24-byte notification candidate was rejected
-  in the transport's authenticated window. The next fail-closed diagnostic
-  distinguishes the exact allowlisted observed preamble shape without accepting
-  it or exposing its command byte. This remains a failed reading/durability run
-  and does not replace iPhone acceptance.
+- Exact Mac Device Test runs reproduced the typed iPhone ordering, then proved
+  the rejected frame was the known checksum-valid 24-byte preamble shape
+  overtaking history dispatch after durable coordinator intent. The next
+  receive-only policy uses both that narrow transport race window and the
+  coordinator's independent durable-request gate. It adds no command or retry;
+  every early, duplicate, late, malformed, or different unsupported frame
+  remains terminal. This is still host-only policy: Mac history/live reception,
+  five-reading durability, and final iPhone acceptance remain open.
 
 ## Repository layout
 

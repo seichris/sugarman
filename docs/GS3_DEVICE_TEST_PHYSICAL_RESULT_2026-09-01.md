@@ -152,15 +152,61 @@ meaning, establish sensor health, or replace an official-app handback or final
 iPhone acceptance run. The normalized private provisioning remains only in the
 Mac-specific this-device-only Keychain item.
 
-## Next fail-closed diagnostic refinement
+## Exact-preamble macOS diagnostic run
 
-The next source candidate may distinguish the already allowlisted, exact
-checksum-valid 24-byte observed-preamble shape when it arrives outside its sole
-accepted pending-history-write window. The result is one bounded category: no
-packet body, command byte, sensor identifier, private material, glucose value,
-record index, imported JSON content or hash is reported.
+The next exact Mac source commit was
+`592056b43ee9e0c5d59d464851f4736d2d4533da`. Its signed-app manifest
+SHA-256 was
+`003611eeba2ef674e6ce7c22d0cc4791a42172dfe9e430755baf4bdc62031632`,
+and its bundle identifier was `app.sugarman.macos.devicetest`. After separate
+owner confirmations, one bounded managed foreground connection was armed.
 
-That refinement remains terminal outside the existing accepted window. It adds
-no accepted frame, request, write, retry, reconnect, readiness, or glucose
-semantics. It is host evidence only until a newly confirmed exact artifact
-reports the new categories.
+The first connection attempt timed out and scheduled exactly one bounded
+reconnect. The second connection then established this payload-free order:
+
+1. subscription, exactly one authentication request, one authentication write
+   acknowledgement, and exact authentication acceptance;
+2. one durably prepared coordinator history-request intent;
+3. no CoreBluetooth history-write acknowledgement;
+4. inbound classification rejection of the exact checksum-valid 24-byte known
+   observed-preamble shape while the transport timing window was
+   `authenticated`;
+5. one protocol-violation disconnect followed by terminal stop, with no retry
+   after that protocol violation; and
+6. no inserted sample, duplicate, or gap.
+
+The exact category is stronger evidence than the prior coarse notification
+category: it proves the inbound classifier reached the known 24-byte
+observed-preamble branch. It does not establish the frame's product meaning or
+prove that accepting it will lead to history or live data. The coexistence of
+the coordinator's durable history intent with the transport's earlier
+`authenticated` window physically verifies the dispatch race previously only
+inferred from source ordering.
+
+After Sugarman stopped and released the sensor, the owner reported that the
+official Android app received a new reading and displayed history. That is a
+handback and sensor/history-availability pass. It is not a Mac reading,
+durability, or final interoperability pass. The normalized provisioning remains
+in the Mac-specific this-device-only Keychain item.
+
+## Receive-only response and remaining physical gate
+
+The next production candidate uses two independent gates for only that exact,
+checksum-valid, 24-byte shape. The transport may classify it once in either the
+authenticated-before-history-dispatch race or the existing pending-history-
+write window. The coordinator accepts the resulting payload-free event only
+after the sole history request has been durably prepared. An earlier event,
+duplicate, late occurrence, wrong length, bad checksum, or different command
+remains terminal.
+
+This changes no command encoder or typed write boundary and adds no write,
+retry, reconnect, acknowledgement, readiness, glucose, or generic unknown-frame
+semantics. Host tests cover both transport windows, the independent durable-
+intent gate, early/late/duplicate rejection, redaction, diagnostic suppression,
+disconnect ordering, ownership, and the existing lifecycle.
+
+It remains host evidence until a newly confirmed exact Mac artifact physically
+proceeds through history and live data. Final acceptance still requires a
+separately confirmed iPhone artifact and the complete durability matrix. This
+report authorizes no further build, launch, scan, connection, or hardware
+action.

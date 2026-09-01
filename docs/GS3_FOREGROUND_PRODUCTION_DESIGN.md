@@ -95,6 +95,17 @@ only the resulting known peripheral and never scans.
   the transport's `authenticated` window. It inserted no sample and performed
   no retry or reconnect. Cross-platform reproduction strengthens the timing-race
   inference but still does not identify the command or justify accepting it.
+- The next exact Mac artifact at commit `592056b` classified the rejected
+  inbound frame as the exact checksum-valid 24-byte known observed-preamble
+  shape, still in the transport's `authenticated` window after the coordinator
+  had durably prepared one history intent and before the history write was
+  dispatched or acknowledged. It inserted no sample and performed no retry
+  after the terminal protocol violation. This physically verifies the
+  notification-overtaking-history-dispatch race; it does not establish the
+  frame's product meaning or validate the next receive-only policy.
+- After that Mac run stopped, the official Android app received a new reading
+  and displayed history. This verifies handback plus sensor/history
+  availability, not Mac history/live reception or durability.
 - Two earlier attempts stopped before FF31 subscription while both Sugarman
   processes were running; a Probe-only run reached live data. That sequence is
   observed, but it does not isolate process contention as the cause.
@@ -147,19 +158,18 @@ under `docs/evidence/`. The managed-run result is
 8. **Classify one exact observed history preamble without assigning semantic
    meaning.** The Probe physically observed one checksum-valid 24-byte `0x36`
    while the sole typed `0x39` CoreBluetooth acknowledgement was pending, then
-   received valid history and live data. Two managed reports failed at the same
-   lifecycle boundary but did not identify their command or failure origin. A
-   host policy may
-   therefore recognize that exact shape before any glucose batch and in that
-   window once per connection, emit a
-   payload-free count, and continue receiving. It grants no write, retry,
-   glucose, acknowledgement, or readiness meaning. Every other unsupported,
-   malformed, duplicate, or late notification remains terminal.
-9. **Diagnose the exact preamble shape outside its window without accepting
-   it.** If the exact allowlisted, checksum-valid 24-byte observed-preamble shape
-   arrives outside its accepted pending-write window, report only an
-   `observedHistoryPreambleCandidate` category and continue to fail closed. This
-   adds no command byte, payload, write, retry, reconnect, or receive semantics.
+   received valid history and live data. The exact Mac diagnostic later proved
+   the same known frame shape can arrive after the coordinator has durably
+   prepared its history intent but before the transport dispatches that write.
+   The transport may therefore recognize that exact shape once, before any
+   glucose batch, in either of those two adjacent transport windows.
+9. **Require the independent durable-request gate.** Transport classification
+   alone grants no acceptance. The coordinator accepts the payload-free event
+   only in `requestingHistory`, after exactly one history request has been
+   durably prepared. An event before that state, a duplicate, a late event, or
+   any malformed/different unsupported notification remains terminal. The
+   combined policy adds no payload, write, retry, reconnect, glucose,
+   acknowledgement, or readiness semantics.
 
 These are reviewed policies, not claims of physical iPhone reconnect parity.
 
@@ -300,13 +310,15 @@ background design:
   before both acknowledgements remain bounded in memory and are not persisted;
   a live packet before both is terminal; the post-authentication planning gap
   is also bounded by the operation timeout; and
-- it recognizes at most one checksum-valid 24-byte `0x36` only before any
-  glucose batch and while the sole typed history write acknowledgement is
-  pending. The receive-only event is
-  named an observed history preamble, increments a payload-free per-connection
-  count, and grants no write, retry, glucose, acknowledgement, or readiness
-  semantics. Any duplicate, late occurrence, other unsupported command, or
-  malformed notification is a terminal protocol violation;
+- it recognizes at most one checksum-valid 24-byte `0x36` before any glucose
+  batch, either while authenticated just before history dispatch or while the
+  sole typed history write acknowledgement is pending. The coordinator
+  independently requires its durably prepared, exactly-once history-request
+  state before accepting the receive-only event. The event is named an
+  observed history preamble, increments a payload-free per-connection count,
+  and grants no write, retry, glucose, acknowledgement, or readiness semantics.
+  Any early coordinator event, duplicate, late occurrence, other unsupported
+  command, or malformed notification is a terminal protocol violation;
 - delegate callbacks must match the active central, peripheral, and exact
   characteristic object, and value/write callbacks are ignored once controlled
   disconnection begins; and
