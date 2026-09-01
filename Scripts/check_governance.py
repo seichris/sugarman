@@ -310,7 +310,13 @@ def check_no_write_api() -> None:
             "effectiveDataWriteAcknowledged",
             "emitHistoryReadyIfPossibleLocked()",
             "guard historyReadyEmitted else",
-            "found.state == .disconnected",
+            "GS3RestorationPolicy.action(",
+            "persistentConnection: persistentConnection",
+            "productionRestorationIdentifier",
+            '"app.sugarman.ios.gs3.managed-session"',
+            "CBCentralManagerOptionRestoreIdentifierKey",
+            "willRestoreState dict: [String: Any]",
+            "candidate.identifier == peripheralID",
             "scheduleResponseTimeoutLocked(after: operationTimeout)",
             "code == 0x01",
             "detail == 0x00",
@@ -329,7 +335,6 @@ def check_no_write_api() -> None:
         for forbidden in (
             "scanForPeripherals",
             ".withoutResponse",
-            "CBCentralManagerOptionRestoreIdentifierKey",
             "writeCharacteristic",
             "activateSensor(",
             "bindAccountOnSensor(",
@@ -595,7 +600,9 @@ def check_sensor_ownership_and_foreground_slice() -> None:
         "case .dropped:",
         "clearBufferedRecordsOnSuccess: true",
         "UInt16(exactly: plan.startingIndex)",
-        "quality: .questionable",
+        "V3NativeStateClassifier.assess(",
+        ").sampleQuality",
+        "onNativeStateObserved",
         "case .historyPreambleObserved:",
     ):
         if required not in production_body:
@@ -915,7 +922,7 @@ def check_sensor_ownership_and_foreground_slice() -> None:
             "#if !SUGARMAN_DEVICE_TEST",
             "Import private handover file",
             "Scan only; do not connect",
-            "Connect while foregrounded",
+            "Keep sensor connected",
             "Delete private connection material",
         ):
             if required not in production_ui:
