@@ -182,6 +182,7 @@ public struct GS3ForegroundSessionCallbacks: Sendable {
     public var onLifecycleEvent: @Sendable (GS3LifecycleEvent) -> Void
     public var onSamplesCommitted: @Sendable (GS3BatchCommitSummary) -> Void
     public var onCommandAcknowledged: @Sendable (GS3ForegroundCommandKind) -> Void
+    public var onNativeStateObserved: @Sendable (V3NativeStateSummary) -> Void
     public var onFailure: @Sendable (GS3ForegroundCoordinatorFailure) -> Void
 
     public init(
@@ -189,12 +190,14 @@ public struct GS3ForegroundSessionCallbacks: Sendable {
         onLifecycleEvent: @escaping @Sendable (GS3LifecycleEvent) -> Void = { _ in },
         onSamplesCommitted: @escaping @Sendable (GS3BatchCommitSummary) -> Void = { _ in },
         onCommandAcknowledged: @escaping @Sendable (GS3ForegroundCommandKind) -> Void = { _ in },
+        onNativeStateObserved: @escaping @Sendable (V3NativeStateSummary) -> Void = { _ in },
         onFailure: @escaping @Sendable (GS3ForegroundCoordinatorFailure) -> Void = { _ in }
     ) {
         self.onConnection = onConnection
         self.onLifecycleEvent = onLifecycleEvent
         self.onSamplesCommitted = onSamplesCommitted
         self.onCommandAcknowledged = onCommandAcknowledged
+        self.onNativeStateObserved = onNativeStateObserved
         self.onFailure = onFailure
     }
 }

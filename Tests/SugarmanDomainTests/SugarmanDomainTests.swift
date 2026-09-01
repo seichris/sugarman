@@ -6,6 +6,21 @@ import Testing
 @testable import SugarmanDomain
 
 struct SugarmanDomainTests {
+    @Test func liveDashboardShowsOnboardingUntilARealReadingExists() {
+        #expect(
+            LiveDashboardContentMode.resolve(sampleCount: 0, isSyntheticDemo: false)
+                == .sensorOnboarding
+        )
+        #expect(
+            LiveDashboardContentMode.resolve(sampleCount: 1, isSyntheticDemo: false)
+                == .readings
+        )
+        #expect(
+            LiveDashboardContentMode.resolve(sampleCount: 0, isSyntheticDemo: true)
+                == .readings
+        )
+    }
+
     @Test func protocolVariantsRemainLiveUnimplemented() {
         let names = ProtocolVariant.allCases.map(\.rawValue)
         #expect(names == ["unknown", "v120RC4", "v3AES"])
@@ -174,6 +189,51 @@ struct SugarmanDomainTests {
         #expect(withTenths.value(in: .millimolesPerLiter) == Double(61) / 10.0)
         #expect(GlucoseUnit.milligramsPerDeciliter.displaySymbol == "mg/dL")
         #expect(GlucoseUnit.millimolesPerLiter.displaySymbol == "mmol/L")
+        #expect(GlucoseUnit.milligramsPerDeciliter.alternate == .millimolesPerLiter)
+        #expect(GlucoseUnit.millimolesPerLiter.alternate == .milligramsPerDeciliter)
+    }
+
+    @Test func glucoseTimelineFiltersBoundsAndSortsSourceOrder() {
+        let session = UUID()
+        let end = Date(timeIntervalSince1970: 1_800_000_000)
+        func sample(index: UInt32, offset: TimeInterval) -> GlucoseSample {
+            GlucoseSample(
+                sessionID: session,
+                sensorIndex: index,
+                sensorTimestamp: end.addingTimeInterval(offset),
+                receiptTimestamp: end.addingTimeInterval(offset + 1),
+                milligramsPerDeciliter: 100,
+                decoderRevision: "test"
+            )
+        }
+
+        let timeline = GlucoseTimeline(
+            samples: [
+                sample(index: 4, offset: 1),
+                sample(index: 3, offset: 0),
+                sample(index: 2, offset: -60),
+                sample(index: 1, offset: -(3 * 60 * 60)),
+                sample(index: 0, offset: -(3 * 60 * 60) - 1),
+            ],
+            endingAt: end,
+            range: .threeHours
+        )
+
+        #expect(timeline.start == end.addingTimeInterval(-3 * 60 * 60))
+        #expect(timeline.end == end)
+        #expect(timeline.samples.map(\.sensorIndex) == [1, 2, 3])
+    }
+
+    @Test func glucoseChartScaleMatchesEachDisplayUnit() {
+        let mmol = GlucoseChartScale(unit: .millimolesPerLiter)
+        #expect(mmol.domain == 0...15)
+        #expect(mmol.gridValues == Array(0...15).map(Double.init))
+        #expect(mmol.tickValues == [0, 3, 6, 9, 12, 15])
+
+        let mgdl = GlucoseChartScale(unit: .milligramsPerDeciliter)
+        #expect(mgdl.domain == 0...270)
+        #expect(mgdl.gridValues == stride(from: 0.0, through: 270.0, by: 18.0).map(\.self))
+        #expect(mgdl.tickValues == [0, 50, 100, 150, 200, 250])
     }
 
     @Test func activeSessionPrefersDemoThenSelectionNotUUIDSort() {

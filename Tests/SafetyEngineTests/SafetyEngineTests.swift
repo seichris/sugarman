@@ -126,6 +126,7 @@ struct SafetyEngineTests {
         #expect(result.showsValueAsCurrent == false)
         #expect(result.presentation == .questionable)
         #expect(result.notCurrentNotice == ProductCopy.questionableSample)
+        #expect(result.unvalidatedGlucoseMgdl == 180)
         if case .current = result.presentation {
             Issue.record("questionable quality must never present as current")
         }
@@ -218,6 +219,9 @@ struct SafetyEngineTests {
         #expect(!backfill.showsValueAsCurrent)
         #expect(!unknown.showsValueAsCurrent)
         #expect(!future.showsValueAsCurrent)
+        #expect(backfill.unvalidatedGlucoseMgdl == nil)
+        #expect(unknown.unvalidatedGlucoseMgdl == nil)
+        #expect(future.unvalidatedGlucoseMgdl == nil)
     }
 
     @Test func connectedAndUnknownLifecycleAreNeverCurrent() {

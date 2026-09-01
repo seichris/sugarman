@@ -29,3 +29,18 @@ public enum AppLifecycleState: String, Sendable, Codable, Equatable {
     case suspended
     case terminatedUnknown
 }
+
+/// User-visible progress for the one managed sensor connection.
+///
+/// This deliberately contains no peripheral identity, protocol bytes, sensor
+/// values, or arbitrary error text. It is the single source of truth used by
+/// the Live screen while a reading cannot yet be presented as current.
+public enum SensorConnectionActivity: String, Sendable, Codable, Equatable, CaseIterable {
+    case notConfigured
+    case stopped
+    case connecting
+    case synchronizing
+    case live
+    case reconnecting
+    case failed
+}

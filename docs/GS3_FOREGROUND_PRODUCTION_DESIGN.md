@@ -10,18 +10,27 @@ request per connection, commits decoded samples atomically, and makes every
 non-live phase fail closed in the UI.
 
 This change implements the host-testable core, shared ownership gate, durable
-time-anchor transaction, typed coordinator, and a foreground-only
-CoreBluetooth adapter. `GS3ProtocolRequest` remains empty, `GS3CodecFactory`
+time-anchor transaction, typed coordinator, and a known-peer CoreBluetooth
+adapter. The normal production configuration now retains explicit connection
+intent and opts into background restoration; Device Test remains foreground-only.
+`GS3ProtocolRequest` remains empty, `GS3CodecFactory`
 remains fail closed, and the existing diagnostic runtime remains read-only.
 The new adapter retrieves one known peripheral without scanning and has one
 characteristic-write site that accepts only package-scoped frames produced by
 the reviewed `0xE2` authentication and `0x39` effective-data encoders.
 
-The normal app now has a lifecycle bridge, but its release bootstrap installs
-no controller factory and has no source of active-session material. It therefore
-cannot construct or run the adapter. A separately reviewed signed artifact and
-fresh physical authorization remain mandatory before this code contacts a
-sensor.
+The normal app now exposes an explicit already-active-sensor provisioning flow
+inside Sensor onboarding. It can import the strict historical Probe handover
+schema, retain the normalized material only in a production-specific
+after-first-unlock this-device-only Keychain item, resolve exactly one host-local
+CoreBluetooth UUID through a separately confirmed ten-second scan-only lookup,
+and install the typed controller only after a second explicit connection
+confirmation. Import cannot start Bluetooth; the lookup cannot connect or
+write. A new process begins disconnected unless the same user opt-in is present
+in the device-only Keychain, in which case it reconstructs the same managed
+known-peer controller. A separately reviewed signed
+artifact and fresh physical authorization remain mandatory before Codex or a
+developer performs a physical build, install, launch, scan, or connection.
 
 That scene/controller boundary now lives in the shared `GS3Transport` product
 as `GS3ForegroundSessionLifecycle`, so iOS and the isolated macOS Device Test
@@ -29,20 +38,21 @@ use the same generation-based cleanup. A controller that finishes construction
 after its scene ended is explicitly stopped, and an in-progress start cannot
 become the active owner after foreground exit.
 
-The isolated `SugarmanDeviceTest` target supplies that test boundary without
-changing the release bootstrap. It links a dedicated strict private-import
+The isolated `SugarmanDeviceTest` target retains the acceptance-only boundary
+and link-loss injection controls. It links a dedicated strict private-import
 module, stores normalized material only in a when-unlocked this-device-only
 Keychain item, and begins every process unarmed. Import prepares local
 already-active session metadata but cannot start Bluetooth. Only a separate
 in-app arm confirmation installs the existing typed factory. See
 [`GS3_DEVICE_TEST_PROVISIONING.md`](GS3_DEVICE_TEST_PROVISIONING.md).
 
-When only the historical Probe JSON is available, the Device Test target now
-has a separate provisioning-only bridge. It validates that exact schema in
+When only the historical Probe JSON is available, production and Device Test
+use the same provisioning-only bridge. It validates that exact schema in
 memory, then an explicitly confirmed, shared-owner, ten-second adapter scans
 for the exact private local name and stores one unique CoreBluetooth UUID. That
-adapter cannot connect or access GATT and is not part of the foreground
-transport. Zero or multiple matches fail closed, and the UUID remains absent
+adapter lives in the separate `GS3ProvisioningScan` product, cannot connect or
+access GATT, and is not part of the foreground transport. Zero or multiple
+matches fail closed, and the UUID remains absent
 from UI, reports, diagnostics, and logs. The production adapter still retrieves
 only the resulting known peripheral and never scans.
 
@@ -290,8 +300,10 @@ idle -> acquire owner -> connect -> discover -> subscribe -> authenticate
   permission denial, authentication rejection, protocol violation, user stop,
   or leaving foreground releases ownership and cannot reconnect automatically.
 - Entering `live` resets the consecutive reconnect attempt count.
-- Foreground exit cancels a pending timer, disconnects the adapter, releases
-  ownership, and leaves background/restoration work for a later milestone.
+- The foreground lifecycle used by Device Test still cancels a pending timer,
+  disconnects the adapter, and releases ownership on foreground exit. The
+  production persistent lifecycle does not submit that event on a scene
+  background transition; explicit Stop remains its teardown boundary.
 - Active-link stops pass through `disconnecting`; cancellation alone does not
   release ownership. A typed transport-completion callback releases the lease.
 - A lease-acquisition callback that races with foreground exit is immediately
@@ -331,13 +343,16 @@ adapter to the real shared App Group ownership provider and bounded scheduler.
 Application code cannot replace either dependency or instantiate the adapter
 directly.
 
-`GS3ForegroundCoreBluetoothTransport` is deliberately narrower than the later
-background design:
+`GS3ForegroundCoreBluetoothTransport` remains narrow while supporting the
+production background lifecycle:
 
 - it uses `retrievePeripherals(withIdentifiers:)` for one caller-supplied
-  CoreBluetooth UUID and exposes no scan API; an unexpectedly connected or
-  connecting retrieved object is canceled before a new attempt can begin;
-- it has no restoration identifier or background lifecycle;
+  CoreBluetooth UUID and exposes no scan API; the production configuration
+  resumes a matching restored connected/connecting object, while Device Test
+  preserves the fresh foreground-connect behavior;
+- production uses the stable `app.sugarman.ios.gs3.managed-session` restoration
+  identifier, reconstructs the manager on launch, and accepts only the exact
+  configured peripheral from `willRestoreState`;
 - it subscribes to FF31 before authentication and rediscovers/resubscribes on
   each new connection;
 - it allows one acknowledged 38-byte authentication frame and one acknowledged
@@ -405,15 +420,50 @@ project to `disconnected`. The existing `SafetyEngine` therefore never presents
 an old value as current during reconnect or sync, and it independently marks
 the reading stale when sensor or receipt age crosses policy.
 
-The normal-app bridge refreshes the existing store-backed dashboard when a
-configured controller publishes connection changes, committed samples, or a
-typed failure. The release bootstrap currently configures no controller. Thus
-the existing stale/disconnected UI is integrated without turning this host
-slice into an implicitly enabled sensor path. Even in reducer phase `live`, the
+The normal-app bridge refreshes the existing store-backed dashboard when its
+explicitly configured controller publishes connection changes, committed
+samples, or a typed failure. Import and scan-only lookup do not configure that
+controller; only the separately confirmed Connect action does so. That action
+stores a Boolean opt-in alongside normalized Keychain provisioning. Background
+scene transitions do not stop the production controller; explicit Stop clears
+the opt-in and controller. The Live screen projects one typed connecting,
+synchronizing, reconnecting, live, stopped, or failed state. Even in reducer
+phase `live`, the
 unresolved native state mapping keeps decoded samples `questionable`, so the
-dashboard cannot label them current. The isolated Device Test target can
-install that same bridge only after an explicit process-local arm confirmation;
-the release target does not link its provisioning module.
+dashboard instead says the recent native state is not yet validated and cannot
+label it current. Payload-free native-state summaries expose only the five
+decoded state fields plus record/distinct-state counts for a later physical
+mapping gate. The isolated Device Test target installs
+that same bridge only after an explicit process-local arm confirmation and is
+the only app target that links the test-only link-loss surface.
+
+### Origin of the private handover fields
+
+The package Data Matrix, activation number, and observed NFC record are not a
+complete provisioning document. For the one owned already-active sensor, the
+private handover was assembled from owner-controlled official-app and capture
+evidence plus Bluetooth observations:
+
+- the exact peripheral name comes from the sensor advertisement, and the
+  CoreBluetooth peripheral UUID is local to the Apple host and is learned only
+  by the scan-only lookup;
+- the six-byte sensor address comes from the sensor's Device Information value,
+  not from CoreBluetooth's opaque UUID;
+- the authentication ID corresponds to the owner-visible numeric official-app
+  user ID using the privately verified encoding;
+- the registered block was privately recovered and verified against the
+  official authentication exchange for this sensor/configuration;
+- the algorithm key and IV are private protocol material from the authorized
+  interoperability analysis; and
+- the effective-data start is selected from an observed official history
+  request/data relationship and can later be superseded by Sugarman's durable
+  cursor.
+
+The NFC/package fields can identify and classify the sensor and may include a
+link marker, but they do not supply all of the values above. Reading the sensor
+alone also does not expose the complete already-active session. Fresh activation
+and a legitimate supported route for obtaining registration/configuration
+material remain separate unresolved product work.
 
 ### Payload-free observability
 

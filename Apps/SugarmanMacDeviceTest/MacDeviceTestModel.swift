@@ -4,6 +4,7 @@
 import Foundation
 import GS3DeviceProvisioning
 import GS3DeviceTesting
+import GS3ProvisioningScan
 import GS3Session
 import GS3Transport
 import Observation
@@ -33,7 +34,7 @@ final class MacDeviceTestModel {
     @ObservationIgnored private let store: any SugarmanStoring
     @ObservationIgnored private let provisioning: DeviceOnlyGS3Provisioning
     @ObservationIgnored private let externalOwnershipGate:
-        GS3DeviceTestExternalOwnershipGate
+        GS3ExternalOwnershipGate
     @ObservationIgnored private let scanner: GS3ProbeProvisioningScanner
     @ObservationIgnored private let foregroundLifecycle:
         GS3ForegroundSessionLifecycle
@@ -55,9 +56,9 @@ final class MacDeviceTestModel {
         store: any SugarmanStoring = InMemorySugarmanStore(),
         initialStoreError: String? = nil
     ) {
-        let externalOwnershipGate = GS3DeviceTestExternalOwnershipGate()
+        let externalOwnershipGate = GS3ExternalOwnershipGate()
         self.store = store
-        self.provisioning = DeviceOnlyGS3Provisioning()
+        self.provisioning = DeviceOnlyGS3Provisioning(scope: .deviceTest)
         self.externalOwnershipGate = externalOwnershipGate
         self.scanner = GS3ProbeProvisioningScanner(
             externalOwnershipGate: externalOwnershipGate
@@ -408,7 +409,7 @@ final class MacDeviceTestModel {
             error.localizedDescription
         case let error as GS3ProbeProvisioningScanError:
             error.localizedDescription
-        case let error as GS3DeviceTestExternalOwnershipError:
+        case let error as GS3ExternalOwnershipError:
             error.localizedDescription
         default:
             "The operation failed closed. No private details were retained in diagnostics."

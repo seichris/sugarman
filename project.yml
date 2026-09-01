@@ -79,6 +79,12 @@ targets:
       - package: Sugarman
         product: GS3Transport
       - package: Sugarman
+        product: GS3DeviceProvisioning
+      - package: Sugarman
+        product: GS3ProvisioningScan
+      - package: Sugarman
+        product: PrivateDocumentImport
+      - package: Sugarman
         product: SensorOnboarding
       - package: Sugarman
         product: AccountBinding
@@ -159,6 +165,8 @@ targets:
         product: GS3DeviceProvisioning
       - package: Sugarman
         product: GS3DeviceTesting
+      - package: Sugarman
+        product: GS3ProvisioningScan
       - package: Sugarman
         product: PrivateDocumentImport
       - package: Sugarman
@@ -259,6 +267,8 @@ targets:
         product: GS3DeviceProvisioning
       - package: Sugarman
         product: GS3DeviceTesting
+      - package: Sugarman
+        product: GS3ProvisioningScan
       - package: Sugarman
         product: GS3Transport
       - package: Sugarman

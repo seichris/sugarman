@@ -144,3 +144,82 @@ struct GS3ForegroundSessionLifecycleTests {
         #expect(!lifecycle.isRunning)
     }
 }
+
+struct GS3PersistentSessionLifecycleTests {
+    @MainActor
+    @Test func repeatedStartsKeepOneControllerUntilExplicitRemoval() async throws {
+        let lifecycle = GS3PersistentSessionLifecycle()
+        let controller = LifecycleController()
+        let log = LifecycleFactoryLog()
+        lifecycle.install {
+            log.recordCreation()
+            return controller
+        }
+
+        try await lifecycle.startIfNeeded()
+        try await lifecycle.startIfNeeded()
+
+        #expect(lifecycle.isConfigured)
+        #expect(lifecycle.isRunning)
+        #expect(log.count == 1)
+        #expect(await controller.snapshot().starts == 1)
+
+        await lifecycle.removeFactory()
+        #expect(!lifecycle.isConfigured)
+        #expect(!lifecycle.isRunning)
+        #expect(await controller.snapshot().stops == 1)
+    }
+
+    @MainActor
+    @Test func concurrentStartsCannotConstructTwoOwners() async throws {
+        let lifecycle = GS3PersistentSessionLifecycle()
+        let controller = LifecycleController()
+        let factoryStarted = AsyncStream.makeStream(of: Void.self)
+        let factoryRelease = AsyncStream.makeStream(of: Void.self)
+        let log = LifecycleFactoryLog()
+        lifecycle.install {
+            log.recordCreation()
+            factoryStarted.continuation.yield()
+            for await _ in factoryRelease.stream { break }
+            return controller
+        }
+
+        let first = Task { @MainActor in try await lifecycle.startIfNeeded() }
+        for await _ in factoryStarted.stream { break }
+        let second = Task { @MainActor in try await lifecycle.startIfNeeded() }
+        await Task.yield()
+        factoryRelease.continuation.yield()
+        factoryRelease.continuation.finish()
+        try await first.value
+        try await second.value
+
+        #expect(log.count == 1)
+        #expect(await controller.snapshot().starts == 1)
+        await lifecycle.removeFactory()
+    }
+
+    @MainActor
+    @Test func removalDuringConstructionDisposesLateController() async throws {
+        let lifecycle = GS3PersistentSessionLifecycle()
+        let controller = LifecycleController()
+        let factoryStarted = AsyncStream.makeStream(of: Void.self)
+        let factoryRelease = AsyncStream.makeStream(of: Void.self)
+        lifecycle.install {
+            factoryStarted.continuation.yield()
+            for await _ in factoryRelease.stream { break }
+            return controller
+        }
+
+        let start = Task { @MainActor in try await lifecycle.startIfNeeded() }
+        for await _ in factoryStarted.stream { break }
+        await lifecycle.removeFactory()
+        factoryRelease.continuation.yield()
+        factoryRelease.continuation.finish()
+        try await start.value
+
+        #expect(!lifecycle.isConfigured)
+        #expect(!lifecycle.isRunning)
+        #expect(await controller.snapshot().starts == 0)
+        #expect(await controller.snapshot().stops == 1)
+    }
+}

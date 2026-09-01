@@ -14,9 +14,11 @@ public struct GS3DeviceProvisioningSummary:
 {
     /// Local random identity key only. Descriptions and reflection redact it.
     public let linkedSensorID: UUID
+    public let connectionIntentEnabled: Bool
 
-    public init(linkedSensorID: UUID) {
+    public init(linkedSensorID: UUID, connectionIntentEnabled: Bool) {
         self.linkedSensorID = linkedSensorID
+        self.connectionIntentEnabled = connectionIntentEnabled
     }
 
     public var description: String {
@@ -31,6 +33,7 @@ public struct GS3DeviceProvisioningSummary:
             children: [
                 "material": "available",
                 "linkedSensor": "redacted",
+                "connectionIntentEnabled": connectionIntentEnabled,
             ],
             displayStyle: .struct
         )
@@ -52,8 +55,8 @@ public actor DeviceOnlyGS3Provisioning {
     private var operationInProgress = false
     private var operationWaiters: [CheckedContinuation<Void, Never>] = []
 
-    public init() {
-        self.persistence = KeychainGS3DeviceProvisioningStore()
+    public init(scope: GS3DeviceProvisioningScope) {
+        self.persistence = KeychainGS3DeviceProvisioningStore(scope: scope)
         self.uuidGenerator = { UUID() }
         self.requestTokenGenerator = { UUID() }
     }
@@ -72,7 +75,23 @@ public actor DeviceOnlyGS3Provisioning {
         await acquireOperationGate()
         defer { releaseOperationGate() }
         guard let record = try loadRecord() else { return nil }
-        return GS3DeviceProvisioningSummary(linkedSensorID: record.sensorID)
+        return GS3DeviceProvisioningSummary(
+            linkedSensorID: record.sensorID,
+            connectionIntentEnabled: record.connectionIntentEnabled
+        )
+    }
+
+    /// Persists only the user's opt-in state alongside device-only material.
+    /// Enabling this flag performs no Bluetooth operation.
+    public func setConnectionIntentEnabled(_ enabled: Bool) async throws {
+        await acquireOperationGate()
+        defer { releaseOperationGate() }
+        guard let record = try loadRecord() else {
+            throw GS3DeviceProvisioningError.missingMaterial
+        }
+        try persistence.replace(
+            with: record.withConnectionIntentEnabled(enabled).encodedForStorage()
+        )
     }
 
     public func importDocument(
@@ -102,7 +121,8 @@ public actor DeviceOnlyGS3Provisioning {
             record = try StoredGS3DeviceProvisioning(
                 document: document,
                 sessionID: existing.sessionID,
-                sensorID: existing.sensorID
+                sensorID: existing.sensorID,
+                connectionIntentEnabled: existing.connectionIntentEnabled
             )
         } else {
             record = try StoredGS3DeviceProvisioning(
@@ -338,13 +358,15 @@ package struct StoredGS3DeviceProvisioning:
     CustomReflectable
 {
     private static let magic: [UInt8] = [0x53, 0x47, 0x33, 0x50]
-    private static let storageVersion: UInt8 = 1
-    private static let storedByteCount = 4 + 1 + 16 + 16 + 16 + 2 + 6 + 12 + 16 + 16 + 16
+    private static let storageVersion: UInt8 = 2
+    private static let version1StoredByteCount = 4 + 1 + 16 + 16 + 16 + 2 + 6 + 12 + 16 + 16 + 16
+    private static let storedByteCount = version1StoredByteCount + 1
 
     package let peripheralID: UUID
     package let sessionID: UUID
     package let sensorID: UUID
     package let captureBackedStart: UInt16
+    package var connectionIntentEnabled: Bool
     private let sensorAddress: [UInt8]
     private let authenticationID: [UInt8]
     private let registeredBlock: [UInt8]
@@ -354,12 +376,14 @@ package struct StoredGS3DeviceProvisioning:
     package init(
         document: GS3DeviceProvisioningDocument,
         sessionID: UUID,
-        sensorID: UUID
+        sensorID: UUID,
+        connectionIntentEnabled: Bool = false
     ) throws {
         self.peripheralID = document.peripheralID
         self.sessionID = sessionID
         self.sensorID = sensorID
         self.captureBackedStart = document.captureBackedStart
+        self.connectionIntentEnabled = connectionIntentEnabled
         self.sensorAddress = document.sensorAddress
         self.authenticationID = document.authenticationID
         self.registeredBlock = document.registeredBlock
@@ -378,6 +402,7 @@ package struct StoredGS3DeviceProvisioning:
         self.sessionID = sessionID
         self.sensorID = sensorID
         self.captureBackedStart = probeDocument.captureBackedStart
+        self.connectionIntentEnabled = false
         self.sensorAddress = probeDocument.sensorAddress
         self.authenticationID = probeDocument.authenticationID
         self.registeredBlock = probeDocument.registeredBlock
@@ -388,9 +413,13 @@ package struct StoredGS3DeviceProvisioning:
 
     package init(storedData data: Data) throws {
         let bytes = [UInt8](data)
-        guard bytes.count == Self.storedByteCount,
-              Array(bytes[0..<4]) == Self.magic,
-              bytes[4] == Self.storageVersion else {
+        guard bytes.count >= 5,
+              Array(bytes.prefix(4)) == Self.magic else {
+            throw GS3DeviceProvisioningError.invalidStoredMaterial
+        }
+        let version = bytes[4]
+        guard (version == 1 && bytes.count == Self.version1StoredByteCount)
+                || (version == Self.storageVersion && bytes.count == Self.storedByteCount) else {
             throw GS3DeviceProvisioningError.invalidStoredMaterial
         }
         var offset = 5
@@ -414,6 +443,15 @@ package struct StoredGS3DeviceProvisioning:
         self.registeredBlock = take(16)
         self.algorithmKey = take(16)
         self.algorithmInitializationVector = take(16)
+        if version == Self.storageVersion {
+            let intent = take(1)[0]
+            guard intent == 0 || intent == 1 else {
+                throw GS3DeviceProvisioningError.invalidStoredMaterial
+            }
+            self.connectionIntentEnabled = intent == 1
+        } else {
+            self.connectionIntentEnabled = false
+        }
         do {
             _ = try activeSessionMaterial()
         } catch {
@@ -434,7 +472,14 @@ package struct StoredGS3DeviceProvisioning:
         bytes.append(contentsOf: registeredBlock)
         bytes.append(contentsOf: algorithmKey)
         bytes.append(contentsOf: algorithmInitializationVector)
+        bytes.append(connectionIntentEnabled ? 1 : 0)
         return Data(bytes)
+    }
+
+    package func withConnectionIntentEnabled(_ enabled: Bool) -> Self {
+        var copy = self
+        copy.connectionIntentEnabled = enabled
+        return copy
     }
 
     package func matchesPrivateIdentity(

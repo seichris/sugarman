@@ -433,6 +433,9 @@ package actor GS3ForegroundSessionCoordinator: GS3ForegroundSessionControlling {
             await protocolViolation(.stateInvariant)
             return
         }
+        callbacks.onNativeStateObserved(
+            V3NativeStateSummary(records: batch.records)
+        )
 
         switch batch.source {
         case .effectiveData:
@@ -592,7 +595,9 @@ package actor GS3ForegroundSessionCoordinator: GS3ForegroundSessionControlling {
             // The bit boundaries are decoded, but their product meaning is
             // unresolved. Never promote a live value to "current" until a
             // physical gate establishes the healthy/error state mapping.
-            quality: .questionable,
+            quality: V3NativeStateClassifier.assess(
+                V3NativeStateFingerprint(record: item.record)
+            ).sampleQuality,
             source: item.source == .liveNotification ? .live : .backfill,
             decoderRevision: V3OfflineGlucoseNotificationDecoder.evidenceRevision
         )

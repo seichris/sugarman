@@ -72,7 +72,7 @@ request history, or write.
 
 The App Group lease excludes cooperating Sugarman processes on the same Mac. It
 cannot exclude an official app on a phone. A second
-`GS3DeviceTestExternalOwnershipGate` therefore requires a human confirmation
+`GS3ExternalOwnershipGate` therefore requires a human confirmation
 that every phone and app has released the owned sensor before either scanning
 or arming. The confirmation is process-local, is never persisted, and is
 revoked after scanning, stopping, a failed arm, or background shutdown.

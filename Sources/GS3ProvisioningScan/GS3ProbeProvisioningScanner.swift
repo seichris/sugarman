@@ -49,10 +49,8 @@ public final class GS3ProbeProvisioningScanner:
 {
     public static let scanWindowSeconds: TimeInterval = 10
 
-    private let externalOwnershipGate: GS3DeviceTestExternalOwnershipGate
-    private let queue = DispatchQueue(
-        label: "app.sugarman.devicetest.provisioning-scan"
-    )
+    private let externalOwnershipGate: GS3ExternalOwnershipGate
+    private let queue = DispatchQueue(label: "app.sugarman.provisioning-scan")
     private var central: CBCentralManager?
     private var continuation: CheckedContinuation<UUID, Error>?
     private var activeScanToken: UUID?
@@ -60,7 +58,7 @@ public final class GS3ProbeProvisioningScanner:
     private var timeoutWorkItem: DispatchWorkItem?
     private var ownerLease: SensorOwnerLease?
 
-    public init(externalOwnershipGate: GS3DeviceTestExternalOwnershipGate) {
+    public init(externalOwnershipGate: GS3ExternalOwnershipGate) {
         self.externalOwnershipGate = externalOwnershipGate
         super.init()
     }
@@ -111,10 +109,8 @@ public final class GS3ProbeProvisioningScanner:
         do {
             try externalOwnershipGate.requireConfirmation()
             ownerLease = try SharedSensorOwnerLease.acquire()
-        } catch is GS3DeviceTestExternalOwnershipError {
-            continuation.resume(
-                throwing: GS3DeviceTestExternalOwnershipError.confirmationRequired
-            )
+        } catch is GS3ExternalOwnershipError {
+            continuation.resume(throwing: GS3ExternalOwnershipError.confirmationRequired)
             return
         } catch {
             continuation.resume(throwing: GS3ProbeProvisioningScanError.ownershipUnavailable)

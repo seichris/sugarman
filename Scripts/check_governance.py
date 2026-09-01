@@ -211,10 +211,11 @@ def check_no_write_api() -> None:
         ROOT / "Sources/GS3Protocol",
         ROOT / "Sources/GS3DeveloperProbe",
         ROOT / "Sources/GS3DeviceTesting",
+        ROOT / "Sources/GS3ProvisioningScan",
     }
     probe_adapter = ROOT / "Apps/SugarmanProbe/V3ProbeBluetoothRuntime.swift"
     provisioning_scanner = (
-        ROOT / "Sources/GS3DeviceTesting/GS3ProbeProvisioningScanner.swift"
+        ROOT / "Sources/GS3ProvisioningScan/GS3ProbeProvisioningScanner.swift"
     )
     production_adapter = (
         ROOT / "Sources/GS3Transport/GS3ForegroundCoreBluetoothTransport.swift"
@@ -236,7 +237,7 @@ def check_no_write_api() -> None:
             if (
                 "import CoreBluetooth" in text
                 and not path.is_relative_to(ROOT / "Sources/GS3Transport")
-                and not path.is_relative_to(ROOT / "Sources/GS3DeviceTesting")
+                and not path.is_relative_to(ROOT / "Sources/GS3ProvisioningScan")
                 and path != probe_adapter
             ):
                 error(f"CoreBluetooth must remain confined to GS3Transport: {rel}")
@@ -309,7 +310,13 @@ def check_no_write_api() -> None:
             "effectiveDataWriteAcknowledged",
             "emitHistoryReadyIfPossibleLocked()",
             "guard historyReadyEmitted else",
-            "found.state == .disconnected",
+            "GS3RestorationPolicy.action(",
+            "persistentConnection: persistentConnection",
+            "productionRestorationIdentifier",
+            '"app.sugarman.ios.gs3.managed-session"',
+            "CBCentralManagerOptionRestoreIdentifierKey",
+            "willRestoreState dict: [String: Any]",
+            "candidate.identifier == peripheralID",
             "scheduleResponseTimeoutLocked(after: operationTimeout)",
             "code == 0x01",
             "detail == 0x00",
@@ -328,7 +335,6 @@ def check_no_write_api() -> None:
         for forbidden in (
             "scanForPeripherals",
             ".withoutResponse",
-            "CBCentralManagerOptionRestoreIdentifierKey",
             "writeCharacteristic",
             "activateSensor(",
             "bindAccountOnSensor(",
@@ -345,7 +351,7 @@ def check_no_write_api() -> None:
     else:
         body = provisioning_scanner.read_text(encoding="utf-8", errors="replace")
         for required in (
-            "GS3DeviceTestExternalOwnershipGate",
+            "GS3ExternalOwnershipGate",
             "requireConfirmation()",
             "GS3ProbeBridgeDiscoveryAccumulator",
             "SharedSensorOwnerLease.acquire()",
@@ -527,7 +533,7 @@ def check_sensor_ownership_and_foreground_slice() -> None:
 
     for relative in (
         "Apps/Sugarman/DiagnosticProbeSession.swift",
-        "Sources/GS3DeviceTesting/GS3ProbeProvisioningScanner.swift",
+        "Sources/GS3ProvisioningScan/GS3ProbeProvisioningScanner.swift",
         "Apps/SugarmanProbe/V3ProbeBluetoothRuntime.swift",
     ):
         path = ROOT / relative
@@ -594,7 +600,9 @@ def check_sensor_ownership_and_foreground_slice() -> None:
         "case .dropped:",
         "clearBufferedRecordsOnSuccess: true",
         "UInt16(exactly: plan.startingIndex)",
-        "quality: .questionable",
+        "V3NativeStateClassifier.assess(",
+        ").sampleQuality",
+        "onNativeStateObserved",
         "case .historyPreambleObserved:",
     ):
         if required not in production_body:
@@ -703,17 +711,17 @@ def check_sensor_ownership_and_foreground_slice() -> None:
                 error(f"normal-app foreground bridge contains provisioned live surface: {forbidden}")
 
     app_body = app.read_text(encoding="utf-8", errors="replace")
-    if app_body.count("installForegroundSessionFactory(") != 1:
+    if app_body.count("func installForegroundSessionFactory(") != 1:
         error("normal app must retain exactly one typed factory-install method")
     if (
-        "#if SUGARMAN_DEVICE_TEST\n"
         "import GS3DeviceProvisioning\n"
+        "import GS3ProvisioningScan\n"
+        "#if SUGARMAN_DEVICE_TEST\n"
         "import GS3DeviceTesting\n"
         "import GS3Session\n"
-        "import PrivateDocumentImport\n"
         "#endif"
     ) not in app_body:
-        error("device-test provisioning import must remain compile-time guarded")
+        error("production provisioning and device-test-only execution imports are not isolated")
     report_slice = app_body.split("var redactedDeviceTestReport: String", 1)
     if len(report_slice) != 2:
         error("missing payload-free device-test report boundary")
@@ -762,12 +770,15 @@ def check_sensor_ownership_and_foreground_slice() -> None:
     device_test_target = project.split("  SugarmanDeviceTest:\n", 1)[1].split(
         "  SugarmanProbe:\n", 1
     )[0]
-    if "GS3DeviceProvisioning" in release_target:
-        error("release Sugarman target must not link device-only provisioning")
     if "GS3DeviceTesting" in release_target:
         error("release Sugarman target must not link device-test execution surfaces")
-    if "PrivateDocumentImport" in release_target:
-        error("release Sugarman target must not link private document importing")
+    for required in (
+        "product: GS3DeviceProvisioning",
+        "product: GS3ProvisioningScan",
+        "product: PrivateDocumentImport",
+    ):
+        if required not in release_target:
+            error(f"release Sugarman target missing production provisioning boundary: {required}")
     for required in (
         "product: GS3DeviceProvisioning",
         "product: GS3DeviceTesting",
@@ -818,6 +829,8 @@ def check_sensor_ownership_and_foreground_slice() -> None:
     )
     if '.library(name: "GS3DeviceProvisioning"' not in package_text:
         error("device-only provisioning must remain a separate package product")
+    if '.library(name: "GS3ProvisioningScan"' not in package_text:
+        error("scan-only provisioning must remain a separate package product")
     if '.library(name: "GS3DeviceTesting"' not in package_text:
         error("shared device-test execution boundaries must be a separate package product")
 
@@ -858,6 +871,7 @@ def check_sensor_ownership_and_foreground_slice() -> None:
         "PRODUCT_BUNDLE_IDENTIFIER: app.sugarman.macos.devicetest",
         "product: GS3DeviceProvisioning",
         "product: GS3DeviceTesting",
+        "product: GS3ProvisioningScan",
         "com.apple.security.device.bluetooth: true",
         "com.apple.security.files.user-selected.read-only: true",
     ):
@@ -885,8 +899,8 @@ def check_sensor_ownership_and_foreground_slice() -> None:
             error("private document import buffer must not use memory-mapped storage")
     if '.library(name: "PrivateDocumentImport"' not in package_text:
         error("private document importing must remain a separate package product")
-    if project.count("product: PrivateDocumentImport") != 3:
-        error("only iOS Device Test, Probe, and macOS Device Test may import private documents")
+    if project.count("product: PrivateDocumentImport") != 4:
+        error("only production onboarding, iOS Device Test, Probe, and macOS Device Test may import private documents")
     for relative in (
         "Apps/Sugarman/SugarmanApp.swift",
         "Apps/SugarmanProbe/ProbeAppModel.swift",
@@ -899,6 +913,20 @@ def check_sensor_ownership_and_foreground_slice() -> None:
             error(f"private JSON importer must not map files: {relative}")
 
     device_test_view = ROOT / "Apps/Sugarman/DeviceTestProvisioningSection.swift"
+    production_view = ROOT / "Apps/Sugarman/SensorConnectionSection.swift"
+    if not production_view.is_file():
+        error("missing production sensor provisioning UI")
+    else:
+        production_ui = production_view.read_text(encoding="utf-8", errors="replace")
+        for required in (
+            "#if !SUGARMAN_DEVICE_TEST",
+            "Import private handover file",
+            "Scan only; do not connect",
+            "Keep sensor connected",
+            "Delete private connection material",
+        ):
+            if required not in production_ui:
+                error(f"production provisioning UI missing explicit safety boundary: {required}")
     if not device_test_view.is_file():
         error("missing compile-time guarded device-test provisioning UI")
     else:
@@ -924,7 +952,7 @@ def check_sensor_ownership_and_foreground_slice() -> None:
         mac_body = mac_model.read_text(encoding="utf-8", errors="replace")
         mac_ui = mac_view.read_text(encoding="utf-8", errors="replace")
         for required in (
-            "GS3DeviceTestExternalOwnershipGate",
+            "GS3ExternalOwnershipGate",
             "confirmAndRunProbeBridgeScan()",
             "confirmAndArm()",
             "GS3ForegroundSessionLifecycle",

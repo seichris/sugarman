@@ -320,6 +320,46 @@ struct GS3ProtocolTests {
         #expect(decoded[1].trendCode == 5)
     }
 
+    @Test func nativeStateObservabilityIsPayloadFreeAndClassifierFailsClosed() throws {
+        let material = try syntheticGlucoseMaterial()
+        let records = try V3OfflineGlucoseNotificationDecoder.decode(
+            syntheticGlucoseNotification(
+                startingIndex: 0x1234,
+                endingReindex: 400,
+                records: [
+                    SyntheticGlucoseRecord(
+                        rawTemperature: 0x1112,
+                        rawDump: 0x2122,
+                        rawCurrent: 0x3132,
+                        rawDisplayGlucose: 0x3334,
+                        glucoseTenths: 72,
+                        flags: 0xAA,
+                        states: 0x75,
+                        rawCEVoltage: 0x4445,
+                        rawREVoltage: 0x5556
+                    )
+                ]
+            ),
+            using: material
+        )
+        let fingerprint = V3NativeStateFingerprint(record: try #require(records.first))
+        let summary = V3NativeStateSummary(records: records)
+
+        #expect(V3NativeStateClassifier.assess(fingerprint) == .unvalidated)
+        #expect(V3NativeStateClassifier.assess(fingerprint).sampleQuality == .questionable)
+        #expect(summary.recordCount == 1)
+        #expect(summary.distinctFingerprints == Set([fingerprint]))
+
+        var text = ""
+        dump(fingerprint, to: &text)
+        dump(summary, to: &text)
+        #expect(text.contains("distinctStateCount"))
+        #expect(!text.contains("4660"))
+        #expect(!text.contains("72"))
+        #expect(!text.contains("2863315899"))
+        #expect(!text.contains("010203040506"))
+    }
+
     @Test func v3OfflineGlucoseDecoderFailsClosedOnMalformedFrames() throws {
         let material = try syntheticGlucoseMaterial()
         let valid = try syntheticGlucoseNotification(

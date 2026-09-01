@@ -152,6 +152,7 @@ private final class ForegroundCallbackLog: @unchecked Sendable {
     private(set) var events: [GS3LifecycleEvent] = []
     private(set) var commits: [GS3BatchCommitSummary] = []
     private(set) var acknowledgements: [GS3ForegroundCommandKind] = []
+    private(set) var nativeStates: [V3NativeStateSummary] = []
     private(set) var failures: [GS3ForegroundCoordinatorFailure] = []
 
     func callbacks() -> GS3ForegroundSessionCallbacks {
@@ -160,6 +161,7 @@ private final class ForegroundCallbackLog: @unchecked Sendable {
             onLifecycleEvent: { [weak self] value in self?.appendEvent(value) },
             onSamplesCommitted: { [weak self] value in self?.appendCommit(value) },
             onCommandAcknowledged: { [weak self] value in self?.appendAcknowledgement(value) },
+            onNativeStateObserved: { [weak self] value in self?.appendNativeState(value) },
             onFailure: { [weak self] value in self?.appendFailure(value) }
         )
     }
@@ -169,11 +171,12 @@ private final class ForegroundCallbackLog: @unchecked Sendable {
         events: [GS3LifecycleEvent],
         commits: [GS3BatchCommitSummary],
         acknowledgements: [GS3ForegroundCommandKind],
+        nativeStates: [V3NativeStateSummary],
         failures: [GS3ForegroundCoordinatorFailure]
     ) {
         lock.lock()
         defer { lock.unlock() }
-        return (connections, events, commits, acknowledgements, failures)
+        return (connections, events, commits, acknowledgements, nativeStates, failures)
     }
 
     private func appendConnection(_ value: ConnectionState) {
@@ -190,6 +193,10 @@ private final class ForegroundCallbackLog: @unchecked Sendable {
 
     private func appendAcknowledgement(_ value: GS3ForegroundCommandKind) {
         lock.lock(); acknowledgements.append(value); lock.unlock()
+    }
+
+    private func appendNativeState(_ value: V3NativeStateSummary) {
+        lock.lock(); nativeStates.append(value); lock.unlock()
     }
 
     private func appendFailure(_ value: GS3ForegroundCoordinatorFailure) {
@@ -490,6 +497,8 @@ struct GS3ForegroundSessionCoordinatorTests {
         #expect(callbacks.acknowledgements == [.authentication, .effectiveData])
         #expect(callbacks.failures.isEmpty)
         #expect(callbacks.connections.last == .subscribed)
+        #expect(callbacks.nativeStates.count == 2)
+        #expect(callbacks.nativeStates.map(\.recordCount) == [2, 1])
 
         await harness.coordinator.stop()
         #expect(await harness.coordinator.currentPhase() == .disconnecting)

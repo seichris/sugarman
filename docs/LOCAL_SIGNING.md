@@ -33,12 +33,14 @@ not paste it into `project.yml` until that is an intentional, reviewed change.
   physical parity gates pass)
 - Installing the app on a physical iPhone
 
-The separate `SugarmanDeviceTest` scheme is the only normal-app target that
-links device-only GS3 provisioning. Its App ID must also be assigned to
-`group.app.sugarman.sensor-owner`. A development profile for a physical test
-must be constrained to the exact owner-confirmed device. Building, installing,
-launching, private import, and arming are separate approval gates. The normal
-`Sugarman` scheme remains fail closed.
+The normal `Sugarman` scheme now links the production provisioning and
+scan-only products, but every process begins disconnected: private import,
+scan-only lookup, and foreground connection are separate explicit UI gates.
+`SugarmanDeviceTest` additionally links the isolated link-loss test surface.
+Both App IDs must be assigned to `group.app.sugarman.sensor-owner`. A
+development profile for a physical test must be constrained to the exact
+owner-confirmed device. Building, installing, launching, private import,
+scan-only lookup, and connecting are separate approval gates.
 
 `SugarmanMacDeviceTest` is a separate macOS application and Keychain namespace.
 Its App ID must also be assigned to `group.app.sugarman.sensor-owner`. That
@@ -61,10 +63,15 @@ That is expected for unsigned CI simulator builds.
 
 ## Core Bluetooth restoration identifier
 
-`CoreBluetoothRuntime` registers `CBCentralManagerOptionRestoreIdentifierKey`
-as `app.sugarman.ios.gs3.transport`, matching Info.plist `bluetooth-central`.
-That identifier is restoration identity only. This build does **not** reconnect
-to a live sensor or resume authentication after `willRestoreState`.
+The production `GS3ForegroundCoreBluetoothTransport` registers
+`CBCentralManagerOptionRestoreIdentifierKey` as
+`app.sugarman.ios.gs3.managed-session`, matching Info.plist `bluetooth-central`.
+After an explicit user opt-in, the app reconstructs that manager on launch,
+accepts only the provisioned known peripheral from `willRestoreState`, and
+rediscovers, resubscribes, authenticates, and requests durable-overlap history.
+Device Test does not opt into restoration. Background relaunch and lock-screen
+behavior still require a separately confirmed physical test; an unsigned build
+is compile evidence only.
 
 `DEVELOPMENT_TEAM` is empty in Git (`Config/DevelopmentTeam.xcconfig` and
 `project.yml`). Fill it locally; do not invent or commit a team ID.

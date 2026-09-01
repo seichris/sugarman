@@ -2,15 +2,16 @@
 // Copyright (C) 2026 Sugarman contributors
 
 import AccountBinding
-#if SUGARMAN_DEVICE_TEST
 import GS3DeviceProvisioning
+import GS3ProvisioningScan
+#if SUGARMAN_DEVICE_TEST
 import GS3DeviceTesting
 import GS3Session
-import PrivateDocumentImport
 #endif
 import GS3Transport
 import Integrations
 import Observation
+import PrivateDocumentImport
 import SafetyEngine
 import SensorOnboarding
 import SugarmanDiagnostics
@@ -67,6 +68,25 @@ final class AppModel {
     var demoLoadError: String?
     var storeErrorMessage: String?
     private var foregroundSessionBridge: GS3ForegroundSessionLifecycle
+    private var currentScenePhase: ScenePhase
+#if !SUGARMAN_DEVICE_TEST
+    private var persistentSessionBridge: GS3PersistentSessionLifecycle
+    private var didBootstrapPersistentSensorConnection: Bool
+    var hasSensorProvisioning: Bool
+    var provisionedSensorID: UUID?
+    var isSensorConnectionEnabled: Bool
+    var sensorConnectionStatus: String
+    var sensorConnectionActivity: SensorConnectionActivity
+    var hasSensorProbeBridgePending: Bool
+    var isSensorProbeBridgeScanning: Bool
+    @ObservationIgnored private let sensorProvisioning: DeviceOnlyGS3Provisioning
+    @ObservationIgnored private let sensorExternalOwnershipGate:
+        GS3ExternalOwnershipGate
+    @ObservationIgnored private let sensorProbeBridgeScanner:
+        GS3ProbeProvisioningScanner
+    @ObservationIgnored private var sensorProbeBridgeRequest:
+        GS3ProbeBridgeScanRequest?
+#endif
 #if SUGARMAN_DEVICE_TEST
     var hasDeviceTestProvisioning: Bool
     var deviceTestLinkedSensorID: UUID?
@@ -81,14 +101,13 @@ final class AppModel {
     var isDeviceTestProbeBridgeScanning: Bool
     @ObservationIgnored private let deviceTestProvisioning: DeviceOnlyGS3Provisioning
     @ObservationIgnored private let deviceTestExternalOwnershipGate:
-        GS3DeviceTestExternalOwnershipGate
+        GS3ExternalOwnershipGate
     @ObservationIgnored private let deviceTestProbeBridgeScanner:
         GS3ProbeProvisioningScanner
     @ObservationIgnored private var deviceTestProbeBridgeRequest:
         GS3ProbeBridgeScanRequest?
     @ObservationIgnored private var managedDeviceTestController:
         GS3ManagedForegroundDeviceTestController?
-    private var currentScenePhase: ScenePhase
 #endif
 
     static func bootstrapped() -> AppModel {
@@ -133,8 +152,28 @@ final class AppModel {
         self.demoLoadError = nil
         self.storeErrorMessage = initialStoreError
         self.foregroundSessionBridge = GS3ForegroundSessionLifecycle()
+        self.currentScenePhase = .inactive
+#if !SUGARMAN_DEVICE_TEST
+        self.persistentSessionBridge = GS3PersistentSessionLifecycle()
+        self.didBootstrapPersistentSensorConnection = false
+        let externalOwnershipGate = GS3ExternalOwnershipGate()
+        self.hasSensorProvisioning = false
+        self.provisionedSensorID = nil
+        self.isSensorConnectionEnabled = false
+        self.sensorConnectionStatus =
+            "Import the private handover file for this already-active sensor."
+        self.sensorConnectionActivity = .notConfigured
+        self.hasSensorProbeBridgePending = false
+        self.isSensorProbeBridgeScanning = false
+        self.sensorProvisioning = DeviceOnlyGS3Provisioning(scope: .production)
+        self.sensorExternalOwnershipGate = externalOwnershipGate
+        self.sensorProbeBridgeScanner = GS3ProbeProvisioningScanner(
+            externalOwnershipGate: externalOwnershipGate
+        )
+        self.sensorProbeBridgeRequest = nil
+#endif
 #if SUGARMAN_DEVICE_TEST
-        let externalOwnershipGate = GS3DeviceTestExternalOwnershipGate()
+        let externalOwnershipGate = GS3ExternalOwnershipGate()
         self.hasDeviceTestProvisioning = false
         self.deviceTestLinkedSensorID = nil
         self.isDeviceTestArmed = false
@@ -146,14 +185,13 @@ final class AppModel {
         self.isDeviceTestLinkLossInjectionPending = false
         self.hasDeviceTestProbeBridgePending = false
         self.isDeviceTestProbeBridgeScanning = false
-        self.deviceTestProvisioning = DeviceOnlyGS3Provisioning()
+        self.deviceTestProvisioning = DeviceOnlyGS3Provisioning(scope: .deviceTest)
         self.deviceTestExternalOwnershipGate = externalOwnershipGate
         self.deviceTestProbeBridgeScanner = GS3ProbeProvisioningScanner(
             externalOwnershipGate: externalOwnershipGate
         )
         self.deviceTestProbeBridgeRequest = nil
         self.managedDeviceTestController = nil
-        self.currentScenePhase = .inactive
 #endif
     }
 
@@ -208,11 +246,10 @@ final class AppModel {
     }
 
     func handleScenePhase(_ phase: ScenePhase) async {
-#if SUGARMAN_DEVICE_TEST
         currentScenePhase = phase
-#endif
         switch phase {
         case .active:
+#if SUGARMAN_DEVICE_TEST
             do {
                 try await foregroundSessionBridge.enterForeground()
             } catch {
@@ -221,6 +258,9 @@ final class AppModel {
                 // persisted disconnected projection.
                 storeErrorMessage = String(localized: "live.session_start_failed")
             }
+#else
+            await bootstrapPersistentSensorConnectionIfNeeded()
+#endif
         case .inactive:
             // Transient foreground interruptions (for example, system UI)
             // must not churn ownership or manufacture a reconnect.
@@ -228,13 +268,19 @@ final class AppModel {
         case .background:
 #if SUGARMAN_DEVICE_TEST
             deviceTestProbeBridgeScanner.cancel()
-#endif
             await foregroundSessionBridge.leaveForeground()
+#else
+            sensorProbeBridgeScanner.cancel()
+            await bootstrapPersistentSensorConnectionIfNeeded()
+#endif
         @unknown default:
 #if SUGARMAN_DEVICE_TEST
             deviceTestProbeBridgeScanner.cancel()
-#endif
             await foregroundSessionBridge.leaveForeground()
+#else
+            sensorProbeBridgeScanner.cancel()
+            await bootstrapPersistentSensorConnectionIfNeeded()
+#endif
         }
         await refresh()
     }
@@ -263,6 +309,300 @@ final class AppModel {
         }
     }
 
+#if !SUGARMAN_DEVICE_TEST
+    private func bootstrapPersistentSensorConnectionIfNeeded() async {
+        guard !didBootstrapPersistentSensorConnection else { return }
+        didBootstrapPersistentSensorConnection = true
+        do {
+            let summary = try await sensorProvisioning.summary()
+            hasSensorProvisioning = summary != nil
+            provisionedSensorID = summary?.linkedSensorID
+            guard summary?.connectionIntentEnabled == true else {
+                isSensorConnectionEnabled = false
+                sensorConnectionActivity = summary == nil ? .notConfigured : .stopped
+                return
+            }
+            installPersistentSensorFactory()
+            isSensorConnectionEnabled = true
+            sensorConnectionActivity = .connecting
+            sensorConnectionStatus = "Connecting to the sensor."
+            try await persistentSessionBridge.startIfNeeded()
+        } catch {
+            isSensorConnectionEnabled = false
+            sensorConnectionActivity = .failed
+            sensorConnectionStatus =
+                "The saved sensor connection failed closed. Open Sensor Connection to try again."
+            try? await sensorProvisioning.setConnectionIntentEnabled(false)
+            await persistentSessionBridge.removeFactory()
+        }
+    }
+
+    private func installPersistentSensorFactory() {
+        let provisioning = sensorProvisioning
+        let liveStore = primaryStore
+        let callbacks = makeSensorCallbacks()
+        persistentSessionBridge.install {
+            try await provisioning.makeController(
+                store: liveStore,
+                callbacks: callbacks
+            )
+        }
+    }
+
+    private func makeSensorCallbacks() -> GS3ForegroundSessionCallbacks {
+        GS3ForegroundSessionCallbacks(
+            onConnection: { [weak self] connection in
+                Task { @MainActor [weak self] in
+                    self?.connection = connection
+                    await self?.refresh()
+                }
+            },
+            onLifecycleEvent: { [weak self] event in
+                Task { @MainActor [weak self] in
+                    guard let self, self.isSensorConnectionEnabled else { return }
+                    self.sensorConnectionActivity = SensorConnectionActivity(
+                        phase: event.phase
+                    )
+                    self.sensorConnectionStatus = self.sensorActivityStatus
+                }
+            },
+            onSamplesCommitted: { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    await self?.refresh()
+                }
+            },
+            onFailure: { [weak self] failure in
+                Task { @MainActor [weak self] in
+                    await self?.handleSensorSessionFailure(failure)
+                }
+            }
+        )
+    }
+
+    private func handleSensorSessionFailure(
+        _ failure: GS3ForegroundCoordinatorFailure
+    ) async {
+        sensorConnectionActivity = .failed
+        sensorConnectionStatus =
+            "The sensor connection failed closed. Open Sensor Connection to try again."
+        isSensorConnectionEnabled = false
+        if failure != .ownershipUnavailable {
+            try? await sensorProvisioning.setConnectionIntentEnabled(false)
+        }
+        await persistentSessionBridge.removeFactory()
+        await refresh()
+    }
+
+    var sensorActivityStatus: String {
+        switch sensorConnectionActivity {
+        case .notConfigured:
+            "Set up the sensor connection to receive readings."
+        case .stopped:
+            "Sensor connection is stopped."
+        case .connecting:
+            "Connecting to the sensor."
+        case .synchronizing:
+            "Synchronizing sensor history."
+        case .live:
+            "Sensor connection is live."
+        case .reconnecting:
+            "Reconnecting to the sensor."
+        case .failed:
+            "The sensor connection failed closed."
+        }
+    }
+
+    func refreshSensorProvisioningAvailability() async {
+        do {
+            let summary = try await sensorProvisioning.summary()
+            hasSensorProvisioning = summary != nil
+            provisionedSensorID = summary?.linkedSensorID
+            if !isSensorConnectionEnabled {
+                sensorConnectionActivity = summary == nil ? .notConfigured : .stopped
+            }
+            if summary != nil, !isSensorConnectionEnabled {
+                sensorConnectionStatus =
+                    "Private connection material is available in this iPhone's Keychain."
+            } else if summary == nil {
+                sensorConnectionStatus = hasSensorProbeBridgePending
+                    ? "Private handover material is ready in memory. Run the scan-only lookup next."
+                    : "Import the private handover file for this already-active sensor."
+            }
+        } catch {
+            hasSensorProvisioning = false
+            provisionedSensorID = nil
+            sensorConnectionStatus = error.localizedDescription
+        }
+    }
+
+    func prepareSensorProbeBridge(
+        from url: URL,
+        linkedSensorID: UUID
+    ) async {
+        guard !isSensorConnectionEnabled,
+              !hasSensorProvisioning,
+              !isSensorProbeBridgeScanning else {
+            sensorConnectionStatus =
+                "Disconnect before importing private handover material."
+            return
+        }
+        let accessed = url.startAccessingSecurityScopedResource()
+        defer {
+            if accessed { url.stopAccessingSecurityScopedResource() }
+        }
+        do {
+            let buffer = try PrivateDocumentImportBuffer(contentsOf: url)
+            defer { buffer.zeroize() }
+            let request = try await buffer.withData { data in
+                try await sensorProvisioning.prepareProbeBridgeImport(
+                    data,
+                    linkedSensorID: linkedSensorID,
+                    in: primaryStore
+                )
+            }
+            sensorProbeBridgeRequest = request
+            hasSensorProbeBridgePending = true
+            sensorConnectionStatus =
+                "Private handover material is ready in memory. No Bluetooth action has started."
+        } catch {
+            sensorConnectionStatus = sensorProvisioningFailureMessage(error)
+        }
+    }
+
+    func confirmExclusiveSensorAccess() {
+        sensorExternalOwnershipGate.confirmExclusiveAccess()
+    }
+
+    func runSensorProbeBridgeScan() async {
+        defer { sensorExternalOwnershipGate.revoke() }
+        guard currentScenePhase == .active else {
+            sensorConnectionStatus =
+                "Keep Sugarman in the foreground for the scan-only lookup."
+            return
+        }
+        guard !isSensorConnectionEnabled,
+              !hasSensorProvisioning,
+              !isSensorProbeBridgeScanning,
+              let request = sensorProbeBridgeRequest else { return }
+        isSensorProbeBridgeScanning = true
+        sensorConnectionStatus =
+            "Scanning only for the exact private sensor name. No connection or command is allowed."
+        do {
+            let peripheralID = try await sensorProbeBridgeScanner.scan(
+                matching: request
+            )
+            try await sensorProvisioning.completeProbeBridgeImport(
+                request: request,
+                peripheralID: peripheralID,
+                into: primaryStore
+            )
+            sensorProbeBridgeRequest = nil
+            hasSensorProbeBridgePending = false
+            isSensorProbeBridgeScanning = false
+            try await refreshFromStore()
+            await refreshSensorProvisioningAvailability()
+            sensorConnectionStatus =
+                "Sensor connection is ready. The scan did not connect or send a command."
+        } catch {
+            isSensorProbeBridgeScanning = false
+            sensorConnectionStatus = sensorProvisioningFailureMessage(error)
+        }
+    }
+
+    func cancelSensorProbeBridgeScan() {
+        guard isSensorProbeBridgeScanning else { return }
+        sensorProbeBridgeScanner.cancel()
+    }
+
+    func discardSensorProbeBridge() async {
+        sensorProbeBridgeScanner.cancel()
+        await sensorProvisioning.discardProbeBridgeImport()
+        sensorProbeBridgeRequest = nil
+        hasSensorProbeBridgePending = false
+        isSensorProbeBridgeScanning = false
+        sensorConnectionStatus =
+            "Pending private handover material was discarded."
+    }
+
+    func connectSensor() async {
+        defer { sensorExternalOwnershipGate.revoke() }
+        guard !isSyntheticDemo else {
+            sensorConnectionStatus = "Exit demo mode before connecting to the sensor."
+            return
+        }
+        guard hasSensorProvisioning,
+              !isSensorConnectionEnabled,
+              !isSensorProbeBridgeScanning else { return }
+        do {
+            try sensorExternalOwnershipGate.requireConfirmation()
+        } catch {
+            sensorConnectionStatus = error.localizedDescription
+            return
+        }
+
+        do {
+            didBootstrapPersistentSensorConnection = true
+            try await sensorProvisioning.setConnectionIntentEnabled(true)
+            installPersistentSensorFactory()
+            isSensorConnectionEnabled = true
+            sensorConnectionActivity = .connecting
+            sensorConnectionStatus = "Connecting to the sensor."
+            try await persistentSessionBridge.startIfNeeded()
+        } catch {
+            isSensorConnectionEnabled = false
+            sensorConnectionActivity = .failed
+            try? await sensorProvisioning.setConnectionIntentEnabled(false)
+            await persistentSessionBridge.removeFactory()
+            sensorConnectionStatus =
+                "The sensor connection failed closed. No private details were retained."
+        }
+    }
+
+    func stopSensorConnection() async {
+        isSensorConnectionEnabled = false
+        sensorConnectionActivity = hasSensorProvisioning ? .stopped : .notConfigured
+        sensorExternalOwnershipGate.revoke()
+        try? await sensorProvisioning.setConnectionIntentEnabled(false)
+        await persistentSessionBridge.removeFactory()
+        if hasSensorProvisioning {
+            sensorConnectionStatus =
+                "Sensor disconnected. Private material remains device-only."
+        }
+        await refresh()
+    }
+
+    func deleteSensorProvisioning() async {
+        sensorProbeBridgeScanner.cancel()
+        await stopSensorConnection()
+        do {
+            try await sensorProvisioning.delete()
+            hasSensorProvisioning = false
+            provisionedSensorID = nil
+            sensorProbeBridgeRequest = nil
+            hasSensorProbeBridgePending = false
+            isSensorProbeBridgeScanning = false
+            sensorConnectionStatus =
+                "Private sensor connection material was deleted from this iPhone."
+            sensorConnectionActivity = .notConfigured
+        } catch {
+            sensorConnectionStatus = sensorProvisioningFailureMessage(error)
+        }
+    }
+
+    private func sensorProvisioningFailureMessage(_ error: Error) -> String {
+        switch error {
+        case let error as GS3DeviceProvisioningError:
+            error.localizedDescription
+        case let error as GS3ProbeProvisioningScanError:
+            error.localizedDescription
+        case let error as GS3ExternalOwnershipError:
+            error.localizedDescription
+        default:
+            "The private sensor operation failed closed. No file or private details were retained."
+        }
+    }
+#endif
+
 #if SUGARMAN_DEVICE_TEST
     private func makeDeviceTestCallbacks() -> GS3ForegroundSessionCallbacks {
         let refresh: @Sendable () -> Void = { [weak self] in
@@ -290,6 +630,11 @@ final class AppModel {
                     case .effectiveData:
                         self?.deviceTestHistoryAcknowledgementCount += 1
                     }
+                }
+            },
+            onNativeStateObserved: { [weak self] summary in
+                Task { @MainActor [weak self] in
+                    self?.recordDeviceTestLifecycle(summary.description)
                 }
             },
             onFailure: { [weak self] failure in
@@ -688,6 +1033,15 @@ final class AppModel {
         deviceTestProbeBridgeRequest = nil
         hasDeviceTestProbeBridgePending = false
         isDeviceTestProbeBridgeScanning = false
+#else
+        sensorProbeBridgeScanner.cancel()
+        await stopSensorConnection()
+        try await sensorProvisioning.delete()
+        hasSensorProvisioning = false
+        provisionedSensorID = nil
+        sensorProbeBridgeRequest = nil
+        hasSensorProbeBridgePending = false
+        isSensorProbeBridgeScanning = false
 #endif
         try await primaryStore.deleteAll()
         store = primaryStore

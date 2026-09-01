@@ -45,18 +45,19 @@ dependencies. See [docs/UPSTREAMS.md](docs/UPSTREAMS.md).
   no-dosing notice.
 - The legacy normal-app request enum remains empty, its generic codec factory
   remains fail closed, and the read-only diagnostic transport still has no
-  write API. A separate reviewed foreground adapter can retrieve one known
+  write API. A separate reviewed managed adapter can retrieve one known
   peripheral and execute only package-scoped typed `0xE2` authentication and
   `0x39` effective-data requests, both with response. The release bootstrap
-  installs no factory or active-session material, so it cannot instantiate that
-  path without a separately reviewed device-only artifact. The concrete
+  installs no factory or active-session material until device-only provisioning
+  and explicit user opt-in are present. That opt-in is then retained in the
+  device-only Keychain so iOS can restore the known-peer connection. The concrete
   adapter/coordinator are package-only; their public factory always installs the
   real shared process owner and bounded reconnect scheduler.
 - A separately signed `SugarmanDeviceTest` target reuses the normal Sugarman UI,
   store, safety projection, and production coordinator without linking the
   historical one-shot Probe. Its dedicated provisioning module accepts one
   strict private JSON document after installation, normalizes it into a
-  when-unlocked, this-device-only Keychain item, and prepares only a local
+  scope-specific, this-device-only Keychain item, and prepares only a local
   already-active `.live` / `.v3AES` session. It can alternatively validate the
   historical Probe JSON in memory, then—behind another explicit confirmation—
   run one ten-second, exact-name, shared-owner scan that stores the matching
@@ -64,7 +65,11 @@ dependencies. See [docs/UPSTREAMS.md](docs/UPSTREAMS.md).
   scan-only adapter has no connect, GATT, subscription, command, or write API.
   Every app process starts unarmed, and only a separate in-app confirmation
   installs the typed factory and begins the managed foreground lifecycle. The
-  release `Sugarman` target does not link this module.
+  release `Sugarman` target now links the ordinary provisioning and scan-only
+  products for the same explicit already-active-sensor onboarding, but does not
+  link the Device-Test-only link-loss surface. The historical private file was
+  manually assembled rather than exported by Android; see the
+  [handover JSON provenance](docs/GS3_PRIVATE_HANDOVER_JSON_PROVENANCE.md).
 - An isolated `SugarmanMacDeviceTest` target reuses the same typed controller,
   persistence, ownership, and payload-free diagnostics for faster Mac-side
   hardware iteration. Its exact-name scan resolves a Mac-local CoreBluetooth
@@ -72,13 +77,15 @@ dependencies. See [docs/UPSTREAMS.md](docs/UPSTREAMS.md).
   every phone and other app has released the sensor. It is reusable groundwork
   for a future Mac product, not a production release or a substitute for final
   iPhone acceptance. See the [macOS Device Test guide](docs/MACOS_DEVICE_TEST.md).
-- The production foreground lifecycle requires one shared App Group process
+- The production managed lifecycle requires one shared App Group process
   lease, repeats subscription/authentication/history on every connection, uses
   bounded single-flight reconnect, establishes a durable sensor-time anchor
-  with its cadence/revision, and commits overlapping history atomically. The
+  with its cadence/revision, commits overlapping history atomically, and uses a
+  stable CoreBluetooth restoration identifier without adding a scan or command.
+  The
   reducer, coordinator,
   persistence, ownership, and privacy boundaries are host-tested; CoreBluetooth
-  reconnect and timestamp behavior remain physical gates. See the
+  background relaunch, reconnect, and timestamp behavior remain physical gates. See the
   [foreground production design](docs/GS3_FOREGROUND_PRODUCTION_DESIGN.md).
 - A separate, foreground-only `SugarmanProbe` developer target can perform one
   tightly bounded already-active handover attempt: subscribe to FF31, transmit

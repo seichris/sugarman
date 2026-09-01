@@ -32,29 +32,29 @@ extension GS3DeviceProvisioningError: LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .invalidDocument:
-            "The private device-test provisioning document is malformed."
+            "The private sensor provisioning document is malformed."
         case .unsupportedSchemaVersion(let version):
-            "Private device-test provisioning schema version \(version) is unsupported."
+            "Private sensor provisioning schema version \(version) is unsupported."
         case .unexpectedDocumentField:
-            "The private device-test provisioning document contains an unsupported field."
+            "The private sensor provisioning document contains an unsupported field."
         case .invalidPeripheralIdentifier:
-            "The private device-test provisioning document has an invalid known-peripheral identifier."
+            "The private sensor provisioning document has an invalid known-peripheral identifier."
         case .invalidHex(let field):
-            "Private device-test field \(field) must contain ASCII hexadecimal bytes."
+            "Private sensor provisioning field \(field) must contain ASCII hexadecimal bytes."
         case .invalidLength(let field, let expected, let actual):
-            "Private device-test field \(field) must contain \(expected) bytes; received \(actual)."
+            "Private sensor provisioning field \(field) must contain \(expected) bytes; received \(actual)."
         case .invalidHistoryStart:
-            "The private device-test capture-backed history start is invalid."
+            "The private sensor capture-backed history start is invalid."
         case .invalidStoredMaterial:
-            "Stored private device-test material is invalid."
+            "Stored private sensor material is invalid."
         case .missingMaterial:
-            "Private device-test material is missing. Import it again."
+            "Private sensor material is missing. Import it again."
         case .linkedIdentityUnavailable:
             "The linked local sensor identity is unavailable."
         case .sessionConflict:
             "The linked local sensor session conflicts with the provisioned live V3 session."
         case .replacementRequiresDeletion:
-            "Delete the existing private device-test material before provisioning another sensor."
+            "Delete the existing private sensor material before provisioning another sensor."
         case .invalidProbePeripheralName:
             "The Probe JSON must contain one bounded expected peripheral name for scan-only provisioning."
         case .probeBridgeAlreadyPrepared:
@@ -68,9 +68,9 @@ extension GS3DeviceProvisioningError: LocalizedError {
         case .probeBridgePeripheralAmbiguous:
             "The bounded provisioning scan found more than one matching peripheral and failed closed."
         case .keychain(let status):
-            "Private device-test Keychain operation failed with status \(status)."
+            "Private sensor Keychain operation failed with status \(status)."
         case .persistence:
-            "The private device-test session could not be prepared in local storage."
+            "The private sensor session could not be prepared in local storage."
         }
     }
 }

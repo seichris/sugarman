@@ -3,23 +3,23 @@
 
 import Foundation
 
-public enum GS3DeviceTestExternalOwnershipError: Error, Sendable, Equatable {
+public enum GS3ExternalOwnershipError: Error, Sendable, Equatable {
     case confirmationRequired
 }
 
-extension GS3DeviceTestExternalOwnershipError: LocalizedError {
+extension GS3ExternalOwnershipError: LocalizedError {
     public var errorDescription: String? {
         "Confirm that every other phone, app, and process has released the owned sensor."
     }
 }
 
 /// Process-local confirmation for owners that cannot share the App Group lock,
-/// such as an iPhone or Android device.
+/// such as another iPhone or an Android device.
 ///
-/// Confirmation is deliberately never persisted. The real controller and the
-/// scan-only adapter still acquire the kernel-backed local process lease; this
-/// gate adds a separate human boundary for cross-device exclusion.
-public final class GS3DeviceTestExternalOwnershipGate: @unchecked Sendable {
+/// Confirmation is deliberately never persisted. The controller and scan-only
+/// adapter still acquire the kernel-backed local process lease; this adds the
+/// separate human boundary required for cross-device exclusion.
+public final class GS3ExternalOwnershipGate: @unchecked Sendable {
     private let lock = NSLock()
     private var confirmed = false
 
@@ -39,7 +39,7 @@ public final class GS3DeviceTestExternalOwnershipGate: @unchecked Sendable {
 
     public func requireConfirmation() throws {
         guard isConfirmed else {
-            throw GS3DeviceTestExternalOwnershipError.confirmationRequired
+            throw GS3ExternalOwnershipError.confirmationRequired
         }
     }
 }
