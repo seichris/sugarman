@@ -786,7 +786,7 @@ struct GS3ForegroundSessionCoordinatorTests {
 
         let rejection = GS3ProtocolRejection(
             origin: .inboundClassification,
-            frameCategory: .notificationCandidate,
+            frameCategory: .observedHistoryPreambleCandidate,
             frameByteCount: 24,
             timingWindow: .authenticated
         )
@@ -815,6 +815,22 @@ struct GS3ForegroundSessionCoordinatorTests {
         #expect(rejectionIndex < disconnectedIndex)
         #expect(disconnectedIndex < stoppedIndex)
         #expect(snapshot.events.filter { $0.kind == .protocolRejected }.count == 1)
+        #expect(
+            snapshot.events[rejectionIndex].protocolRejection?.frameCategory
+                == .observedHistoryPreambleCandidate
+        )
+        #expect(
+            snapshot.events[rejectionIndex].protocolRejection?.timingWindow
+                == .authenticated
+        )
+        let diagnosticText = snapshot.events[rejectionIndex].description
+        #expect(diagnosticText.contains("frame=observedHistoryPreambleCandidate"))
+        for forbidden in [
+            "0x36", "sensor-identifier", "private-material", "glucose-value",
+            "record-index", "json-contents", "json-hash", "packet-body",
+        ] {
+            #expect(!diagnosticText.contains(forbidden))
+        }
         #expect(snapshot.acknowledgements == [.authentication])
         #expect(try await harness.store.samples(sessionID: harness.sessionID).isEmpty)
         #expect(harness.ownership.latestLease?.isActive == false)

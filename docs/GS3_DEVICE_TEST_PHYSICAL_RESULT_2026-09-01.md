@@ -124,3 +124,43 @@ The next physical step may be accelerated with the isolated macOS Device Test,
 but a signed exact Mac artifact plus separate launch, private import, scan, and
 arm confirmations are still required. Final product acceptance remains an
 iPhone gate. See [`MACOS_DEVICE_TEST.md`](MACOS_DEVICE_TEST.md).
+
+## First managed macOS Device Test run
+
+The owner subsequently built and signed the exact Mac source commit
+`0efb7f22e033e29315b0ef47ca1673b005eec2c5` with the
+`SugarmanMacDeviceTest` scheme. The signed-app manifest SHA-256 was
+`eabc34256c2fb6875536651692a8556ff0c22be8bcd786ff5dd5fe7c36005fe0`,
+and the bundle identifier was `app.sugarman.macos.devicetest`. Separate owner
+confirmations covered launch, private import, the bounded scan-only action, and
+one managed foreground connection.
+
+The payload-free report recorded one authentication write acknowledgement and
+acceptance, one coordinator history-request intent, no history-write
+acknowledgement, no history preamble, and then inbound classification rejection
+of a 24-byte notification candidate in the transport's `authenticated` timing
+window. The rejection preceded the protocol-violation disconnect and terminal
+stop at approximately two elapsed seconds. It recorded no inserted sample,
+duplicate, gap, retry, or reconnect. A later explicit stop produced a separate
+stopped lifecycle entry; the app was then quit and verified absent from the
+process list.
+
+This independently reproduces the typed iPhone failure ordering on the Mac and
+supports the same notification-overtaking-history-dispatch hypothesis. It does
+not prove that the rejected frame was the observed `0x36` preamble, identify its
+meaning, establish sensor health, or replace an official-app handback or final
+iPhone acceptance run. The normalized private provisioning remains only in the
+Mac-specific this-device-only Keychain item.
+
+## Next fail-closed diagnostic refinement
+
+The next source candidate may distinguish the already allowlisted, exact
+checksum-valid 24-byte observed-preamble shape when it arrives outside its sole
+accepted pending-history-write window. The result is one bounded category: no
+packet body, command byte, sensor identifier, private material, glucose value,
+record index, imported JSON content or hash is reported.
+
+That refinement remains terminal outside the existing accepted window. It adds
+no accepted frame, request, write, retry, reconnect, readiness, or glucose
+semantics. It is host evidence only until a newly confirmed exact artifact
+reports the new categories.

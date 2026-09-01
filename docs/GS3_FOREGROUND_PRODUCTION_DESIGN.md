@@ -88,6 +88,13 @@ only the resulting known peripheral and never scans.
   acknowledgement. This rules out the other typed rejection origins for that
   connection. It supports a timing-race hypothesis but still does not identify
   the decrypted command or justify accepting the frame.
+- The first exact Mac Device Test artifact at commit `0efb7f2` independently
+  reproduced that ordering: authentication was acknowledged and accepted, the
+  coordinator emitted one history intent, the transport reported no history
+  write acknowledgement, and a 24-byte notification candidate was rejected in
+  the transport's `authenticated` window. It inserted no sample and performed
+  no retry or reconnect. Cross-platform reproduction strengthens the timing-race
+  inference but still does not identify the command or justify accepting it.
 - Two earlier attempts stopped before FF31 subscription while both Sugarman
   processes were running; a Probe-only run reached live data. That sequence is
   observed, but it does not isolate process contention as the cause.
@@ -148,6 +155,11 @@ under `docs/evidence/`. The managed-run result is
    payload-free count, and continue receiving. It grants no write, retry,
    glucose, acknowledgement, or readiness meaning. Every other unsupported,
    malformed, duplicate, or late notification remains terminal.
+9. **Diagnose the exact preamble shape outside its window without accepting
+   it.** If the exact allowlisted, checksum-valid 24-byte observed-preamble shape
+   arrives outside its accepted pending-write window, report only an
+   `observedHistoryPreambleCandidate` category and continue to fail closed. This
+   adds no command byte, payload, write, retry, reconnect, or receive semantics.
 
 These are reviewed policies, not claims of physical iPhone reconnect parity.
 

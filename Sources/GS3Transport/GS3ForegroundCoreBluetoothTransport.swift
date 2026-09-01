@@ -882,7 +882,11 @@ extension GS3ForegroundCoreBluetoothTransport: CBPeripheralDelegate {
             rejectLocked(
                 .inboundClassification,
                 frameByteCount: value.count,
-                timingWindow: diagnosticTimingWindowLocked()
+                timingWindow: diagnosticTimingWindowLocked(),
+                frameCategory: V3ForegroundInboundClassifier.rejectionFrameCategory(
+                    for: error,
+                    frameByteCount: value.count
+                )
             )
         }
     }

@@ -890,8 +890,11 @@ For every claimed supported firmware/SKU:
 - onboarding identifies the sensor without unsafe fallback;
 - authentication/binding succeeds only with the legitimate owner identity;
 - the command audit shows no unexplained write;
-- at least 99% of expected five-minute samples are retained while the phone is
-  in range and the app has not been explicitly force-quit;
+- at least 99% of samples expected at the cadence verified for that exact
+  firmware/SKU are retained while the phone is in range and the app has not
+  been explicitly force-quit; the owned Mainland V3 capture currently supports
+  an approximately one-minute cadence, while the generic GS3 product material's
+  five-minute claim remains a separate acceptance input;
 - recoverable disconnects backfill gaps without duplicates;
 - aligned samples match official app/export values after documented unit
   rounding, with every discrepancy investigated;

@@ -108,6 +108,13 @@ dependencies. See [docs/UPSTREAMS.md](docs/UPSTREAMS.md).
   or readiness semantics. Every duplicate, late, malformed, or different
   unsupported frame remains terminal. See the
   [managed-run result](docs/GS3_DEVICE_TEST_PHYSICAL_RESULT_2026-09-01.md).
+- The first exact Mac Device Test run reproduced the typed iPhone ordering:
+  authentication succeeded, one history intent was emitted, no history write
+  acknowledgement arrived, and a 24-byte notification candidate was rejected
+  in the transport's authenticated window. The next fail-closed diagnostic
+  distinguishes the exact allowlisted observed preamble shape without accepting
+  it or exposing its command byte. This remains a failed reading/durability run
+  and does not replace iPhone acceptance.
 
 ## Repository layout
 

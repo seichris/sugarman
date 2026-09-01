@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Sugarman contributors
 
 import GS3Protocol
+import GS3Session
 
 /// The payload-free connection state needed to classify one empirically
 /// observed history preamble without weakening the general decoder policy.
@@ -53,6 +54,12 @@ package enum V3ForegroundInboundClassification: Sendable, Equatable {
     case observedHistoryPreamble
 }
 
+/// An allowlisted, payload-free reason the otherwise exact observed preamble
+/// was rejected. No case can carry a packet, command byte, index, or material.
+package enum V3ForegroundInboundClassifierError: Error, Sendable, Equatable {
+    case observedHistoryPreambleOutsideAllowedWindow
+}
+
 /// Pure, host-testable inbound policy for the foreground transport.
 ///
 /// Public capture evidence does not establish the product meaning of command
@@ -82,11 +89,25 @@ package enum V3ForegroundInboundClassifier: Sendable {
                   protocolError == .unsupportedV3NotificationCommand(
                       observedHistoryPreambleCommand
                   ),
-                  frame.byteCount == observedHistoryPreambleByteCount,
-                  context.permitsObservedHistoryPreamble else {
+                  frame.byteCount == observedHistoryPreambleByteCount else {
                 throw error
+            }
+            guard context.permitsObservedHistoryPreamble else {
+                throw V3ForegroundInboundClassifierError
+                    .observedHistoryPreambleOutsideAllowedWindow
             }
             return .observedHistoryPreamble
         }
+    }
+
+    package static func rejectionFrameCategory(
+        for error: any Error,
+        frameByteCount: Int
+    ) -> GS3ProtocolFrameCategory {
+        if let classifierError = error as? V3ForegroundInboundClassifierError,
+           classifierError == .observedHistoryPreambleOutsideAllowedWindow {
+            return .observedHistoryPreambleCandidate
+        }
+        return .classify(byteCount: frameByteCount)
     }
 }

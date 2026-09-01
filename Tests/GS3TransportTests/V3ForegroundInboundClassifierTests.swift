@@ -21,7 +21,10 @@ struct V3ForegroundInboundClassifierTests {
             historyPreambleCount: 0
         )
 
-        #expect(throws: GS3ProtocolError.unsupportedV3NotificationCommand(0x36)) {
+        #expect(
+            throws: V3ForegroundInboundClassifierError
+                .observedHistoryPreambleOutsideAllowedWindow
+        ) {
             try V3ForegroundInboundClassifier.classify(
                 frame,
                 using: material,
@@ -31,14 +34,22 @@ struct V3ForegroundInboundClassifierTests {
 
         let rejection = GS3ProtocolRejection(
             origin: .inboundClassification,
-            frameCategory: .notificationCandidate,
+            frameCategory: .observedHistoryPreambleCandidate,
             frameByteCount: frame.byteCount,
             timingWindow: .authenticated
         )
         #expect(
             rejection.description
-                == "origin=inboundClassification, frame=notificationCandidate, "
+                == "origin=inboundClassification, "
+                    + "frame=observedHistoryPreambleCandidate, "
                     + "bytes=24, window=authenticated"
+        )
+        #expect(
+            V3ForegroundInboundClassifier.rejectionFrameCategory(
+                for: V3ForegroundInboundClassifierError
+                    .observedHistoryPreambleOutsideAllowedWindow,
+                frameByteCount: frame.byteCount
+            ) == .observedHistoryPreambleCandidate
         )
     }
 
@@ -66,7 +77,10 @@ struct V3ForegroundInboundClassifierTests {
             pendingHistoryWriteContext(historyPreambleCount: 1),
         ]
         for context in disallowedContexts {
-            #expect(throws: GS3ProtocolError.unsupportedV3NotificationCommand(0x36)) {
+            #expect(
+                throws: V3ForegroundInboundClassifierError
+                    .observedHistoryPreambleOutsideAllowedWindow
+            ) {
                 try V3ForegroundInboundClassifier.classify(
                     frame,
                     using: material,
@@ -104,6 +118,19 @@ struct V3ForegroundInboundClassifierTests {
                 context: context
             )
         }
+
+        #expect(
+            V3ForegroundInboundClassifier.rejectionFrameCategory(
+                for: GS3ProtocolError.unsupportedV3NotificationCommand(0x31),
+                frameByteCount: 24
+            ) == .notificationCandidate
+        )
+        #expect(
+            V3ForegroundInboundClassifier.rejectionFrameCategory(
+                for: GS3ProtocolError.invalidV3GlucoseNotificationChecksum,
+                frameByteCount: 24
+            ) == .notificationCandidate
+        )
     }
 
     private func pendingHistoryWriteContext(

@@ -185,6 +185,26 @@ struct GS3SessionTests {
                 #expect(!text.contains(forbidden))
             }
         }
+
+        let knownPreambleRejection = GS3ProtocolRejection(
+            origin: .inboundClassification,
+            frameCategory: .observedHistoryPreambleCandidate,
+            frameByteCount: 24,
+            timingWindow: .authenticated
+        )
+        var dumped = ""
+        dump(knownPreambleRejection, to: &dumped)
+        let text = "\(knownPreambleRejection) "
+            + "\(String(reflecting: knownPreambleRejection)) \(dumped)"
+        #expect(text.contains("frame=observedHistoryPreambleCandidate"))
+        #expect(text.contains("window=authenticated"))
+        for forbidden in [
+            "0x36", "sensor-identifier", "glucose-value", "record-index",
+            "private-material", "json-contents", "json-hash", "packet-body",
+            "arbitrary-command-bytes",
+        ] {
+            #expect(!text.contains(forbidden))
+        }
     }
 
     @Test func reconnectIsSingleFlightAndRepeatsSubscriptionAuthenticationAndHistory() {

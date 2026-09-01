@@ -51,12 +51,18 @@ public enum GS3ProtocolRejectionOrigin: String, Sendable, Equatable, CaseIterabl
     case requestInvariant
 }
 
-/// Coarse frame shape derived only from the notification byte count.
+/// Privacy-safe frame classification for a rejected inbound value.
+///
+/// Most cases are derived only from byte count. The sole semantic case is an
+/// allowlisted, checksum-valid shape already recorded in public protocol
+/// evidence. It intentionally exposes neither the command byte nor any packet
+/// content.
 public enum GS3ProtocolFrameCategory: String, Sendable, Equatable {
     case unavailable
     case missing
     case controlCandidate
     case notificationCandidate
+    case observedHistoryPreambleCandidate
     case other
 
     package static func classify(byteCount: Int) -> Self {
