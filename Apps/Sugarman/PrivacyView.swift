@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Sugarman contributors
 
+import Foundation
 import GS3Transport
 import SugarmanDiagnostics
 import SugarmanDomain
+import SugarmanStore
 import SwiftUI
 
 struct PrivacyView: View {
@@ -12,6 +14,7 @@ struct PrivacyView: View {
     @State private var sessionPendingDelete: UUID?
     @State private var exportFileURL: URL?
     @State private var exportError: String?
+    @State private var diagnosticSummary: LocalDiagnosticLogSummary?
     @State private var peripheralSearchText = ""
 
     var body: some View {
@@ -57,6 +60,42 @@ struct PrivacyView: View {
                             .font(.footnote)
                     }
                 }
+                Section("privacy.local_diagnostics") {
+                    Text("privacy.local_diagnostics_body")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    if let diagnosticSummary {
+                        if diagnosticSummary.entryCount == 0 {
+                            Text("privacy.local_diagnostics_empty")
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text(
+                                String(
+                                    format: String(localized: "privacy.local_diagnostics_summary"),
+                                    locale: .current,
+                                    Int64(diagnosticSummary.entryCount),
+                                    Int64(diagnosticSummary.byteCount)
+                                )
+                            )
+                            .font(.footnote)
+                        }
+                        if diagnosticSummary.invalidLineCount > 0 {
+                            Text("privacy.local_diagnostics_invalid")
+                                .foregroundStyle(.red)
+                                .font(.footnote)
+                        }
+                    }
+                    Button("privacy.export_diagnostics") {
+                        Task { await export(kind: .diagnostics) }
+                    }
+                    .accessibilityLabel(Text("privacy.export_diagnostics"))
+                    .accessibilityHint(Text("privacy.export_diagnostics_hint"))
+                    if let diagnosticLogError = model.diagnosticLogError {
+                        Text(diagnosticLogError)
+                            .foregroundStyle(.red)
+                            .font(.footnote)
+                    }
+                }
                 Section("privacy.sessions") {
                     if model.sessions.isEmpty {
                         Text("privacy.no_sessions")
@@ -87,6 +126,7 @@ struct PrivacyView: View {
                         isOn: Binding(
                             get: { model.probeSession.isEnabled },
                             set: { enabled in
+                                model.recordProbeAction(enabled ? "enabled" : "disabled")
                                 Task { await model.probeSession.setEnabled(enabled) }
                             }
                         )
@@ -100,12 +140,14 @@ struct PrivacyView: View {
                         .foregroundStyle(.secondary)
                     if model.probeSession.isEnabled {
                         Button("privacy.probe_scan") {
+                            model.recordProbeAction("scan_started")
                             Task { await model.probeSession.startScan() }
                         }
                         .disabled(model.probeSession.selectedPeripheralID != nil)
                         .accessibilityHint(Text("privacy.probe_scan_hint"))
                         if model.probeSession.selectedPeripheralID != nil {
                             Button("privacy.probe_disconnect") {
+                                model.recordProbeAction("disconnect_requested")
                                 Task { await model.probeSession.disconnect() }
                             }
                         }
@@ -125,6 +167,7 @@ struct PrivacyView: View {
                             }
                             ForEach(visiblePeripherals, id: \.peripheralID) { item in
                                 Button {
+                                    model.recordProbeAction("peripheral_selected")
                                     Task { await model.probeSession.connectAndRead(item.peripheralID) }
                                 } label: {
                                     VStack(alignment: .leading) {
@@ -195,6 +238,7 @@ struct PrivacyView: View {
                     Task {
                         do {
                             try await model.deleteAllLocalData()
+                            diagnosticSummary = model.diagnosticLogSummary()
                         } catch {
                             model.storeErrorMessage = error.localizedDescription
                         }
@@ -225,6 +269,9 @@ struct PrivacyView: View {
             } message: {
                 Text("privacy.delete_session_body")
             }
+            .task {
+                diagnosticSummary = model.diagnosticLogSummary()
+            }
         }
     }
 
@@ -238,6 +285,7 @@ struct PrivacyView: View {
     private enum ExportKind {
         case json
         case csv
+        case diagnostics
     }
 
     private func export(kind: ExportKind) async {
@@ -252,7 +300,11 @@ struct PrivacyView: View {
             case .csv:
                 let text = try await model.exportCSV()
                 exportFileURL = try writer.writeCSV(text, to: directory)
+            case .diagnostics:
+                let data = try model.exportDiagnosticLogs()
+                exportFileURL = try writer.writeDiagnostics(data, to: directory)
             }
+            diagnosticSummary = model.diagnosticLogSummary()
         } catch {
             exportError = error.localizedDescription
             exportFileURL = nil

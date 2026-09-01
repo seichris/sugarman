@@ -70,8 +70,11 @@ final class AppModel {
     var exportFileWriter: PrivacyExportFileWriter
     var demoLoadError: String?
     var storeErrorMessage: String?
+    var diagnosticLogError: String?
+    @ObservationIgnored private let diagnosticLogStore: LocalDiagnosticLogStore
     private var foregroundSessionBridge: GS3ForegroundSessionLifecycle
     private var currentScenePhase: ScenePhase
+    private var didRecordLaunchDiagnostic: Bool
 #if !SUGARMAN_DEVICE_TEST
     private var persistentSessionBridge: GS3PersistentSessionLifecycle
     private var didBootstrapPersistentSensorConnection: Bool
@@ -126,7 +129,8 @@ final class AppModel {
         latestSample: GlucoseSample? = nil,
         preferredUnit: GlucoseUnit? = nil,
         probeEnabled: Bool = false,
-        initialStoreError: String? = nil
+        initialStoreError: String? = nil,
+        diagnosticLogStore: LocalDiagnosticLogStore? = nil
     ) {
         self.store = store
         self.primaryStore = store
@@ -157,8 +161,11 @@ final class AppModel {
         self.exportFileWriter = PrivacyExportFileWriter()
         self.demoLoadError = nil
         self.storeErrorMessage = initialStoreError
+        self.diagnosticLogError = nil
+        self.diagnosticLogStore = diagnosticLogStore ?? LocalDiagnosticLogStore()
         self.foregroundSessionBridge = GS3ForegroundSessionLifecycle()
         self.currentScenePhase = .inactive
+        self.didRecordLaunchDiagnostic = false
 #if !SUGARMAN_DEVICE_TEST
         self.persistentSessionBridge = GS3PersistentSessionLifecycle()
         self.didBootstrapPersistentSensorConnection = false
@@ -252,6 +259,88 @@ final class AppModel {
         return plan.phases.first { $0.id == selectedWorkoutPhaseID }
     }
 
+    func diagnosticLogSummary() -> LocalDiagnosticLogSummary {
+        do {
+            let summary = try diagnosticLogStore.summary()
+            diagnosticLogError = summary.invalidLineCount == 0
+                ? nil
+                : "Some local diagnostic entries could not be read."
+            return summary
+        } catch {
+            diagnosticLogError = "Local diagnostics are unavailable."
+            return LocalDiagnosticLogSummary(entryCount: 0, byteCount: 0)
+        }
+    }
+
+    func exportDiagnosticLogs() throws -> Data {
+        recordDiagnostic(
+            category: .export,
+            event: .exportRequested,
+            attributes: ["format": "jsonl"]
+        )
+        do {
+            let snapshot = try diagnosticLogStore.readData()
+            recordDiagnostic(
+                category: .export,
+                event: .exportCompleted,
+                attributes: [
+                    "format": "jsonl",
+                    "bytes": String(snapshot.count),
+                ]
+            )
+            // Include the completion marker in the file the user shares. If
+            // the marker could not be persisted, the pre-marker snapshot is
+            // still a valid export and is returned as a safe fallback.
+            return (try? diagnosticLogStore.readData()) ?? snapshot
+        } catch {
+            recordDiagnostic(
+                category: .export,
+                event: .exportFailed,
+                attributes: ["format": "jsonl"]
+            )
+            throw error
+        }
+    }
+
+    func recordProbeAction(_ action: String) {
+        recordDiagnostic(
+            category: .probe,
+            event: .probeAction,
+            attributes: ["action": action]
+        )
+    }
+
+    private func recordDiagnostic(
+        category: LocalDiagnosticCategory,
+        event: LocalDiagnosticEvent,
+        attributes: [String: String] = [:]
+    ) {
+        do {
+            try diagnosticLogStore.append(
+                LocalDiagnosticLogEntry(
+                    category: category,
+                    event: event,
+                    attributes: attributes
+                )
+            )
+        } catch {
+            diagnosticLogError = "Local diagnostics could not be saved."
+        }
+    }
+
+    private static func scenePhaseName(_ phase: ScenePhase) -> String {
+        switch phase {
+        case .active:
+            "active"
+        case .inactive:
+            "inactive"
+        case .background:
+            "background"
+        @unknown default:
+            "unknown"
+        }
+    }
+
     func refresh() async {
         do {
             try await refreshFromStore()
@@ -259,6 +348,10 @@ final class AppModel {
         } catch {
             // `refreshFromStore` preserves the last complete snapshot and
             // exposes the error through `storeErrorMessage`.
+            recordDiagnostic(
+                category: .storage,
+                event: .storeRefreshFailed
+            )
         }
     }
 
@@ -278,6 +371,18 @@ final class AppModel {
 
     func handleScenePhase(_ phase: ScenePhase) async {
         currentScenePhase = phase
+        if !didRecordLaunchDiagnostic {
+            didRecordLaunchDiagnostic = true
+            recordDiagnostic(
+                category: .app,
+                event: .appLaunched
+            )
+        }
+        recordDiagnostic(
+            category: .app,
+            event: .scenePhaseChanged,
+            attributes: ["phase": Self.scenePhaseName(phase)]
+        )
         switch phase {
         case .active:
 #if SUGARMAN_DEVICE_TEST
@@ -385,25 +490,50 @@ final class AppModel {
             onConnection: { [weak self] connection in
                 Task { @MainActor [weak self] in
                     self?.connection = connection
+                    self?.recordDiagnostic(
+                        category: .sensor,
+                        event: .sensorConnectionChanged,
+                        attributes: ["state": connection.rawValue]
+                    )
                     await self?.refresh()
                 }
             },
             onLifecycleEvent: { [weak self] event in
                 Task { @MainActor [weak self] in
-                    guard let self, self.isSensorConnectionEnabled else { return }
+                    guard let self else { return }
+                    self.recordDiagnostic(
+                        category: .sensor,
+                        event: .sensorLifecycle,
+                        attributes: event.localDiagnosticAttributes
+                    )
+                    guard self.isSensorConnectionEnabled else { return }
                     self.sensorConnectionActivity = SensorConnectionActivity(
                         phase: event.phase
                     )
                     self.sensorConnectionStatus = self.sensorActivityStatus
                 }
             },
-            onSamplesCommitted: { [weak self] _ in
+            onSamplesCommitted: { [weak self] summary in
                 Task { @MainActor [weak self] in
+                    self?.recordDiagnostic(
+                        category: .sensor,
+                        event: .sensorSamplesCommitted,
+                        attributes: [
+                            "inserted": String(summary.insertedCount),
+                            "duplicates": String(summary.duplicateCount),
+                            "gap_ranges": String(summary.gapRangeCount),
+                        ]
+                    )
                     await self?.refresh()
                 }
             },
             onFailure: { [weak self] failure in
                 Task { @MainActor [weak self] in
+                    self?.recordDiagnostic(
+                        category: .sensor,
+                        event: .sensorFailure,
+                        attributes: ["reason": failure.rawValue]
+                    )
                     await self?.handleSensorSessionFailure(failure)
                 }
             }
@@ -642,19 +772,52 @@ final class AppModel {
             }
         }
         return GS3ForegroundSessionCallbacks(
-            onConnection: { _ in refresh() },
-            onLifecycleEvent: { [weak self] event in
+            onConnection: { [weak self] connection in
+                refresh()
                 Task { @MainActor [weak self] in
-                    self?.deviceTestPhase = event.phase
-                    if event.phase == .live {
-                        self?.isDeviceTestLinkLossInjectionPending = false
-                    }
-                    self?.recordDeviceTestLifecycle(event.description)
+                    self?.recordDiagnostic(
+                        category: .sensor,
+                        event: .sensorConnectionChanged,
+                        attributes: ["state": connection.rawValue]
+                    )
                 }
             },
-            onSamplesCommitted: { _ in refresh() },
+            onLifecycleEvent: { [weak self] event in
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    self.recordDiagnostic(
+                        category: .sensor,
+                        event: .sensorLifecycle,
+                        attributes: event.localDiagnosticAttributes
+                    )
+                    self.deviceTestPhase = event.phase
+                    if event.phase == .live {
+                        self.isDeviceTestLinkLossInjectionPending = false
+                    }
+                    self.recordDeviceTestLifecycle(event.description)
+                }
+            },
+            onSamplesCommitted: { [weak self] summary in
+                refresh()
+                Task { @MainActor [weak self] in
+                    self?.recordDiagnostic(
+                        category: .sensor,
+                        event: .sensorSamplesCommitted,
+                        attributes: [
+                            "inserted": String(summary.insertedCount),
+                            "duplicates": String(summary.duplicateCount),
+                            "gap_ranges": String(summary.gapRangeCount),
+                        ]
+                    )
+                }
+            },
             onCommandAcknowledged: { [weak self] command in
                 Task { @MainActor [weak self] in
+                    self?.recordDiagnostic(
+                        category: .sensor,
+                        event: .sensorCommandAcknowledged,
+                        attributes: ["command": command.rawValue]
+                    )
                     switch command {
                     case .authentication:
                         self?.deviceTestAuthenticationAcknowledgementCount += 1
@@ -665,12 +828,25 @@ final class AppModel {
             },
             onNativeStateObserved: { [weak self] summary in
                 Task { @MainActor [weak self] in
+                    self?.recordDiagnostic(
+                        category: .sensor,
+                        event: .sensorNativeStateObserved,
+                        attributes: [
+                            "records": String(summary.recordCount),
+                            "distinct_states": String(summary.distinctFingerprints.count),
+                        ]
+                    )
                     self?.recordDeviceTestLifecycle(summary.description)
                 }
             },
             onFailure: { [weak self] failure in
                 refresh()
                 Task { @MainActor [weak self] in
+                    self?.recordDiagnostic(
+                        category: .sensor,
+                        event: .sensorFailure,
+                        attributes: ["reason": failure.rawValue]
+                    )
                     self?.deviceTestStatus =
                         "Managed foreground session failed closed (\(failure.rawValue))."
                 }
@@ -1004,45 +1180,129 @@ final class AppModel {
         )
         try await store.insertFueling(event)
         try await refreshFromStore()
+        recordDiagnostic(
+            category: .fueling,
+            event: .fuelingAdded,
+            attributes: [
+                "has_carbohydrates": String(carbohydrateGrams != nil),
+            ]
+        )
     }
 
     func deleteFueling(_ id: UUID) async throws {
         try await store.deleteFueling(id: id)
         try await refreshFromStore()
+        recordDiagnostic(
+            category: .fueling,
+            event: .fuelingDeleted
+        )
     }
 
     func addWorkoutPlan(_ plan: WorkoutPlan) async {
-        guard plan.isValid else { return }
-        try? await store.insertWorkoutPlan(plan)
+        guard plan.isValid else {
+            recordDiagnostic(
+                category: .workout,
+                event: .workoutPlanWriteFailed,
+                attributes: ["operation": "insert", "validation": "failed"]
+            )
+            return
+        }
+        do {
+            try await store.insertWorkoutPlan(plan)
+        } catch {
+            recordDiagnostic(
+                category: .workout,
+                event: .workoutPlanWriteFailed,
+                attributes: ["operation": "insert"]
+            )
+            await refresh()
+            return
+        }
         await refresh()
+        recordDiagnostic(
+            category: .workout,
+            event: .workoutPlanAdded,
+            attributes: ["phase_count": String(plan.phases.count)]
+        )
         selectWorkoutPlan(plan.id)
     }
 
     func updateWorkoutPlan(_ plan: WorkoutPlan) async {
-        guard plan.isValid else { return }
-        try? await store.updateWorkoutPlan(plan)
+        guard plan.isValid else {
+            recordDiagnostic(
+                category: .workout,
+                event: .workoutPlanWriteFailed,
+                attributes: ["operation": "update", "validation": "failed"]
+            )
+            return
+        }
+        do {
+            try await store.updateWorkoutPlan(plan)
+        } catch {
+            recordDiagnostic(
+                category: .workout,
+                event: .workoutPlanWriteFailed,
+                attributes: ["operation": "update"]
+            )
+            await refresh()
+            return
+        }
         await refresh()
+        recordDiagnostic(
+            category: .workout,
+            event: .workoutPlanUpdated,
+            attributes: ["phase_count": String(plan.phases.count)]
+        )
         selectWorkoutPlan(plan.id)
     }
 
     func addCodexTwoDayRide() async {
         let existingIDs = Set(workoutPlans.map(\.id))
+        var insertedCount = 0
+        var failedCount = 0
         for plan in WorkoutPlanCatalog.twoDay150KmRide where !existingIDs.contains(plan.id) {
-            try? await store.insertWorkoutPlan(plan)
+            do {
+                try await store.insertWorkoutPlan(plan)
+                insertedCount += 1
+            } catch {
+                failedCount += 1
+            }
         }
         await refresh()
+        recordDiagnostic(
+            category: .workout,
+            event: .workoutPlanCatalogApplied,
+            attributes: [
+                "catalog": "codex_two_day_ride",
+                "inserted_count": String(insertedCount),
+                "failed_count": String(failedCount),
+            ]
+        )
         if let first = WorkoutPlanCatalog.twoDay150KmRide.first {
             selectWorkoutPlan(first.id)
         }
     }
 
     func deleteWorkoutPlan(_ id: UUID) async {
-        try? await store.deleteWorkoutPlan(id: id)
+        do {
+            try await store.deleteWorkoutPlan(id: id)
+        } catch {
+            recordDiagnostic(
+                category: .workout,
+                event: .workoutPlanDeleteFailed
+            )
+            await refresh()
+            return
+        }
         if selectedWorkoutPlanID == id {
             selectedWorkoutPlanID = nil
             selectedWorkoutPhaseID = nil
         }
         await refresh()
+        recordDiagnostic(
+            category: .workout,
+            event: .workoutPlanDeleted
+        )
     }
 
     func selectWorkoutPlan(_ id: UUID) {
@@ -1051,17 +1311,33 @@ final class AppModel {
         if selectedWorkoutPhaseID == nil || !plan.phases.contains(where: { $0.id == selectedWorkoutPhaseID }) {
             selectedWorkoutPhaseID = plan.phases.first?.id
         }
+        recordDiagnostic(
+            category: .workout,
+            event: .workoutPlanSelected,
+            attributes: ["phase_count": String(plan.phases.count)]
+        )
     }
 
     func clearWorkoutSelection() {
         selectedWorkoutPlanID = nil
         selectedWorkoutPhaseID = nil
+        recordDiagnostic(
+            category: .workout,
+            event: .workoutSelectionCleared
+        )
     }
 
     func selectWorkoutPhase(_ id: UUID) {
         guard let plan = selectedWorkoutPlan,
               plan.phases.contains(where: { $0.id == id }) else { return }
         selectedWorkoutPhaseID = id
+        if let phase = plan.phases.first(where: { $0.id == id }) {
+            recordDiagnostic(
+                category: .workout,
+                event: .workoutPhaseSelected,
+                attributes: ["phase": phase.phase.rawValue]
+            )
+        }
     }
 
     func chooseSession(_ id: UUID) async {
@@ -1131,6 +1407,7 @@ final class AppModel {
         isSensorProbeBridgeScanning = false
 #endif
         try await primaryStore.deleteAll()
+        try diagnosticLogStore.removeAll()
         store = primaryStore
         clearLivePresentation()
         ownerAccountID = nil
@@ -1138,14 +1415,60 @@ final class AppModel {
     }
 
     func exportJSON() async throws -> Data {
-        let samples = try await store.allSamples()
-        let fueling = try await store.fuelingEvents()
-        return try exporter.exportJSON(samples: samples, fueling: fueling)
+        recordDiagnostic(
+            category: .export,
+            event: .exportRequested,
+            attributes: ["format": "json"]
+        )
+        do {
+            let samples = try await store.allSamples()
+            let fueling = try await store.fuelingEvents()
+            let data = try exporter.exportJSON(samples: samples, fueling: fueling)
+            recordDiagnostic(
+                category: .export,
+                event: .exportCompleted,
+                attributes: [
+                    "format": "json",
+                    "bytes": String(data.count),
+                ]
+            )
+            return data
+        } catch {
+            recordDiagnostic(
+                category: .export,
+                event: .exportFailed,
+                attributes: ["format": "json"]
+            )
+            throw error
+        }
     }
 
     func exportCSV() async throws -> String {
-        let samples = try await store.allSamples()
-        return try exporter.exportCSV(samples: samples)
+        recordDiagnostic(
+            category: .export,
+            event: .exportRequested,
+            attributes: ["format": "csv"]
+        )
+        do {
+            let samples = try await store.allSamples()
+            let text = try exporter.exportCSV(samples: samples)
+            recordDiagnostic(
+                category: .export,
+                event: .exportCompleted,
+                attributes: [
+                    "format": "csv",
+                    "bytes": String(text.utf8.count),
+                ]
+            )
+            return text
+        } catch {
+            recordDiagnostic(
+                category: .export,
+                event: .exportFailed,
+                attributes: ["format": "csv"]
+            )
+            throw error
+        }
     }
 
     func samples(overlapping workout: WorkoutContext) -> [GlucoseSample] {

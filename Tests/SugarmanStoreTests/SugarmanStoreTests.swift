@@ -494,6 +494,53 @@ struct SugarmanStoreTests {
         #expect(try await store.sample(sessionID: sessionID, sensorIndex: 103) == nil)
         #expect(try await store.session(id: sessionID)?.lastCommittedIndex == 102)
     }
+
+    @Test @MainActor func localDiagnosticLogStoreAppendsAndSummarizesJSONLines() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "sugarman-diagnostics-\(UUID().uuidString)",
+            isDirectory: true
+        )
+        let url = directory.appendingPathComponent("diagnostics.jsonl")
+        let log = LocalDiagnosticLogStore(fileURL: url)
+        let longValue = String(repeating: "x", count: 240) + "\nnext-line"
+
+        try log.append(
+            LocalDiagnosticLogEntry(
+                timestamp: Date(timeIntervalSince1970: 1),
+                category: .workout,
+                event: .workoutPlanSelected,
+                attributes: ["phase": "day-1", "note": longValue]
+            )
+        )
+        try log.append(
+            LocalDiagnosticLogEntry(
+                timestamp: Date(timeIntervalSince1970: 2),
+                category: .sensor,
+                event: .sensorSamplesCommitted,
+                attributes: ["inserted": "3"]
+            )
+        )
+
+        let summary = try log.summary()
+        #expect(summary.entryCount == 2)
+        #expect(summary.invalidLineCount == 0)
+        #expect(summary.byteCount == (try log.readData()).count)
+
+        let lines = try log.readData().split(separator: 10)
+        #expect(lines.count == 2)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let first = try decoder.decode(
+            LocalDiagnosticLogEntry.self,
+            from: Data(lines[0])
+        )
+        #expect(first.schemaVersion == LocalDiagnosticLogEntry.currentSchemaVersion)
+        #expect(first.attributes["note"]?.contains("\n") == false)
+        #expect(first.attributes["note"]?.count == 160)
+
+        try log.removeAll()
+        #expect(try log.summary() == LocalDiagnosticLogSummary(entryCount: 0, byteCount: 0))
+    }
 }
 
 #if canImport(SwiftData)

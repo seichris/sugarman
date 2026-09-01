@@ -639,7 +639,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Session and glucose history stay on this device until you delete them. There is no cloud backend."
+            "value": "Session, glucose, workout, fueling, and diagnostic history stay on this device until you delete them. There is no cloud backend."
           }
         }
       }
@@ -738,7 +738,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This removes locally stored sessions and glucose samples from Sugarman. It does not change the physical sensor."
+            "value": "This removes locally stored sessions, glucose samples, workouts, fueling, and diagnostic logs from Sugarman. It does not change the physical sensor."
           }
         }
       }
@@ -804,7 +804,84 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Exports include schema version, units, timezone, sensor indices, and fueling in JSON. They exclude credentials, account IDs, raw frames, MAC-like IDs, and full serials. CSV is glucose rows only."
+            "value": "Exports include schema version, units, timezone, sensor indices, and fueling in JSON. They exclude credentials, account IDs, raw frames, MAC-like IDs, and full serials. CSV is glucose rows only. Diagnostic logs are a separate privacy-safe JSON Lines export."
+          }
+        }
+      }
+    },
+    "privacy.local_diagnostics": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local diagnostics"
+          }
+        }
+      }
+    },
+    "privacy.local_diagnostics_body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sugarman saves privacy-safe operational events on this iPhone. Nothing is uploaded. Logs omit glucose values, location, sensor identifiers, and private material."
+          }
+        }
+      }
+    },
+    "privacy.local_diagnostics_empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No local diagnostic events yet."
+          }
+        }
+      }
+    },
+    "privacy.local_diagnostics_summary": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stored locally: %lld events, %lld bytes."
+          }
+        }
+      }
+    },
+    "privacy.local_diagnostics_invalid": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Some stored diagnostic lines could not be read."
+          }
+        }
+      }
+    },
+    "privacy.export_diagnostics": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export local diagnostics"
+          }
+        }
+      }
+    },
+    "privacy.export_diagnostics_hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shares the local JSON Lines diagnostic log; it is not uploaded."
           }
         }
       }
