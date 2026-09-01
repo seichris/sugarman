@@ -122,17 +122,23 @@ descriptions plus typed write-acknowledgement counts. Its shareable report
 contains process-local ordinals, phases, bounded counts, reconnect attempts,
 and allowlisted transport reasons only. It omits packet bodies, UUIDs,
 peripheral names, owner fields, private material, history indexes, glucose
-values, and arbitrary error strings.
+values, and arbitrary error strings. A typed `historyPreambleObserved` event and
+per-connection count distinguish the exact bounded empirical `0x36` policy from
+a generic protocol violation without retaining the command or packet body in
+the lifecycle report.
 
 Host and simulator verification cannot establish CoreBluetooth behavior. A
 new exact signed artifact and fresh owner confirmation must still gate every
 installation, launch, provisioning scan, arm, disconnect induction, Android
 handback, or other physical step. The physical acceptance gates remain those in
 [`GS3_FOREGROUND_PRODUCTION_DESIGN.md`](GS3_FOREGROUND_PRODUCTION_DESIGN.md):
-five consecutive readings, zero unknown commands, one reconnect timer and one
+five consecutive readings, zero unsupported or malformed commands, one
+reconnect timer and one
 fresh subscribe/authenticate/history sequence per connection, durable overlap
 without duplicates or gaps, timestamp parity, stale/disconnected UI, process
-exclusion, and official Android handback without binding or activation.
+exclusion, and official Android handback without binding or activation. One
+exact bounded observed preamble may continue only to collect evidence; it does
+not resolve the command's meaning or pass final protocol completeness.
 
 ## Provenance and scope
 

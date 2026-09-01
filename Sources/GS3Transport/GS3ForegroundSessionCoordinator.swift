@@ -217,6 +217,8 @@ package actor GS3ForegroundSessionCoordinator: GS3ForegroundSessionControlling {
             await advance(.authenticationRejected)
         case .historyWriteAcknowledged:
             callbacks.onCommandAcknowledged(.effectiveData)
+        case .historyPreambleObserved:
+            await advance(.historyPreambleObserved)
         case .historyAcknowledged:
             await advance(.historyAcknowledged)
             historyWasAcknowledged = machine.phase == .synchronizing

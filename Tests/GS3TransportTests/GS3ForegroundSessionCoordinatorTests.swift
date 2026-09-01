@@ -711,6 +711,64 @@ struct GS3ForegroundSessionCoordinatorTests {
         #expect(harness.ownership.latestLease?.isActive == true)
     }
 
+    @Test func observedHistoryPreambleDoesNotWriteRetryOrBlockValidHistory() async throws {
+        let harness = try await ForegroundHarness.make()
+        try await harness.advanceToHistoryRequest()
+        let commandsBeforePreamble = await harness.transport.commands()
+
+        await harness.coordinator.receive(.historyPreambleObserved)
+
+        #expect(await harness.coordinator.currentPhase() == .requestingHistory)
+        #expect(await harness.transport.commands() == commandsBeforePreamble)
+        #expect(harness.callbackLog.snapshot().failures.isEmpty)
+        #expect(harness.callbackLog.snapshot().events.contains {
+            $0.kind == .historyPreambleObserved
+                && $0.historyPreambleCount == 1
+        })
+
+        await harness.coordinator.receive(.historyAcknowledged)
+        await harness.coordinator.receive(
+            .glucoseBatch(
+                V3GlucoseBatch(
+                    source: .effectiveData,
+                    records: [syntheticRecord(index: 100, tenths: 90)]
+                ),
+                receivedAt: Date(timeIntervalSince1970: 1_800_000_000)
+            )
+        )
+        await harness.coordinator.receive(
+            .glucoseBatch(
+                V3GlucoseBatch(
+                    source: .liveNotification,
+                    records: [syntheticRecord(index: 101, tenths: 91)]
+                ),
+                receivedAt: Date(timeIntervalSince1970: 1_800_000_060)
+            )
+        )
+
+        #expect(await harness.coordinator.currentPhase() == .live)
+        #expect((try await harness.store.samples(sessionID: harness.sessionID)).count == 2)
+        #expect(await harness.transport.commands() == commandsBeforePreamble)
+        #expect(harness.callbackLog.snapshot().failures.isEmpty)
+    }
+
+    @Test func duplicateObservedHistoryPreambleDisconnectsWithoutAnotherWrite() async throws {
+        let harness = try await ForegroundHarness.make()
+        try await harness.advanceToHistoryRequest()
+        let commandsBeforePreamble = await harness.transport.commands()
+
+        await harness.coordinator.receive(.historyPreambleObserved)
+        await harness.coordinator.receive(.historyPreambleObserved)
+
+        #expect(await harness.coordinator.currentPhase() == .disconnecting)
+        #expect(
+            await harness.transport.commands()
+                == commandsBeforePreamble + [.disconnect]
+        )
+        #expect(harness.callbackLog.snapshot().failures.contains(.stateMachine))
+        #expect(harness.ownership.latestLease?.isActive == true)
+    }
+
     @Test func outOfOrderEventKeepsOwnershipUntilControlledDisconnectCompletes() async throws {
         let harness = try await ForegroundHarness.make()
         try await harness.coordinator.start()

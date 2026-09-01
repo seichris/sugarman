@@ -72,6 +72,8 @@ package final class GS3ForegroundCoreBluetoothTransport:
     private var effectiveDataWriteAcknowledged = false
     private var historyControlAcknowledged = false
     private var historyReadyEmitted = false
+    private var hasReceivedGlucoseBatch = false
+    private var historyPreambleCount = 0
 
     package init(
         peripheralID: UUID,
@@ -411,6 +413,7 @@ package final class GS3ForegroundCoreBluetoothTransport:
             phase = .streaming
             cancelResponseTimeoutLocked()
         }
+        hasReceivedGlucoseBatch = true
         emit(.glucoseBatch(batch, receivedAt: receiptClock()))
     }
 
@@ -540,6 +543,8 @@ package final class GS3ForegroundCoreBluetoothTransport:
         effectiveDataWriteAcknowledged = false
         historyControlAcknowledged = false
         historyReadyEmitted = false
+        hasReceivedGlucoseBatch = false
+        historyPreambleCount = 0
     }
 }
 
@@ -751,14 +756,35 @@ extension GS3ForegroundCoreBluetoothTransport: CBPeripheralDelegate {
         }
         do {
             let frame = EncodedFrame(bytes: [UInt8](value))
-            if frame.byteCount == 5 {
-                handleControlLocked(try material.decodeControl(frame))
-            } else {
-                handleGlucoseLocked(try material.decodeGlucose(frame))
+            let context = V3ForegroundInboundContext(
+                isAwaitingHistory: phase == .awaitingHistory,
+                authenticationAccepted: authenticationAccepted,
+                historyWriteCallCount: effectiveDataWriteCallCount,
+                historyWriteAcknowledgementPending:
+                    inFlightCommand == .effectiveData
+                        && !effectiveDataWriteAcknowledged,
+                historyControlAcknowledged: historyControlAcknowledged,
+                historyReadyEmitted: historyReadyEmitted,
+                hasReceivedGlucoseBatch: hasReceivedGlucoseBatch,
+                historyPreambleCount: historyPreambleCount
+            )
+            switch try V3ForegroundInboundClassifier.classify(
+                frame,
+                using: material,
+                context: context
+            ) {
+            case .control(let response):
+                handleControlLocked(response)
+            case .glucose(let batch):
+                handleGlucoseLocked(batch)
+            case .observedHistoryPreamble:
+                historyPreambleCount = 1
+                emit(.historyPreambleObserved)
             }
         } catch {
-            // Production does not inherit the developer probe's one-frame
-            // quarantine. Every unknown or malformed command is terminal.
+            // Only the exact, host-tested history-preamble shape and timing
+            // above is nonterminal. Every other unknown or malformed command
+            // remains terminal.
             failLocked(.protocolViolation)
         }
     }

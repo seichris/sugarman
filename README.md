@@ -92,6 +92,15 @@ dependencies. See [docs/UPSTREAMS.md](docs/UPSTREAMS.md).
   handback passed with a fresh `5.2 mmol/L` reading. See the
   [first-live-reading result](docs/V3_FIRST_LIVE_READING_RESULT_2026-08-30.md)
   and the [earlier probe results](docs/V3_PROBE_PHYSICAL_RESULT_2026-08-30.md).
+- The first managed Device Test run reached its durably prepared history
+  request, then failed closed before the CoreBluetooth history-write
+  acknowledgement; official Android handback again passed. Its generic report
+  cannot prove the triggering command. The host policy now recognizes one
+  exact checksum-valid 24-byte `0x36` only in the sole pending-history-write
+  window as a payload-free observed preamble, with no added write, retry, data,
+  or readiness semantics. Every duplicate, late, malformed, or different
+  unsupported frame remains terminal. See the
+  [managed-run result](docs/GS3_DEVICE_TEST_PHYSICAL_RESULT_2026-09-01.md).
 
 ## Repository layout
 

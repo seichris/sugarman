@@ -61,6 +61,12 @@ only the resulting known peripheral and never scans.
 - The iPhone run quarantined one checksum-valid `0x36` notification. Five
   consecutive readings, a zero-quarantine run, iPhone reconnect, and same-owner
   durability are not verified.
+- The first managed Device Test run reached one durably prepared history
+  request, then reported a terminal protocol violation before CoreBluetooth
+  acknowledged the history write. Its payload-free diagnostics do not identify
+  the inbound command. The official Android app subsequently received a fresh
+  reading, so handback passed and the sensor remained healthy for that
+  observation.
 - Two earlier attempts stopped before FF31 subscription while both Sugarman
   processes were running; a Probe-only run reached live data. That sequence is
   observed, but it does not isolate process contention as the cause.
@@ -72,7 +78,8 @@ only the resulting known peripheral and never scans.
 Public evidence: `docs/V3_GLUCOSE_NOTIFICATION_SOURCE_MAP_2026-08-30.md`,
 `docs/V3_PROBE_PHYSICAL_RESULT_2026-08-30.md`,
 `docs/V3_FIRST_LIVE_READING_RESULT_2026-08-30.md`, and the redacted JSON records
-under `docs/evidence/`.
+under `docs/evidence/`. The managed-run result is
+`docs/GS3_DEVICE_TEST_PHYSICAL_RESULT_2026-09-01.md`.
 
 ### Production inferences
 
@@ -109,6 +116,16 @@ under `docs/evidence/`.
    calibration, and expiry meanings are not. Glucose and the observed trend can
    be stored for comparison without allowing `SafetyEngine` to present them as
    current.
+8. **Classify one exact observed history preamble without assigning semantic
+   meaning.** The Probe physically observed one checksum-valid 24-byte `0x36`
+   while the sole typed `0x39` CoreBluetooth acknowledgement was pending, then
+   received valid history and live data. The managed run failed at the same
+   lifecycle boundary but did not identify its command. A host policy may
+   therefore recognize that exact shape before any glucose batch and in that
+   window once per connection, emit a
+   payload-free count, and continue receiving. It grants no write, retry,
+   glucose, acknowledgement, or readiness meaning. Every other unsupported,
+   malformed, duplicate, or late notification remains terminal.
 
 These are reviewed policies, not claims of physical iPhone reconnect parity.
 
@@ -131,9 +148,13 @@ exact artifact must prove, with fresh owner confirmation:
 - five consecutive live readings arrive on a managed foreground session;
 - healthy/error/calibration/expiry state patterns are compared with the official
   app before any production sample quality can become `ok`;
-- the acceptance run has no unknown or malformed command; if `0x36` recurs, the
-  production adapter stops and that command requires a separate product
-  classification before any policy can change;
+- the acceptance run has no unsupported or malformed command; an exact bounded
+  `0x36` occurrence is reported separately as an observed-history-preamble
+  count, and any second, late, wrong-length, checksum-invalid, or different
+  unsupported command stops the adapter;
+- a bounded preamble occurrence may collect history/live interoperability
+  evidence, but it does not by itself pass final protocol-completeness or
+  five-reading durability while the command's product meaning remains unknown;
 - stale and disconnected presentation matches the actual link and reading age;
   and
 - official Android handback still succeeds without binding or activation.
@@ -237,9 +258,13 @@ background design:
   before both acknowledgements remain bounded in memory and are not persisted;
   a live packet before both is terminal; the post-authentication planning gap
   is also bounded by the operation timeout; and
-- it treats every unknown or malformed notification, including the previously
-  quarantined family, as a terminal protocol violation. Production does not
-  inherit the one-shot probe's quarantine;
+- it recognizes at most one checksum-valid 24-byte `0x36` only before any
+  glucose batch and while the sole typed history write acknowledgement is
+  pending. The receive-only event is
+  named an observed history preamble, increments a payload-free per-connection
+  count, and grants no write, retry, glucose, acknowledgement, or readiness
+  semantics. Any duplicate, late occurrence, other unsupported command, or
+  malformed notification is a terminal protocol violation;
 - delegate callbacks must match the active central, peripheral, and exact
   characteristic object, and value/write callbacks are ignored once controlled
   disconnection begins; and
@@ -303,7 +328,8 @@ the release target does not link its provisioning module.
 `GS3LifecycleEvent` records only process-local session/connection ordinals,
 monotonic elapsed whole seconds supplied by the adapter, lifecycle phase,
 allowlisted error class or CoreBluetooth numeric code, reconnect attempt, and
-bounded counts. It contains no UUID, peripheral name, owner field, history
+bounded authentication, history-request, observed-preamble, insert, duplicate,
+and gap counts. It contains no UUID, peripheral name, owner field, history
 index, glucose value, packet body, private material, or arbitrary localized
 error text. History plans, commit results, effects, and ownership leases redact
 their operational index/path fields from description, debug, and reflection.

@@ -71,6 +71,7 @@ public enum GS3LifecycleKind: String, Sendable, Equatable {
     case historyPlanLoaded
     case historyRequestPrepared
     case historyRequested
+    case historyPreambleObserved
     case batchCommitted
     case synchronizationCompleted
     case integrityFailure
@@ -99,6 +100,7 @@ public struct GS3LifecycleEvent:
     public let reconnectAttempt: Int
     public let authenticationRequestCount: Int
     public let historyRequestCount: Int
+    public let historyPreambleCount: Int
     public let insertedSampleCount: Int
     public let duplicateSampleCount: Int
     public let gapRangeCount: Int
@@ -113,6 +115,7 @@ public struct GS3LifecycleEvent:
         reconnectAttempt: Int = 0,
         authenticationRequestCount: Int = 0,
         historyRequestCount: Int = 0,
+        historyPreambleCount: Int = 0,
         insertedSampleCount: Int = 0,
         duplicateSampleCount: Int = 0,
         gapRangeCount: Int = 0
@@ -126,6 +129,7 @@ public struct GS3LifecycleEvent:
         self.reconnectAttempt = reconnectAttempt
         self.authenticationRequestCount = authenticationRequestCount
         self.historyRequestCount = historyRequestCount
+        self.historyPreambleCount = historyPreambleCount
         self.insertedSampleCount = insertedSampleCount
         self.duplicateSampleCount = duplicateSampleCount
         self.gapRangeCount = gapRangeCount
@@ -137,6 +141,7 @@ public struct GS3LifecycleEvent:
             + "phase=\(phase.rawValue), event=\(kind.rawValue), "
             + "reconnectAttempt=\(reconnectAttempt), authRequests="
             + "\(authenticationRequestCount), historyRequests=\(historyRequestCount), "
+            + "historyPreambles=\(historyPreambleCount), "
             + "inserted=\(insertedSampleCount), duplicates=\(duplicateSampleCount), "
             + "gapRanges=\(gapRangeCount)"
         if let disconnectReason {
@@ -160,6 +165,7 @@ public struct GS3LifecycleEvent:
                 "reconnectAttempt": reconnectAttempt,
                 "authenticationRequestCount": authenticationRequestCount,
                 "historyRequestCount": historyRequestCount,
+                "historyPreambleCount": historyPreambleCount,
                 "insertedSampleCount": insertedSampleCount,
                 "duplicateSampleCount": duplicateSampleCount,
                 "gapRangeCount": gapRangeCount,

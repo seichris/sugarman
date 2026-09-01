@@ -94,6 +94,7 @@ public enum GS3ForegroundInput: Sendable, Equatable {
     case protocolViolation
     case historyPlanLoaded(HistoryRequestPlan)
     case historyRequestDurablyPrepared(HistoryRequestPlan)
+    case historyPreambleObserved
     case historyAcknowledged
     case batchCommitted(GS3BatchCommitSummary)
     case synchronizationCompleted
@@ -120,6 +121,7 @@ extension GS3ForegroundInput: CustomStringConvertible {
         case .protocolViolation: "protocolViolation"
         case .historyPlanLoaded: "historyPlanLoaded(index: redacted)"
         case .historyRequestDurablyPrepared: "historyRequestDurablyPrepared(index: redacted)"
+        case .historyPreambleObserved: "historyPreambleObserved"
         case .historyAcknowledged: "historyAcknowledged"
         case .batchCommitted: "batchCommitted(payload: omitted)"
         case .synchronizationCompleted: "synchronizationCompleted"
@@ -200,6 +202,7 @@ public struct GS3ForegroundSessionMachine:
     public private(set) var hasOwnership = false
     public private(set) var authenticationRequestCount = 0
     public private(set) var historyRequestCount = 0
+    public private(set) var historyPreambleCount = 0
     public private(set) var stopReason: GS3ForegroundStopReason?
 
     private var nextReconnectToken: UInt64 = 0
@@ -370,6 +373,15 @@ public struct GS3ForegroundSessionMachine:
                 .requestHistory(plan),
             ]
 
+        case .historyPreambleObserved:
+            guard phase == .requestingHistory,
+                  historyRequestCount == 1,
+                  historyPreambleCount == 0 else {
+                return invalidTransition()
+            }
+            historyPreambleCount = 1
+            return [record(.historyPreambleObserved, elapsed: elapsed)]
+
         case .historyAcknowledged:
             guard phase == .requestingHistory, historyRequestCount == 1 else {
                 return invalidTransition()
@@ -441,6 +453,7 @@ public struct GS3ForegroundSessionMachine:
         connectionOrdinal &+= 1
         authenticationRequestCount = 0
         historyRequestCount = 0
+        historyPreambleCount = 0
         pendingHistoryPlan = nil
         pendingTerminalFailure = nil
         insertedSampleCount = 0
@@ -620,6 +633,7 @@ public struct GS3ForegroundSessionMachine:
         hasOwnership = false
         authenticationRequestCount = 0
         historyRequestCount = 0
+        historyPreambleCount = 0
         stopReason = nil
         pendingReconnect = nil
         pendingHistoryPlan = nil
@@ -645,6 +659,7 @@ public struct GS3ForegroundSessionMachine:
                 reconnectAttempt: reconnectAttempt,
                 authenticationRequestCount: authenticationRequestCount,
                 historyRequestCount: historyRequestCount,
+                historyPreambleCount: historyPreambleCount,
                 insertedSampleCount: insertedSampleCount,
                 duplicateSampleCount: duplicateSampleCount,
                 gapRangeCount: gapRangeCount
@@ -676,7 +691,8 @@ public struct GS3ForegroundSessionMachine:
         "GS3ForegroundSessionMachine(session: #\(sessionOrdinal), connection: "
             + "#\(connectionOrdinal), phase: \(phase.rawValue), ownsSensor: "
             + "\(hasOwnership), authRequests: \(authenticationRequestCount), "
-            + "historyRequests: \(historyRequestCount))"
+            + "historyRequests: \(historyRequestCount), historyPreambles: "
+            + "\(historyPreambleCount))"
     }
 
     public var debugDescription: String { description }
@@ -691,6 +707,7 @@ public struct GS3ForegroundSessionMachine:
                 "hasOwnership": hasOwnership,
                 "authenticationRequestCount": authenticationRequestCount,
                 "historyRequestCount": historyRequestCount,
+                "historyPreambleCount": historyPreambleCount,
                 "reconnectAttempt": reconnectAttempt,
             ],
             displayStyle: .struct

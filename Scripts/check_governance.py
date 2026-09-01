@@ -551,6 +551,8 @@ def check_sensor_ownership_and_foreground_slice() -> None:
         "CaptureBackedHistoryStart",
         "HistoryCursorPolicy",
         "GS3LifecycleEvent",
+        "historyPreambleObserved",
+        "historyPreambleCount",
     ):
         if required not in session_body:
             error(f"foreground GS3 slice missing boundary: {required}")
@@ -589,9 +591,51 @@ def check_sensor_ownership_and_foreground_slice() -> None:
         "clearBufferedRecordsOnSuccess: true",
         "UInt16(exactly: plan.startingIndex)",
         "quality: .questionable",
+        "case .historyPreambleObserved:",
     ):
         if required not in production_body:
             error(f"foreground production integration missing boundary: {required}")
+
+    inbound_classifier = transport_root / "V3ForegroundInboundClassifier.swift"
+    if not inbound_classifier.is_file():
+        error("missing host-testable foreground inbound classifier")
+    else:
+        classifier_body = inbound_classifier.read_text(
+            encoding="utf-8", errors="replace"
+        )
+        for required in (
+            "observedHistoryPreambleCommand: UInt8 = 0x36",
+            "observedHistoryPreambleByteCount = 24",
+            "historyWriteAcknowledgementPending",
+            "historyWriteCallCount == 1",
+            "!hasReceivedGlucoseBatch",
+            "historyPreambleCount == 0",
+            "case observedHistoryPreamble",
+            "throw error",
+        ):
+            if required not in classifier_body:
+                error(f"foreground inbound classifier missing boundary: {required}")
+        for forbidden in (
+            ".writeValue(",
+            "requestEffectiveData(",
+            "connectKnownPeripheral(",
+            "scanForPeripherals(",
+        ):
+            if forbidden in classifier_body:
+                error(f"foreground inbound classifier contains live surface: {forbidden}")
+
+    core_bluetooth_path = transport_root / "GS3ForegroundCoreBluetoothTransport.swift"
+    core_bluetooth_body = core_bluetooth_path.read_text(
+        encoding="utf-8", errors="replace"
+    )
+    for required in (
+        "V3ForegroundInboundClassifier.classify(",
+        "inFlightCommand == .effectiveData",
+        "historyPreambleCount = 1",
+        "emit(.historyPreambleObserved)",
+    ):
+        if required not in core_bluetooth_body:
+            error(f"foreground CoreBluetooth preamble boundary missing: {required}")
 
     coordinator_path = transport_root / "GS3ForegroundSessionCoordinator.swift"
     coordinator_body = coordinator_path.read_text(encoding="utf-8", errors="replace")
