@@ -9,6 +9,9 @@ import SwiftUI
 struct DashboardView: View {
     @Environment(AppModel.self) private var model
     @State private var selectedRange = GlucoseHistoryRange.threeHours
+    @State private var selectedChartTimestamp: Date?
+    @State private var interactionChartTimestamp: Date?
+    @State private var chartFrame = CGRect.null
     @ScaledMetric(relativeTo: .largeTitle) private var glucoseSize: CGFloat = 96
 
     var body: some View {
@@ -67,6 +70,15 @@ struct DashboardView: View {
         .refreshable {
             await model.refresh()
         }
+        .coordinateSpace(name: "dashboard")
+        .simultaneousGesture(
+            SpatialTapGesture(coordinateSpace: .named("dashboard"))
+                .onEnded { event in
+                    if !chartFrame.contains(event.location) {
+                        selectedChartTimestamp = nil
+                    }
+                }
+        )
     }
 
     private var contentMode: LiveDashboardContentMode {
@@ -286,6 +298,8 @@ struct DashboardView: View {
             ForEach(GlucoseHistoryRange.allCases) { range in
                 Button {
                     selectedRange = range
+                    selectedChartTimestamp = nil
+                    interactionChartTimestamp = nil
                 } label: {
                     Text(rangeTitle(range))
                         .font(.headline.weight(.regular))
@@ -312,6 +326,10 @@ struct DashboardView: View {
 
     private func glucoseChart(timeline: GlucoseTimeline) -> some View {
         let scale = GlucoseChartScale(unit: model.preferredUnit)
+        let selectedSample = nearestSample(
+            to: selectedChartTimestamp,
+            in: timeline.samples
+        )
         return VStack(alignment: .leading, spacing: 8) {
             Text(model.preferredUnit.displaySymbol)
                 .font(.caption)
@@ -341,9 +359,58 @@ struct DashboardView: View {
                             .frame(width: 2, height: 2)
                     }
                 }
+
+                if let selectedSample {
+                    RuleMark(
+                        x: .value("Selected time", selectedSample.sensorTimestamp)
+                    )
+                    .foregroundStyle(LivePalette.selection)
+                    .lineStyle(StrokeStyle(lineWidth: 1))
+                    .annotation(position: .top, alignment: .center, spacing: 6) {
+                        VStack(spacing: 2) {
+                            Text(
+                                selectedSample.sensorTimestamp,
+                                format: .dateTime.hour().minute()
+                            )
+                            Text(selectedGlucoseValue(selectedSample))
+                        }
+                        .font(.caption.monospacedDigit().weight(.semibold))
+                        .foregroundStyle(LivePalette.primaryText)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .background(
+                            LivePalette.selectionLabelBackground,
+                            in: RoundedRectangle(cornerRadius: 6)
+                        )
+                    }
+
+                    PointMark(
+                        x: .value("Selected time", selectedSample.sensorTimestamp),
+                        y: .value(
+                            "Selected glucose",
+                            selectedSample.value(in: model.preferredUnit)
+                        )
+                    )
+                    .foregroundStyle(LivePalette.selection)
+                    .symbol {
+                        Circle()
+                            .frame(width: 10, height: 10)
+                    }
+                }
             }
             .chartXScale(domain: timeline.start...timeline.end)
             .chartYScale(domain: scale.domain)
+            .chartXSelection(value: $interactionChartTimestamp)
+            .onChange(of: interactionChartTimestamp) { _, timestamp in
+                if let timestamp {
+                    selectedChartTimestamp = timestamp
+                }
+            }
+            .onGeometryChange(for: CGRect.self) { proxy in
+                proxy.frame(in: .named("dashboard"))
+            } action: { frame in
+                chartFrame = frame
+            }
             .chartLegend(.hidden)
             .chartYAxis {
                 AxisMarks(position: .leading, values: scale.tickValues) { value in
@@ -356,7 +423,7 @@ struct DashboardView: View {
                 }
             }
             .chartXAxis {
-                AxisMarks(values: .automatic(desiredCount: 4)) { _ in
+                AxisMarks(values: .automatic(desiredCount: 8)) { _ in
                     AxisGridLine().foregroundStyle(.clear)
                     AxisTick(stroke: StrokeStyle(lineWidth: 0.75))
                         .foregroundStyle(LivePalette.grid)
@@ -412,6 +479,34 @@ struct DashboardView: View {
         case .millimolesPerLiter:
             let mmol = model.latestSample?.millimolesPerLiter() ?? Double(mgdl) / 18.0
             return String(format: "%.1f", locale: .current, mmol)
+        }
+    }
+
+    private func selectedGlucoseValue(_ sample: GlucoseSample) -> String {
+        switch model.preferredUnit {
+        case .milligramsPerDeciliter:
+            return String(
+                format: "%d mg/dL",
+                locale: .current,
+                sample.milligramsPerDeciliter
+            )
+        case .millimolesPerLiter:
+            return String(
+                format: "%.1f mmol/L",
+                locale: .current,
+                sample.millimolesPerLiter()
+            )
+        }
+    }
+
+    private func nearestSample(
+        to timestamp: Date?,
+        in samples: [GlucoseSample]
+    ) -> GlucoseSample? {
+        guard let timestamp else { return nil }
+        return samples.min { left, right in
+            abs(left.sensorTimestamp.timeIntervalSince(timestamp))
+                < abs(right.sensorTimestamp.timeIntervalSince(timestamp))
         }
     }
 
@@ -516,6 +611,8 @@ private enum LivePalette {
     static let secondaryText = Color.white.opacity(0.78)
     static let readingPoint = Color.white
     static let grid = Color.gray.opacity(0.65)
+    static let selection = Color.yellow
+    static let selectionLabelBackground = Color.black.opacity(0.88)
     static let warning = Color.orange
 }
 
