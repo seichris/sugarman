@@ -117,6 +117,16 @@ struct DeviceTestProvisioningSection: View {
                     Button("Stop and disconnect", role: .cancel) {
                         Task { await model.stopDeviceTest() }
                     }
+                    Button(
+                        "Inject one link loss",
+                        systemImage: "bolt.horizontal.circle"
+                    ) {
+                        Task { await model.injectDeviceTestLinkLoss() }
+                    }
+                    .disabled(
+                        model.deviceTestPhase != .live
+                            || model.isDeviceTestLinkLossInjectionPending
+                    )
                 } else {
                     Button("Arm managed foreground test", systemImage: "antenna.radiowaves.left.and.right") {
                         showArmConfirmation = true

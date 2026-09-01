@@ -263,3 +263,18 @@ public protocol GS3ForegroundSessionControlling: Sendable {
     func foregroundEnded() async
     func currentPhase() async -> GS3ForegroundPhase
 }
+
+/// Package-only controller surface used by the isolated Device Test targets
+/// to exercise the real foreground reconnect path without changing Bluetooth,
+/// network, or security settings. The normal app cannot import this surface.
+package protocol GS3ForegroundDeviceTestControlling:
+    GS3ForegroundSessionControlling
+{
+    func injectLinkLossForDeviceTesting() async -> Bool
+}
+
+/// Package-only transport seam for one bounded cancellation of an already-live
+/// CoreBluetooth link. It cannot write a characteristic or carry packet data.
+package protocol GS3ForegroundLinkLossInjecting: Sendable {
+    func injectLinkLossForDeviceTesting() async -> Bool
+}

@@ -5,6 +5,7 @@ import AccountBinding
 #if SUGARMAN_DEVICE_TEST
 import GS3DeviceProvisioning
 import GS3DeviceTesting
+import GS3Session
 import PrivateDocumentImport
 #endif
 import GS3Transport
@@ -74,6 +75,8 @@ final class AppModel {
     var deviceTestLifecycleLines: [String]
     var deviceTestAuthenticationAcknowledgementCount: Int
     var deviceTestHistoryAcknowledgementCount: Int
+    var deviceTestPhase: GS3ForegroundPhase
+    var isDeviceTestLinkLossInjectionPending: Bool
     var hasDeviceTestProbeBridgePending: Bool
     var isDeviceTestProbeBridgeScanning: Bool
     @ObservationIgnored private let deviceTestProvisioning: DeviceOnlyGS3Provisioning
@@ -83,6 +86,8 @@ final class AppModel {
         GS3ProbeProvisioningScanner
     @ObservationIgnored private var deviceTestProbeBridgeRequest:
         GS3ProbeBridgeScanRequest?
+    @ObservationIgnored private var managedDeviceTestController:
+        GS3ManagedForegroundDeviceTestController?
     private var currentScenePhase: ScenePhase
 #endif
 
@@ -137,6 +142,8 @@ final class AppModel {
         self.deviceTestLifecycleLines = []
         self.deviceTestAuthenticationAcknowledgementCount = 0
         self.deviceTestHistoryAcknowledgementCount = 0
+        self.deviceTestPhase = .idle
+        self.isDeviceTestLinkLossInjectionPending = false
         self.hasDeviceTestProbeBridgePending = false
         self.isDeviceTestProbeBridgeScanning = false
         self.deviceTestProvisioning = DeviceOnlyGS3Provisioning()
@@ -145,6 +152,7 @@ final class AppModel {
             externalOwnershipGate: externalOwnershipGate
         )
         self.deviceTestProbeBridgeRequest = nil
+        self.managedDeviceTestController = nil
         self.currentScenePhase = .inactive
 #endif
     }
@@ -242,10 +250,34 @@ final class AppModel {
             }
         }
 #if SUGARMAN_DEVICE_TEST
+        let callbacks = makeDeviceTestCallbacks()
+#else
         let callbacks = GS3ForegroundSessionCallbacks(
+            onConnection: { _ in refresh() },
+            onSamplesCommitted: { _ in refresh() },
+            onFailure: { _ in refresh() }
+        )
+#endif
+        foregroundSessionBridge.install {
+            try await factory(callbacks)
+        }
+    }
+
+#if SUGARMAN_DEVICE_TEST
+    private func makeDeviceTestCallbacks() -> GS3ForegroundSessionCallbacks {
+        let refresh: @Sendable () -> Void = { [weak self] in
+            Task { @MainActor [weak self] in
+                await self?.refresh()
+            }
+        }
+        return GS3ForegroundSessionCallbacks(
             onConnection: { _ in refresh() },
             onLifecycleEvent: { [weak self] event in
                 Task { @MainActor [weak self] in
+                    self?.deviceTestPhase = event.phase
+                    if event.phase == .live {
+                        self?.isDeviceTestLinkLossInjectionPending = false
+                    }
                     self?.recordDeviceTestLifecycle(event.description)
                 }
             },
@@ -268,19 +300,8 @@ final class AppModel {
                 }
             }
         )
-#else
-        let callbacks = GS3ForegroundSessionCallbacks(
-            onConnection: { _ in refresh() },
-            onSamplesCommitted: { _ in refresh() },
-            onFailure: { _ in refresh() }
-        )
-#endif
-        foregroundSessionBridge.install {
-            try await factory(callbacks)
-        }
     }
 
-#if SUGARMAN_DEVICE_TEST
     var redactedDeviceTestReport: String {
         ([
             "Sugarman managed foreground device-test diagnostics",
@@ -456,11 +477,20 @@ final class AppModel {
         deviceTestLifecycleLines = []
         deviceTestAuthenticationAcknowledgementCount = 0
         deviceTestHistoryAcknowledgementCount = 0
-        installForegroundSessionFactory { callbacks in
-            try await provisioning.makeController(
+        deviceTestPhase = .idle
+        isDeviceTestLinkLossInjectionPending = false
+        let callbacks = makeDeviceTestCallbacks()
+        do {
+            let controller = try await provisioning.makeManagedForegroundDeviceTestController(
                 store: liveStore,
                 callbacks: callbacks
             )
+            managedDeviceTestController = controller
+            foregroundSessionBridge.install { controller }
+        } catch {
+            deviceTestExternalOwnershipGate.revoke()
+            deviceTestStatus = error.localizedDescription
+            return
         }
         isDeviceTestArmed = true
         deviceTestStatus = "Managed foreground session armed."
@@ -469,6 +499,7 @@ final class AppModel {
             try await foregroundSessionBridge.enterForeground()
         } catch {
             isDeviceTestArmed = false
+            managedDeviceTestController = nil
             deviceTestExternalOwnershipGate.revoke()
             await foregroundSessionBridge.removeFactory()
             deviceTestStatus = error.localizedDescription
@@ -477,13 +508,32 @@ final class AppModel {
 
     func stopDeviceTest() async {
         isDeviceTestArmed = false
+        deviceTestPhase = .stopped
+        isDeviceTestLinkLossInjectionPending = false
         deviceTestExternalOwnershipGate.revoke()
         await foregroundSessionBridge.removeFactory()
+        managedDeviceTestController = nil
         if hasDeviceTestProvisioning {
             deviceTestStatus =
                 "Managed foreground session stopped. Private material remains device-only."
         }
         await refresh()
+    }
+
+    func injectDeviceTestLinkLoss() async {
+        guard isDeviceTestArmed,
+              deviceTestPhase == .live,
+              !isDeviceTestLinkLossInjectionPending,
+              let managedDeviceTestController else { return }
+        isDeviceTestLinkLossInjectionPending = true
+        if await managedDeviceTestController.injectLinkLoss() {
+            deviceTestStatus =
+                "Injected one Device-Test-only link loss; awaiting bounded reconnect."
+        } else {
+            isDeviceTestLinkLossInjectionPending = false
+            deviceTestStatus =
+                "Link-loss injection was inert because the session was not live."
+        }
     }
 
     func deleteDeviceTestProvisioning() async {

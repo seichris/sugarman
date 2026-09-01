@@ -154,6 +154,8 @@ targets:
       - package: Sugarman
         product: GS3Transport
       - package: Sugarman
+        product: GS3Session
+      - package: Sugarman
         product: GS3DeviceProvisioning
       - package: Sugarman
         product: GS3DeviceTesting
@@ -259,6 +261,8 @@ targets:
         product: GS3DeviceTesting
       - package: Sugarman
         product: GS3Transport
+      - package: Sugarman
+        product: GS3Session
       - package: Sugarman
         product: PrivateDocumentImport
       - package: Sugarman

@@ -4,6 +4,7 @@
 import Foundation
 import GS3DeviceProvisioning
 import GS3DeviceTesting
+import GS3Session
 import GS3Transport
 import Observation
 import PrivateDocumentImport
@@ -25,6 +26,9 @@ final class MacDeviceTestModel {
     var lifecycleLines: [String] = []
     var authenticationAcknowledgementCount = 0
     var historyAcknowledgementCount = 0
+    var privateRecentReadings: [GlucoseSample] = []
+    var isLinkLossInjectionPending = false
+    var deviceTestPhase: GS3ForegroundPhase = .idle
 
     @ObservationIgnored private let store: any SugarmanStoring
     @ObservationIgnored private let provisioning: DeviceOnlyGS3Provisioning
@@ -34,7 +38,10 @@ final class MacDeviceTestModel {
     @ObservationIgnored private let foregroundLifecycle:
         GS3ForegroundSessionLifecycle
     @ObservationIgnored private var linkedSensorID: UUID?
+    @ObservationIgnored private var linkedSessionID: UUID?
     @ObservationIgnored private var pendingProbeRequest: GS3ProbeBridgeScanRequest?
+    @ObservationIgnored private var deviceTestController:
+        GS3ManagedForegroundDeviceTestController?
 
     static func bootstrapped() -> MacDeviceTestModel {
         let result = SugarmanStoreFactory.makePersistent()
@@ -85,6 +92,8 @@ final class MacDeviceTestModel {
                 }
                 hasProvisioning = true
                 linkedSensorID = summary.linkedSensorID
+                try await resolveLinkedSession(for: summary.linkedSensorID)
+                await refreshPrivateReadings()
                 status = "Mac-local private material is available in this Mac's Keychain."
                 return
             }
@@ -200,11 +209,28 @@ final class MacDeviceTestModel {
 
     func stop() async {
         isArmed = false
+        isLinkLossInjectionPending = false
+        deviceTestPhase = .stopped
         externalOwnershipGate.revoke()
         await foregroundLifecycle.removeFactory()
+        deviceTestController = nil
         status = hasProvisioning
             ? "Managed foreground session stopped. Private material remains Mac-local."
             : "Managed foreground session stopped."
+    }
+
+    func injectLinkLoss() async {
+        guard isArmed,
+              deviceTestPhase == .live,
+              !isLinkLossInjectionPending,
+              let deviceTestController else { return }
+        isLinkLossInjectionPending = true
+        if await deviceTestController.injectLinkLoss() {
+            status = "Injected one Device-Test-only link loss; awaiting bounded reconnect."
+        } else {
+            isLinkLossInjectionPending = false
+            status = "Link-loss injection was inert because the session was not live."
+        }
     }
 
     func deleteProvisioning() async {
@@ -273,14 +299,22 @@ final class MacDeviceTestModel {
         lifecycleLines = []
         authenticationAcknowledgementCount = 0
         historyAcknowledgementCount = 0
+        isLinkLossInjectionPending = false
+        deviceTestPhase = .idle
         let callbacks = makeCallbacks()
         let provisioning = self.provisioning
         let store = self.store
-        foregroundLifecycle.install {
-            try await provisioning.makeController(
+        do {
+            let controller = try await provisioning.makeManagedForegroundDeviceTestController(
                 store: store,
                 callbacks: callbacks
             )
+            deviceTestController = controller
+            foregroundLifecycle.install { controller }
+        } catch {
+            externalOwnershipGate.revoke()
+            status = safeMessage(for: error)
+            return
         }
         isArmed = true
         status = "Managed foreground session armed on this Mac."
@@ -288,6 +322,7 @@ final class MacDeviceTestModel {
             try await foregroundLifecycle.enterForeground()
         } catch {
             isArmed = false
+            deviceTestController = nil
             externalOwnershipGate.revoke()
             await foregroundLifecycle.removeFactory()
             status = safeMessage(for: error)
@@ -303,10 +338,18 @@ final class MacDeviceTestModel {
             },
             onLifecycleEvent: { [weak self] event in
                 Task { @MainActor [weak self] in
+                    self?.deviceTestPhase = event.phase
+                    if event.phase == .live {
+                        self?.isLinkLossInjectionPending = false
+                    }
                     self?.recordLifecycle(event.description)
                 }
             },
-            onSamplesCommitted: { _ in },
+            onSamplesCommitted: { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    await self?.refreshPrivateReadings()
+                }
+            },
             onCommandAcknowledged: { [weak self] command in
                 Task { @MainActor [weak self] in
                     switch command {
@@ -332,6 +375,30 @@ final class MacDeviceTestModel {
             lifecycleLines.removeFirst(
                 lifecycleLines.count - Self.maximumLifecycleLineCount
             )
+        }
+    }
+
+    private func resolveLinkedSession(for sensorID: UUID) async throws {
+        let matching = try await store.allSessions().filter {
+            $0.sensorID == sensorID && $0.lifecycle == .live
+        }
+        guard matching.count == 1, let session = matching.first else {
+            throw GS3DeviceProvisioningError.sessionConflict
+        }
+        linkedSessionID = session.id
+    }
+
+    private func refreshPrivateReadings() async {
+        guard let linkedSessionID else {
+            privateRecentReadings = []
+            return
+        }
+        do {
+            privateRecentReadings = Array(
+                try await store.samples(sessionID: linkedSessionID).suffix(8)
+            )
+        } catch {
+            privateRecentReadings = []
         }
     }
 

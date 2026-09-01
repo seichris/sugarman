@@ -205,11 +205,47 @@ public actor DeviceOnlyGS3Provisioning {
         }
         try await ensureLocalSession(for: record, in: store)
 
+        let configuration = try makeConfiguration(for: record)
+
+        return GS3ForegroundSessionFactory.makeKnownPeripheralController(
+            configuration: configuration,
+            store: store,
+            peripheralID: record.peripheralID,
+            material: try record.activeSessionMaterial(),
+            callbacks: callbacks
+        )
+    }
+
+    /// Package-only construction path consumed by the isolated Device Test
+    /// product. It uses the same stored material, typed transport, coordinator,
+    /// ownership provider, and reconnect scheduler as production.
+    package func makeDeviceTestController(
+        store: any SugarmanStoring,
+        callbacks: GS3ForegroundSessionCallbacks = GS3ForegroundSessionCallbacks()
+    ) async throws -> any GS3ForegroundDeviceTestControlling {
+        await acquireOperationGate()
+        defer { releaseOperationGate() }
+        guard let record = try loadRecord() else {
+            throw GS3DeviceProvisioningError.missingMaterial
+        }
+        try await ensureLocalSession(for: record, in: store)
+
+        return GS3ForegroundSessionFactory.makeKnownPeripheralDeviceTestController(
+            configuration: try makeConfiguration(for: record),
+            store: store,
+            peripheralID: record.peripheralID,
+            material: try record.activeSessionMaterial(),
+            callbacks: callbacks
+        )
+    }
+
+    private func makeConfiguration(
+        for record: StoredGS3DeviceProvisioning
+    ) throws -> GS3ForegroundSessionConfiguration {
         sessionOrdinal &+= 1
         if sessionOrdinal == 0 { sessionOrdinal = 1 }
-        let configuration: GS3ForegroundSessionConfiguration
         do {
-            configuration = try GS3ForegroundSessionConfiguration(
+            return try GS3ForegroundSessionConfiguration(
                 sessionID: record.sessionID,
                 sessionOrdinal: sessionOrdinal,
                 captureBackedStart: CaptureBackedHistoryStart(
@@ -219,14 +255,6 @@ public actor DeviceOnlyGS3Provisioning {
         } catch {
             throw GS3DeviceProvisioningError.invalidStoredMaterial
         }
-
-        return GS3ForegroundSessionFactory.makeKnownPeripheralController(
-            configuration: configuration,
-            store: store,
-            peripheralID: record.peripheralID,
-            material: try record.activeSessionMaterial(),
-            callbacks: callbacks
-        )
     }
 
     private func loadRecord() throws -> StoredGS3DeviceProvisioning? {

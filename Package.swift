@@ -61,7 +61,10 @@ let package = Package(
             name: "GS3DeviceTesting",
             dependencies: [
                 "GS3DeviceProvisioning",
+                "GS3Session",
+                "GS3Transport",
                 "SensorOwnership",
+                "SugarmanStore",
             ],
             linkerSettings: [.linkedFramework("CoreBluetooth")]
         ),

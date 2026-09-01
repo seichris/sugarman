@@ -13,7 +13,8 @@ import SugarmanStore
 /// sensor. It has no scan API, restoration identifier, activation, binding,
 /// reset, unacknowledged write, or arbitrary-frame entry point.
 package final class GS3ForegroundCoreBluetoothTransport:
-    NSObject, GS3ForegroundTransporting, @unchecked Sendable, CustomReflectable
+    NSObject, GS3ForegroundTransporting, GS3ForegroundLinkLossInjecting,
+    @unchecked Sendable, CustomReflectable
 {
     private enum Phase: Equatable {
         case idle
@@ -257,6 +258,28 @@ package final class GS3ForegroundCoreBluetoothTransport:
                 return
             }
             self.transmitEffectiveDataLocked(plan)
+        }
+    }
+
+    package func injectLinkLossForDeviceTesting() async -> Bool {
+        await withCheckedContinuation { continuation in
+            queue.async {
+                guard self.phase == .streaming,
+                      let peripheral = self.peripheral,
+                      peripheral.state == .connected,
+                      let central = self.central else {
+                    continuation.resume(returning: false)
+                    return
+                }
+                self.cancelTimeoutsLocked()
+                self.pendingDisconnectReason = .linkLoss
+                self.controlledDisconnect = false
+                self.queuedHistoryPlan = nil
+                self.phase = .disconnecting
+                self.scheduleDisconnectCompletionTimeoutLocked()
+                central.cancelPeripheralConnection(peripheral)
+                continuation.resume(returning: true)
+            }
         }
     }
 
@@ -651,6 +674,69 @@ public enum GS3ForegroundSessionFactory: Sendable {
             transport: transport,
             callbacks: callbacks
         )
+    }
+
+    package static func makeKnownPeripheralDeviceTestController(
+        configuration: GS3ForegroundSessionConfiguration,
+        store: any SugarmanStoring,
+        peripheralID: UUID,
+        material: V3ActiveSessionMaterial,
+        callbacks: GS3ForegroundSessionCallbacks = GS3ForegroundSessionCallbacks()
+    ) -> any GS3ForegroundDeviceTestControlling {
+        let transport = GS3ForegroundCoreBluetoothTransport(
+            peripheralID: peripheralID,
+            material: material
+        )
+        let coordinator = GS3ForegroundSessionCoordinator(
+            configuration: configuration,
+            store: store,
+            transport: transport,
+            callbacks: callbacks
+        )
+        return GS3ForegroundDeviceTestController(
+            coordinator: coordinator,
+            linkLossInjector: transport
+        )
+    }
+}
+
+package actor GS3ForegroundDeviceTestController:
+    GS3ForegroundDeviceTestControlling
+{
+    private let coordinator: any GS3ForegroundSessionControlling
+    private let linkLossInjector: any GS3ForegroundLinkLossInjecting
+    private var linkLossWasInjected = false
+
+    package init(
+        coordinator: any GS3ForegroundSessionControlling,
+        linkLossInjector: any GS3ForegroundLinkLossInjecting
+    ) {
+        self.coordinator = coordinator
+        self.linkLossInjector = linkLossInjector
+    }
+
+    public func start() async throws {
+        try await coordinator.start()
+    }
+
+    public func stop() async {
+        await coordinator.stop()
+    }
+
+    public func foregroundEnded() async {
+        await coordinator.foregroundEnded()
+    }
+
+    public func currentPhase() async -> GS3ForegroundPhase {
+        await coordinator.currentPhase()
+    }
+
+    package func injectLinkLossForDeviceTesting() async -> Bool {
+        guard !linkLossWasInjected,
+              await coordinator.currentPhase() == .live else { return false }
+        let accepted = await linkLossInjector.injectLinkLossForDeviceTesting()
+        if accepted { linkLossWasInjected = true }
+        return accepted
     }
 }
 

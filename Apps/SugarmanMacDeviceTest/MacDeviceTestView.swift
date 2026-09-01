@@ -77,6 +77,16 @@ struct MacDeviceTestView: View {
                         Button("Stop and disconnect", role: .cancel) {
                             Task { await model.stop() }
                         }
+                        Button(
+                            "Inject one link loss",
+                            systemImage: "bolt.horizontal.circle"
+                        ) {
+                            Task { await model.injectLinkLoss() }
+                        }
+                        .disabled(
+                            model.deviceTestPhase != .live
+                                || model.isLinkLossInjectionPending
+                        )
                     } else {
                         Button(
                             "Confirm exclusive access and arm",
@@ -91,6 +101,34 @@ struct MacDeviceTestView: View {
                         showDeleteConfirmation = true
                     }
                     .disabled(model.isArmed || model.isScanning)
+                }
+            }
+
+            Section("Private on-Mac reading comparison") {
+                Text(
+                    "These recent values and timestamps stay in this app view. They are "
+                        + "never included in the redacted diagnostics or Share action."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+                if model.privateRecentReadings.isEmpty {
+                    Text("No locally stored readings yet.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(model.privateRecentReadings) { sample in
+                        LabeledContent {
+                            Text("\(sample.milligramsPerDeciliter) mg/dL")
+                                .monospacedDigit()
+                        } label: {
+                            Text(
+                                sample.sensorTimestamp.formatted(
+                                    date: .abbreviated,
+                                    time: .standard
+                                )
+                            )
+                        }
+                    }
                 }
             }
 
