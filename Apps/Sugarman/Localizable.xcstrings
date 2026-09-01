@@ -1377,7 +1377,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tap a workout, then choose Pre, Live, After, or Overnight. The selected band is shown on History's chart."
+            "value": "Tap a workout, then choose Pre, Live, After, or Overnight. Choose No workout right now to hide the range. The selected band is shown on History's chart."
           }
         }
       }
@@ -1455,6 +1455,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Selected target"
+          }
+        }
+      }
+    },
+    "workout.none": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No workout right now"
           }
         }
       }

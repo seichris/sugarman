@@ -1053,6 +1053,11 @@ final class AppModel {
         }
     }
 
+    func clearWorkoutSelection() {
+        selectedWorkoutPlanID = nil
+        selectedWorkoutPhaseID = nil
+    }
+
     func selectWorkoutPhase(_ id: UUID) {
         guard let plan = selectedWorkoutPlan,
               plan.phases.contains(where: { $0.id == id }) else { return }

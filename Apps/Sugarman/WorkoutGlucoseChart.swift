@@ -33,22 +33,6 @@ struct WorkoutGlucoseChart: View {
         return first.sensorTimestamp...last.sensorTimestamp
     }
 
-    private var yDomain: ClosedRange<Double> {
-        let values = sortedSamples.map { $0.value(in: unit) }
-        var lower = values.min() ?? 0
-        var upper = values.max() ?? 1
-        if let target {
-            lower = min(lower, target.lowerValue(in: unit))
-            upper = max(upper, target.upperValue(in: unit))
-            if let floor = target.floorValue(in: unit) {
-                lower = min(lower, floor)
-            }
-        }
-        let spread = max(upper - lower, unit == .milligramsPerDeciliter ? 10 : 1)
-        let padding = spread * 0.15
-        return max(0, lower - padding)...upper + padding
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if sortedSamples.isEmpty {
@@ -94,7 +78,7 @@ struct WorkoutGlucoseChart: View {
                         .foregroundStyle(.blue)
                     }
                 }
-                .chartYScale(domain: yDomain)
+                .chartYScale(domain: GlucoseChartScale(unit: unit).domain)
                 .chartXAxis {
                     AxisMarks(values: .automatic(desiredCount: 4)) { value in
                         AxisGridLine()

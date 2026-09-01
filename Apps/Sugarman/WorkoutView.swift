@@ -81,6 +81,22 @@ struct WorkoutView: View {
                     Label("workout.create", systemImage: "plus.circle")
                 }
             } else {
+                Button {
+                    model.clearWorkoutSelection()
+                } label: {
+                    HStack(spacing: 12) {
+                        Label("workout.none", systemImage: "circle.slash")
+                        Spacer(minLength: 4)
+                        if model.selectedWorkoutPlanID == nil {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(.tint)
+                                .accessibilityHidden(true)
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(model.selectedWorkoutPlanID == nil ? .isSelected : [])
+
                 ForEach(model.workoutPlans) { plan in
                     NavigationLink {
                         WorkoutPlanDetailView(plan: plan)
