@@ -49,6 +49,14 @@ Keychain link change, rather than relying on one launch-time task. Cancellation
 and picker failure leave Keychain provisioning unchanged and surface a bounded
 status without file paths or private content.
 
+Both private JSON routes use the shared `PrivateDocumentImport` boundary. It
+reads without memory-mapping, copies into owned mutable storage, exposes that
+storage only through a scoped non-owning `Data` view, and clears the bytes on
+every import exit and deinitialization. Private import code must not combine
+`Data.ReadingOptions.mappedIfSafe` with `resetBytes`: a mapped file may be
+read-only, so trying to clear it can terminate the process before the import UI
+can report success.
+
 Deleting provisioning first stops the controller and then deletes only the
 private Keychain item. Deleting all local app data also deletes that item.
 

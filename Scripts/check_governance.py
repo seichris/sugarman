@@ -656,7 +656,12 @@ def check_sensor_ownership_and_foreground_slice() -> None:
     app_body = app.read_text(encoding="utf-8", errors="replace")
     if app_body.count("installForegroundSessionFactory(") != 1:
         error("normal app must retain exactly one typed factory-install method")
-    if "#if SUGARMAN_DEVICE_TEST\nimport GS3DeviceProvisioning\n#endif" not in app_body:
+    if (
+        "#if SUGARMAN_DEVICE_TEST\n"
+        "import GS3DeviceProvisioning\n"
+        "import PrivateDocumentImport\n"
+        "#endif"
+    ) not in app_body:
         error("device-test provisioning import must remain compile-time guarded")
     report_slice = app_body.split("var redactedDeviceTestReport: String", 1)
     if len(report_slice) != 2:
@@ -708,6 +713,8 @@ def check_sensor_ownership_and_foreground_slice() -> None:
     )[0]
     if "GS3DeviceProvisioning" in release_target:
         error("release Sugarman target must not link device-only provisioning")
+    if "PrivateDocumentImport" in release_target:
+        error("release Sugarman target must not link private document importing")
     for required in (
         "product: GS3DeviceProvisioning",
         "SUGARMAN_DEVICE_TEST",
@@ -757,6 +764,39 @@ def check_sensor_ownership_and_foreground_slice() -> None:
     )
     if '.library(name: "GS3DeviceProvisioning"' not in package_text:
         error("device-only provisioning must remain a separate package product")
+
+    private_import = ROOT / "Sources/PrivateDocumentImport/PrivateDocumentImportBuffer.swift"
+    if not private_import.is_file():
+        error("missing shared private document import buffer")
+    else:
+        private_import_body = private_import.read_text(
+            encoding="utf-8", errors="replace"
+        )
+        for required in (
+            "NSMutableData(contentsOf: url, options: [])",
+            "bytesNoCopy:",
+            "deallocator: .none",
+            "#isolation",
+            "resetBytes",
+            "deinit",
+        ):
+            if required not in private_import_body:
+                error(f"private document import buffer missing boundary: {required}")
+        if "mappedIfSafe" in private_import_body:
+            error("private document import buffer must not use memory-mapped storage")
+    if '.library(name: "PrivateDocumentImport"' not in package_text:
+        error("private document importing must remain a separate package product")
+    if project.count("product: PrivateDocumentImport") != 2:
+        error("only Device Test and Probe must link private document importing")
+    for relative in (
+        "Apps/Sugarman/SugarmanApp.swift",
+        "Apps/SugarmanProbe/ProbeAppModel.swift",
+    ):
+        import_body = (ROOT / relative).read_text(encoding="utf-8", errors="replace")
+        if "PrivateDocumentImportBuffer" not in import_body:
+            error(f"private JSON importer missing owned buffer: {relative}")
+        if "mappedIfSafe" in import_body:
+            error(f"private JSON importer must not map files: {relative}")
 
     device_test_view = ROOT / "Apps/Sugarman/DeviceTestProvisioningSection.swift"
     if not device_test_view.is_file():

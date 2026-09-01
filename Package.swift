@@ -19,6 +19,7 @@ let package = Package(
         .library(name: "GS3Session", targets: ["GS3Session"]),
         .library(name: "GS3DeviceProvisioning", targets: ["GS3DeviceProvisioning"]),
         .library(name: "GS3DeveloperProbe", targets: ["GS3DeveloperProbe"]),
+        .library(name: "PrivateDocumentImport", targets: ["PrivateDocumentImport"]),
         .library(name: "SensorOwnership", targets: ["SensorOwnership"]),
         .library(name: "SensorOnboarding", targets: ["SensorOnboarding"]),
         .library(name: "AccountBinding", targets: ["AccountBinding"]),
@@ -60,6 +61,7 @@ let package = Package(
             dependencies: ["GS3Protocol"],
             linkerSettings: [.linkedFramework("Security")]
         ),
+        .target(name: "PrivateDocumentImport"),
         .target(name: "SensorOwnership"),
         .target(name: "SensorOnboarding", dependencies: ["SugarmanDomain"]),
         .target(name: "AccountBinding", dependencies: ["SugarmanDomain"]),
@@ -98,6 +100,10 @@ let package = Package(
         .testTarget(
             name: "GS3DeveloperProbeTests",
             dependencies: ["GS3DeveloperProbe", "GS3Protocol"]
+        ),
+        .testTarget(
+            name: "PrivateDocumentImportTests",
+            dependencies: ["PrivateDocumentImport"]
         ),
         .testTarget(name: "SensorOwnershipTests", dependencies: ["SensorOwnership"]),
         .testTarget(name: "SensorOnboardingTests", dependencies: ["SensorOnboarding"]),

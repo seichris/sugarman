@@ -4,6 +4,7 @@
 import AccountBinding
 #if SUGARMAN_DEVICE_TEST
 import GS3DeviceProvisioning
+import PrivateDocumentImport
 #endif
 import GS3Transport
 import Integrations
@@ -315,15 +316,15 @@ final class AppModel {
             if accessed { url.stopAccessingSecurityScopedResource() }
         }
         do {
-            var data = try Data(contentsOf: url, options: [.mappedIfSafe])
-            defer {
-                if !data.isEmpty { data.resetBytes(in: 0..<data.count) }
+            let buffer = try PrivateDocumentImportBuffer(contentsOf: url)
+            defer { buffer.zeroize() }
+            try await buffer.withData { data in
+                try await deviceTestProvisioning.importDocument(
+                    data,
+                    linkedSensorID: linkedSensorID,
+                    into: primaryStore
+                )
             }
-            try await deviceTestProvisioning.importDocument(
-                data,
-                linkedSensorID: linkedSensorID,
-                into: primaryStore
-            )
             try await refreshFromStore()
             await refreshDeviceTestProvisioningAvailability()
             deviceTestStatus =
@@ -349,15 +350,15 @@ final class AppModel {
             if accessed { url.stopAccessingSecurityScopedResource() }
         }
         do {
-            var data = try Data(contentsOf: url, options: [.mappedIfSafe])
-            defer {
-                if !data.isEmpty { data.resetBytes(in: 0..<data.count) }
+            let buffer = try PrivateDocumentImportBuffer(contentsOf: url)
+            defer { buffer.zeroize() }
+            let request = try await buffer.withData { data in
+                try await deviceTestProvisioning.prepareProbeBridgeImport(
+                    data,
+                    linkedSensorID: linkedSensorID,
+                    in: primaryStore
+                )
             }
-            let request = try await deviceTestProvisioning.prepareProbeBridgeImport(
-                data,
-                linkedSensorID: linkedSensorID,
-                in: primaryStore
-            )
             deviceTestProbeBridgeRequest = request
             hasDeviceTestProbeBridgePending = true
             deviceTestStatus =

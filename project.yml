@@ -154,6 +154,8 @@ targets:
       - package: Sugarman
         product: GS3DeviceProvisioning
       - package: Sugarman
+        product: PrivateDocumentImport
+      - package: Sugarman
         product: SensorOnboarding
       - package: Sugarman
         product: AccountBinding
@@ -208,6 +210,8 @@ targets:
         product: GS3DeveloperProbe
       - package: Sugarman
         product: GS3Protocol
+      - package: Sugarman
+        product: PrivateDocumentImport
       - package: Sugarman
         product: SensorOwnership
     scheme:
