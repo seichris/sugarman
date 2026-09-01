@@ -210,8 +210,11 @@ exact artifact must prove, with fresh owner confirmation:
   acknowledged `0x39`;
 - a controlled gap is backfilled from the durable inclusive cursor without a
   duplicate database row or a skipped index;
-- mapped history timestamps agree with the official app within a predeclared
-  tolerance, and the 60-second anchor policy is revised if they do not;
+- at least five sequential corresponding readings match the official app's
+  displayed value after selecting the same unit, each mapped timestamp differs
+  by no more than 30 seconds, and their order and approximately 60-second
+  spacing agree; any adjacent-slot shift, reordered/missing value, larger
+  timestamp error, or value mismatch fails the current anchor policy;
 - native sensor-index wrap behavior is captured before any session can cross
   the current `UInt16` boundary;
 - five consecutive live readings arrive on a managed foreground session;

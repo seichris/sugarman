@@ -320,3 +320,25 @@ Final acceptance still requires sequential private timestamp/value comparison
 with the official app and the equivalent exact-artifact iPhone run. Native
 quality-state meaning, index wrap, and official-app handback after the final
 iPhone run also remain open.
+
+## Predeclared private comparison protocol
+
+Before inspecting official-app values or timestamps, the acceptance tolerance
+is fixed as follows:
+
+1. compare at least five sequential corresponding readings with both apps set
+   to the same display unit;
+2. require each displayed value to match exactly;
+3. require each Sugarman mapped timestamp to differ from its corresponding
+   official-app timestamp by no more than 30 seconds;
+4. require the same order and approximately 60-second spacing across the whole
+   sequence; and
+5. fail the current 60-second anchor policy on any adjacent-slot shift,
+   reordered or missing value, larger timestamp error, or value mismatch.
+
+Thirty seconds is strictly less than one 60-second sample interval, so the
+tolerance cannot silently accept a one-record index shift. It also accommodates
+an official UI that rounds a timestamp to the nearest minute. The owner must
+perform this comparison locally in the two private app views and record only
+pass/fail and mismatch categories. Values, timestamps, indexes, screenshots,
+and imported material remain outside Git, PRs, chat, and shared diagnostics.
