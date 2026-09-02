@@ -48,7 +48,7 @@ final class AppModel {
     var latestSample: GlucoseSample?
     var preferredUnit: GlucoseUnit {
         didSet {
-            UserDefaults.standard.set(preferredUnit.rawValue, forKey: Self.preferredUnitDefaultsKey)
+            userDefaults.set(preferredUnit.rawValue, forKey: Self.preferredUnitDefaultsKey)
         }
     }
     var probeEnabled: Bool
@@ -62,8 +62,16 @@ final class AppModel {
     var fuelingEvents: [FuelingEvent]
     var workouts: [WorkoutContext]
     var workoutPlans: [WorkoutPlan]
-    var selectedWorkoutPlanID: UUID?
-    var selectedWorkoutPhaseID: UUID?
+    var selectedWorkoutPlanID: UUID? {
+        didSet {
+            persistWorkoutSelection()
+        }
+    }
+    var selectedWorkoutPhaseID: UUID? {
+        didSet {
+            persistWorkoutSelection()
+        }
+    }
     var identities: [SensorIdentity]
     var ownerAccountID: OwnerAccountID?
     var exporter: VersionedDataExporter
@@ -71,6 +79,9 @@ final class AppModel {
     var demoLoadError: String?
     var storeErrorMessage: String?
     var diagnosticLogError: String?
+    @ObservationIgnored private let userDefaults: UserDefaults
+    @ObservationIgnored private let workoutSelectionPreferences:
+        WorkoutSelectionPreferences
     @ObservationIgnored private let diagnosticLogStore: LocalDiagnosticLogStore
     private var foregroundSessionBridge: GS3ForegroundSessionLifecycle
     private var currentScenePhase: ScenePhase
@@ -130,8 +141,15 @@ final class AppModel {
         preferredUnit: GlucoseUnit? = nil,
         probeEnabled: Bool = false,
         initialStoreError: String? = nil,
-        diagnosticLogStore: LocalDiagnosticLogStore? = nil
+        diagnosticLogStore: LocalDiagnosticLogStore? = nil,
+        userDefaults: UserDefaults = .standard
     ) {
+        let workoutSelectionPreferences = WorkoutSelectionPreferences(
+            userDefaults: userDefaults
+        )
+        let workoutSelection = workoutSelectionPreferences.load()
+        self.userDefaults = userDefaults
+        self.workoutSelectionPreferences = workoutSelectionPreferences
         self.store = store
         self.primaryStore = store
         self.safety = safety
@@ -139,7 +157,7 @@ final class AppModel {
         self.lifecycle = lifecycle
         self.latestSample = latestSample
         self.preferredUnit = preferredUnit
-            ?? UserDefaults.standard.string(forKey: Self.preferredUnitDefaultsKey)
+            ?? userDefaults.string(forKey: Self.preferredUnitDefaultsKey)
                 .flatMap(GlucoseUnit.init(rawValue:))
             ?? .milligramsPerDeciliter
         self.probeEnabled = probeEnabled
@@ -153,8 +171,8 @@ final class AppModel {
         self.fuelingEvents = []
         self.workouts = []
         self.workoutPlans = []
-        self.selectedWorkoutPlanID = nil
-        self.selectedWorkoutPhaseID = nil
+        self.selectedWorkoutPlanID = workoutSelection.planID
+        self.selectedWorkoutPhaseID = workoutSelection.phaseID
         self.identities = []
         self.ownerAccountID = nil
         self.exporter = VersionedDataExporter()
@@ -367,6 +385,15 @@ final class AppModel {
             return
         }
         self.selectedWorkoutPhaseID = plan.phases.first?.id
+    }
+
+    private func persistWorkoutSelection() {
+        workoutSelectionPreferences.save(
+            StoredWorkoutSelection(
+                planID: selectedWorkoutPlanID,
+                phaseID: selectedWorkoutPhaseID
+            )
+        )
     }
 
     func handleScenePhase(_ phase: ScenePhase) async {

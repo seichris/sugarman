@@ -541,6 +541,36 @@ struct SugarmanStoreTests {
         try log.removeAll()
         #expect(try log.summary() == LocalDiagnosticLogSummary(entryCount: 0, byteCount: 0))
     }
+
+    @Test func workoutSelectionPersistsUntilExplicitlyCleared() throws {
+        let suiteName =
+            "app.sugarman.tests.workout-selection.\(UUID().uuidString)"
+        let userDefaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { userDefaults.removePersistentDomain(forName: suiteName) }
+
+        let selected = StoredWorkoutSelection(planID: UUID(), phaseID: UUID())
+        WorkoutSelectionPreferences(userDefaults: userDefaults).save(selected)
+
+        let relaunchedDefaults = try #require(UserDefaults(suiteName: suiteName))
+        let relaunchedPreferences = WorkoutSelectionPreferences(
+            userDefaults: relaunchedDefaults
+        )
+        #expect(relaunchedPreferences.load() == selected)
+
+        relaunchedPreferences.save(
+            StoredWorkoutSelection(planID: nil, phaseID: nil)
+        )
+        #expect(
+            relaunchedPreferences.load()
+                == StoredWorkoutSelection(planID: nil, phaseID: nil)
+        )
+        #expect(
+            userDefaults.object(forKey: WorkoutSelectionPreferences.selectedPlanKey) == nil
+        )
+        #expect(
+            userDefaults.object(forKey: WorkoutSelectionPreferences.selectedPhaseKey) == nil
+        )
+    }
 }
 
 #if canImport(SwiftData)
