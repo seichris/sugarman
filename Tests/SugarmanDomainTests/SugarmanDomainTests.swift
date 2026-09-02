@@ -123,6 +123,23 @@ struct SugarmanDomainTests {
         #expect(scoped.sessionID != nil)
     }
 
+    @Test func workoutPlanCatalogStoresTwoDayReferenceBands() {
+        let plans = WorkoutPlanCatalog.twoDay150KmRide
+        #expect(plans.count == 2)
+        #expect(plans[0].name == "150 km bike — Day 1")
+        #expect(plans[1].name == "150 km bike — Day 2")
+        #expect(plans.allSatisfy { $0.isValid })
+        #expect(plans[0].phases.map(\.phase) == [.preWorkout, .duringWorkout, .postWorkout, .overnight])
+        #expect(plans[1].phases.map(\.phase) == [.preWorkout, .duringWorkout, .postWorkout])
+
+        let during = plans[0].phases[1]
+        #expect(during.lowerMgdl == 90)
+        #expect(during.upperMgdl == 150)
+        #expect(during.floorMgdl == 80)
+        #expect(during.lowerValue(in: .millimolesPerLiter) == 5.0)
+        #expect(during.upperValue(in: .millimolesPerLiter) == 150.0 / 18.0)
+    }
+
     @Test func syntheticDemoCatalogIsLabeledAndDrivesSafetyStates() {
         let now = Date(timeIntervalSince1970: 1_700_000_000)
         for scenario in SyntheticDemoScenario.allCases {
@@ -226,14 +243,14 @@ struct SugarmanDomainTests {
 
     @Test func glucoseChartScaleMatchesEachDisplayUnit() {
         let mmol = GlucoseChartScale(unit: .millimolesPerLiter)
-        #expect(mmol.domain == 0...15)
-        #expect(mmol.gridValues == Array(0...15).map(Double.init))
-        #expect(mmol.tickValues == [0, 3, 6, 9, 12, 15])
+        #expect(mmol.domain == 0...12)
+        #expect(mmol.gridValues == Array(0...12).map(Double.init))
+        #expect(mmol.tickValues == [0, 3, 6, 9, 12])
 
         let mgdl = GlucoseChartScale(unit: .milligramsPerDeciliter)
-        #expect(mgdl.domain == 0...270)
-        #expect(mgdl.gridValues == stride(from: 0.0, through: 270.0, by: 18.0).map(\.self))
-        #expect(mgdl.tickValues == [0, 50, 100, 150, 200, 250])
+        #expect(mgdl.domain == 0...216)
+        #expect(mgdl.gridValues == stride(from: 0.0, through: 216.0, by: 18.0).map(\.self))
+        #expect(mgdl.tickValues == [0, 50, 100, 150, 200])
     }
 
     @Test func activeSessionPrefersDemoThenSelectionNotUUIDSort() {

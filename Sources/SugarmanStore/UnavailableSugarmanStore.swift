@@ -42,6 +42,10 @@ public struct UnavailableSugarmanStore: SugarmanStoring {
     public func deleteFueling(id _: UUID) async throws { try unavailable() }
     public func insertWorkout(_: WorkoutContext) async throws { try unavailable() }
     public func workouts() async throws -> [WorkoutContext] { try unavailable() }
+    public func insertWorkoutPlan(_: WorkoutPlan) async throws { try unavailable() }
+    public func workoutPlans() async throws -> [WorkoutPlan] { try unavailable() }
+    public func updateWorkoutPlan(_: WorkoutPlan) async throws { try unavailable() }
+    public func deleteWorkoutPlan(id _: UUID) async throws { try unavailable() }
     public func insertIdentity(_: SensorIdentity) async throws { try unavailable() }
     public func identities() async throws -> [SensorIdentity] { try unavailable() }
 }

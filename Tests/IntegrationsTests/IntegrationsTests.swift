@@ -229,6 +229,7 @@ struct IntegrationsTests {
         let writer = PrivacyExportFileWriter()
         #expect(PrivacyExportFileWriter.jsonFilename == "sugarman-export-utc.json")
         #expect(PrivacyExportFileWriter.csvFilename == "sugarman-export-utc.csv")
+        #expect(PrivacyExportFileWriter.diagnosticsFilename == "sugarman-diagnostics.jsonl")
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
             "sugarman-export-\(UUID().uuidString)",
             isDirectory: true
@@ -248,6 +249,23 @@ struct IntegrationsTests {
         for needle in ["ownerAccount", "accountID", "serial", "packet", "RC4"] {
             #expect(!jsonText.contains(needle))
             #expect(!csvText.contains(needle))
+        }
+    }
+
+    @Test func diagnosticsExportWritesJSONLinesWithStableName() throws {
+        let writer = PrivacyExportFileWriter()
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "sugarman-diagnostics-export-\(UUID().uuidString)",
+            isDirectory: true
+        )
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let data = Data(#"{"schemaVersion":1,"event":"appLaunched"}"#.utf8)
+
+        let url = try writer.writeDiagnostics(data, to: directory)
+        #expect(url.lastPathComponent == PrivacyExportFileWriter.diagnosticsFilename)
+        #expect(try Data(contentsOf: url) == data)
+        #expect(throws: IntegrationError.exportEmpty) {
+            try writer.writeDiagnostics(Data(), to: directory)
         }
     }
 }

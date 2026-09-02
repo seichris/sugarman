@@ -41,6 +41,10 @@ dependencies. See [docs/UPSTREAMS.md](docs/UPSTREAMS.md).
 ## Product posture
 
 - Offline-first; no cloud backend and no CloudKit in the initial product.
+- Privacy-safe operational diagnostics are saved locally as JSON Lines and can
+  be manually exported or pulled from the app container over a trusted USB
+  developer connection; nothing is uploaded. See
+  [docs/LOCAL_DIAGNOSTICS.md](docs/LOCAL_DIAGNOSTICS.md).
 - First live UI always shows reading age, stale/disconnected state, and the
   no-dosing notice.
 - The legacy normal-app request enum remains empty, its generic codec factory

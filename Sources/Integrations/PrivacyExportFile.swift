@@ -9,6 +9,7 @@ import Foundation
 public struct PrivacyExportFileWriter: Sendable {
     public static let jsonFilename = "sugarman-export-utc.json"
     public static let csvFilename = "sugarman-export-utc.csv"
+    public static let diagnosticsFilename = "sugarman-diagnostics.jsonl"
 
     public init() {}
 
@@ -23,6 +24,15 @@ public struct PrivacyExportFileWriter: Sendable {
             throw IntegrationError.exportEmpty
         }
         let url = directory.appendingPathComponent(Self.csvFilename)
+        try data.write(to: url, options: .atomic)
+        return url
+    }
+
+    public func writeDiagnostics(_ data: Data, to directory: URL) throws -> URL {
+        guard !data.isEmpty else {
+            throw IntegrationError.exportEmpty
+        }
+        let url = directory.appendingPathComponent(Self.diagnosticsFilename)
         try data.write(to: url, options: .atomic)
         return url
     }

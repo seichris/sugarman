@@ -20,6 +20,7 @@
 		279867D011F2F2B3ED5C1F49 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3776611985DB564BF1E3EC5E /* Assets.xcassets */; };
 		3112B5FDC7B10EC2E0A7F499 /* PrivateDocumentImport in Frameworks */ = {isa = PBXBuildFile; productRef = E8F9BD44EEC5C184F92AE5BE /* PrivateDocumentImport */; };
 		32BE21F247BF960A65076A56 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3776611985DB564BF1E3EC5E /* Assets.xcassets */; };
+		342BAE49C2FB46735CA2ECD2 /* WorkoutGlucoseChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68D79D073CC92AD4D00434EF /* WorkoutGlucoseChart.swift */; };
 		36723C2EA4A5201A9B819C64 /* SensorOnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000D344B1531771A82196E8E /* SensorOnboardingView.swift */; };
 		38F266F75AE17DE2E58C7A03 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29BED539403ADB33595539AE /* DashboardView.swift */; };
 		3B2F680A22443E47D108D1AE /* GS3Transport in Frameworks */ = {isa = PBXBuildFile; productRef = 0F54958F160F02B5B6C6C373 /* GS3Transport */; };
@@ -58,6 +59,7 @@
 		9FEBC5BFB46FBBAAB25040F5 /* SensorOwnership in Frameworks */ = {isa = PBXBuildFile; productRef = C7A47036ADC02F17DD6BCE03 /* SensorOwnership */; };
 		A3EE9E4BF2642B9D472B90C3 /* PrivateDocumentImport in Frameworks */ = {isa = PBXBuildFile; productRef = 0D36F4670FBDBF2845A24415 /* PrivateDocumentImport */; };
 		AA5E71104F1C4450C6891D3E /* SensorOwnership in Frameworks */ = {isa = PBXBuildFile; productRef = 7E8B64029D6BD24F1A302D50 /* SensorOwnership */; };
+		B181D5BD932D039751E9E2BE /* WorkoutPlanEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A691E452B5C2FB077F67F91 /* WorkoutPlanEditorView.swift */; };
 		B1A68B3AD78A74A2EE80A515 /* SugarmanDomain in Frameworks */ = {isa = PBXBuildFile; productRef = 8315F3675E38C87BD98440E0 /* SugarmanDomain */; };
 		B28E54660ADD569225EF0BFB /* SensorOwnership in Frameworks */ = {isa = PBXBuildFile; productRef = 0A8CB8EC5B8B728EAA009209 /* SensorOwnership */; };
 		B2FC75E9F9317D3F50202930 /* SensorOnboarding in Frameworks */ = {isa = PBXBuildFile; productRef = F705304B1A41ECB50B19865E /* SensorOnboarding */; };
@@ -66,9 +68,11 @@
 		B4BD1BE8B1F72EC9680F3467 /* SugarmanStore in Frameworks */ = {isa = PBXBuildFile; productRef = E7E8D4FA8F2971F788EF938A /* SugarmanStore */; };
 		B6ADB2D8260077121F557995 /* GS3Session in Frameworks */ = {isa = PBXBuildFile; productRef = 5C327622666A5DB814217DE2 /* GS3Session */; };
 		B81DE0655CBA983E0C8E7C5A /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 860607D7CABFC1DCB652CAE8 /* HistoryView.swift */; };
+		B8D977C868ED83DBF438C6E0 /* WorkoutPlanEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A691E452B5C2FB077F67F91 /* WorkoutPlanEditorView.swift */; };
 		BFC2D08A368B37B491945544 /* SensorOwnership in Frameworks */ = {isa = PBXBuildFile; productRef = B74E57073811F62DE2D4E3BF /* SensorOwnership */; };
 		C415BCB114E2A449B39CC652 /* ProbeAppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD93DE80D8823F077A698FBA /* ProbeAppModel.swift */; };
 		C7E75782D209952D71C51624 /* GS3Transport in Frameworks */ = {isa = PBXBuildFile; productRef = 77D232E133BC26F477455789 /* GS3Transport */; };
+		C85026A1E85522FCC42F99A1 /* WorkoutPlanDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2761A8351E150E01C3F4F83 /* WorkoutPlanDetailView.swift */; };
 		D0CD0CAD05AD3E611AE84928 /* GS3DeviceProvisioning in Frameworks */ = {isa = PBXBuildFile; productRef = 205EE65E4E023B0BFD986D4E /* GS3DeviceProvisioning */; };
 		D3BEECB5D2E0E5E8B13CFC50 /* SugarmanDiagnostics in Frameworks */ = {isa = PBXBuildFile; productRef = AC88843AE5EFCB19CD37AB6B /* SugarmanDiagnostics */; };
 		D429394E319CB240A0CC15D9 /* Integrations in Frameworks */ = {isa = PBXBuildFile; productRef = EAD93EBE638021E98704BB34 /* Integrations */; };
@@ -83,6 +87,8 @@
 		E52DF7236B32F339BB5AA1BF /* SugarmanDiagnostics in Frameworks */ = {isa = PBXBuildFile; productRef = 68C83594A30351E0BAA91AE3 /* SugarmanDiagnostics */; };
 		E957FF0A866DAEBEE78F454D /* PrivacyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D62AEF0933A5D37DBD9819B /* PrivacyView.swift */; };
 		E9774F36FD34D802F3ECCA35 /* MacDeviceTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 546916A3A332E02DE574F2A6 /* MacDeviceTestView.swift */; };
+		ED55C38DB3BDE90CA92395C5 /* WorkoutPlanDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2761A8351E150E01C3F4F83 /* WorkoutPlanDetailView.swift */; };
+		F27F9F842B024BED2B419B2A /* WorkoutGlucoseChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68D79D073CC92AD4D00434EF /* WorkoutGlucoseChart.swift */; };
 		F31E6F71459357BB609CA8AE /* ActiveSessionBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15DF313DF9367CC3CEA50640 /* ActiveSessionBanner.swift */; };
 		F52E9FE020289C848F0BB0E7 /* Integrations in Frameworks */ = {isa = PBXBuildFile; productRef = 67DE8DC36AEDDAE5D84B6DDD /* Integrations */; };
 		F85EFE7C19C587F8C7A6FB07 /* SafetyEngine in Frameworks */ = {isa = PBXBuildFile; productRef = A9114B2D0C315218CD65C655 /* SafetyEngine */; };
@@ -105,7 +111,9 @@
 		60D75ABFD67CB22CB7D4C18B /* ProbeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProbeView.swift; sourceTree = "<group>"; };
 		624C211ABA31163598C2C265 /* WorkoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutView.swift; sourceTree = "<group>"; };
 		656BBC6B356424ED01B62A5C /* FuelingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FuelingView.swift; sourceTree = "<group>"; };
+		68D79D073CC92AD4D00434EF /* WorkoutGlucoseChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutGlucoseChart.swift; sourceTree = "<group>"; };
 		6D7D5408CC201C89747826BF /* Sugarman.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Sugarman.entitlements; sourceTree = "<group>"; };
+		7A691E452B5C2FB077F67F91 /* WorkoutPlanEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutPlanEditorView.swift; sourceTree = "<group>"; };
 		805EFD4E6C63AC4FA9C59EB9 /* SugarmanProbe.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SugarmanProbe.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		860607D7CABFC1DCB652CAE8 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
 		9F709C40FC939809818D7ADF /* NoDosingBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoDosingBanner.swift; sourceTree = "<group>"; };
@@ -119,6 +127,7 @@
 		E2EE7DEAE55777159E636FBD /* DiagnosticProbeSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticProbeSession.swift; sourceTree = "<group>"; };
 		E36123A35F8C24B3945DE828 /* SensorConnectionSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorConnectionSection.swift; sourceTree = "<group>"; };
 		E6EE39F377CDFD5147B0BA60 /* Sugarman.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Sugarman.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F2761A8351E150E01C3F4F83 /* WorkoutPlanDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutPlanDetailView.swift; sourceTree = "<group>"; };
 		F5197BAABED85D493E72182F /* SugarmanMacDeviceTestApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SugarmanMacDeviceTestApp.swift; sourceTree = "<group>"; };
 		F628625178EE8285CEC183DE /* SugarmanProbe.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SugarmanProbe.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -235,6 +244,9 @@
 				000D344B1531771A82196E8E /* SensorOnboardingView.swift */,
 				6D7D5408CC201C89747826BF /* Sugarman.entitlements */,
 				4704D8B1664BAC86165C699F /* SugarmanApp.swift */,
+				68D79D073CC92AD4D00434EF /* WorkoutGlucoseChart.swift */,
+				F2761A8351E150E01C3F4F83 /* WorkoutPlanDetailView.swift */,
+				7A691E452B5C2FB077F67F91 /* WorkoutPlanEditorView.swift */,
 				624C211ABA31163598C2C265 /* WorkoutView.swift */,
 			);
 			path = Sugarman;
@@ -498,6 +510,9 @@
 				9A87060F6C719C7264AE82BB /* SensorConnectionSection.swift in Sources */,
 				D5AD979760659516BCF4B266 /* SensorOnboardingView.swift in Sources */,
 				935EF8FAD536DD113B2011DE /* SugarmanApp.swift in Sources */,
+				F27F9F842B024BED2B419B2A /* WorkoutGlucoseChart.swift in Sources */,
+				C85026A1E85522FCC42F99A1 /* WorkoutPlanDetailView.swift in Sources */,
+				B8D977C868ED83DBF438C6E0 /* WorkoutPlanEditorView.swift in Sources */,
 				22FB8A1D82E6E44903F30D43 /* WorkoutView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -519,6 +534,9 @@
 				06F4E757C01D230F36516D89 /* SensorConnectionSection.swift in Sources */,
 				36723C2EA4A5201A9B819C64 /* SensorOnboardingView.swift in Sources */,
 				E15309AE01C533808742A893 /* SugarmanApp.swift in Sources */,
+				342BAE49C2FB46735CA2ECD2 /* WorkoutGlucoseChart.swift in Sources */,
+				ED55C38DB3BDE90CA92395C5 /* WorkoutPlanDetailView.swift in Sources */,
+				B181D5BD932D039751E9E2BE /* WorkoutPlanEditorView.swift in Sources */,
 				7F15A41C2BF5312E05733725 /* WorkoutView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

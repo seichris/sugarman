@@ -51,7 +51,15 @@ struct DashboardView: View {
                 } else {
                     readingHero(assessment)
                     rangePicker
-                    glucoseChart(timeline: timeline)
+                    glucoseChart(
+                        timeline: timeline,
+                        target: model.selectedWorkoutPhaseTarget
+                    )
+
+                    if let plan = model.selectedWorkoutPlan,
+                       let target = model.selectedWorkoutPhaseTarget {
+                        liveWorkoutContext(plan: plan, target: target)
+                    }
 
                     if !assessment.showsValueAsCurrent, !timeline.samples.isEmpty {
                         Label(
@@ -294,7 +302,7 @@ struct DashboardView: View {
     }
 
     private var rangePicker: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 4) {
             ForEach(GlucoseHistoryRange.allCases) { range in
                 Button {
                     selectedRange = range
@@ -302,10 +310,11 @@ struct DashboardView: View {
                     interactionChartTimestamp = nil
                 } label: {
                     Text(rangeTitle(range))
-                        .font(.headline.weight(.regular))
+                        .font(.subheadline.weight(.medium))
                         .lineLimit(1)
                         .minimumScaleFactor(0.75)
-                        .padding(.vertical, 10)
+                        .padding(.vertical, 6)
+                        .padding(.horizontal, 2)
                         .frame(maxWidth: .infinity)
                         .background {
                             if selectedRange == range {
@@ -324,7 +333,52 @@ struct DashboardView: View {
         .accessibilityLabel(Text("live.range.label"))
     }
 
-    private func glucoseChart(timeline: GlucoseTimeline) -> some View {
+    private func liveWorkoutContext(
+        plan: WorkoutPlan,
+        target: WorkoutPhaseTarget
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            if plan.phases.count > 1 {
+                Picker(
+                    "workout.phase",
+                    selection: Binding<UUID>(
+                        get: { model.selectedWorkoutPhaseID ?? target.id },
+                        set: { model.selectWorkoutPhase($0) }
+                    )
+                ) {
+                    ForEach(plan.phases) { phaseTarget in
+                        Text(phaseLabel(phaseTarget.phase))
+                            .tag(phaseTarget.id)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
+
+            WorkoutPhaseTargetCard(target: target)
+
+            if let notes = target.notes, !notes.isEmpty {
+                Text(notes)
+                    .font(.footnote)
+                    .foregroundStyle(LivePalette.secondaryText)
+            }
+
+            if let notes = plan.notes, !notes.isEmpty {
+                Text(notes)
+                    .font(.footnote)
+                    .foregroundStyle(LivePalette.secondaryText)
+            }
+
+            Text(verbatim: ProductCopy.athleteInsightOnly)
+                .font(.footnote)
+                .foregroundStyle(LivePalette.secondaryText)
+        }
+        .frame(maxWidth: 560, alignment: .leading)
+    }
+
+    private func glucoseChart(
+        timeline: GlucoseTimeline,
+        target: WorkoutPhaseTarget?
+    ) -> some View {
         let scale = GlucoseChartScale(unit: model.preferredUnit)
         let selectedSample = nearestSample(
             to: selectedChartTimestamp,
@@ -336,6 +390,37 @@ struct DashboardView: View {
                 .foregroundStyle(LivePalette.secondaryText)
 
             Chart {
+                if let target {
+                    RectangleMark(
+                        xStart: .value("workout.chart_target_start", timeline.start),
+                        xEnd: .value("workout.chart_target_end", timeline.end),
+                        yStart: .value(
+                            "workout.chart_target_low",
+                            target.lowerValue(in: model.preferredUnit)
+                        ),
+                        yEnd: .value(
+                            "workout.chart_target_high",
+                            target.upperValue(in: model.preferredUnit)
+                        )
+                    )
+                    .foregroundStyle(.green.opacity(0.18))
+
+                    RuleMark(
+                        y: .value(
+                            "workout.chart_target_low",
+                            target.lowerValue(in: model.preferredUnit)
+                        )
+                    )
+                    .foregroundStyle(.green.opacity(0.75))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
+
+                    if let floor = target.floorValue(in: model.preferredUnit) {
+                        RuleMark(y: .value("workout.chart_floor", floor))
+                            .foregroundStyle(.orange.opacity(0.85))
+                            .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 2]))
+                    }
+                }
+
                 ForEach(scale.gridValues, id: \.self) { gridValue in
                     RuleMark(y: .value("mmol/L guide", gridValue))
                         .foregroundStyle(LivePalette.grid)
@@ -444,6 +529,19 @@ struct DashboardView: View {
             }
             .accessibilityLabel(Text("live.chart_accessibility_label"))
             .accessibilityValue(Text(chartAccessibilityValue(timeline.samples.count)))
+        }
+    }
+
+    private func phaseLabel(_ phase: WorkoutPhase) -> String {
+        switch phase {
+        case .preWorkout:
+            String(localized: "workout.phase.pre")
+        case .duringWorkout:
+            String(localized: "workout.phase.during")
+        case .postWorkout:
+            String(localized: "workout.phase.post")
+        case .overnight:
+            String(localized: "workout.phase.overnight")
         }
     }
 

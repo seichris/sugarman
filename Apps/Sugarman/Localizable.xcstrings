@@ -639,7 +639,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Session and glucose history stay on this device until you delete them. There is no cloud backend."
+            "value": "Session, glucose, workout, fueling, and diagnostic history stay on this device until you delete them. There is no cloud backend."
           }
         }
       }
@@ -738,7 +738,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This removes locally stored sessions and glucose samples from Sugarman. It does not change the physical sensor."
+            "value": "This removes locally stored sessions, glucose samples, workouts, fueling, and diagnostic logs from Sugarman. It does not change the physical sensor."
           }
         }
       }
@@ -804,7 +804,84 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Exports include schema version, units, timezone, sensor indices, and fueling in JSON. They exclude credentials, account IDs, raw frames, MAC-like IDs, and full serials. CSV is glucose rows only."
+            "value": "Exports include schema version, units, timezone, sensor indices, and fueling in JSON. They exclude credentials, account IDs, raw frames, MAC-like IDs, and full serials. CSV is glucose rows only. Diagnostic logs are a separate privacy-safe JSON Lines export."
+          }
+        }
+      }
+    },
+    "privacy.local_diagnostics": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local diagnostics"
+          }
+        }
+      }
+    },
+    "privacy.local_diagnostics_body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sugarman saves privacy-safe operational events on this iPhone. Nothing is uploaded. Logs omit glucose values, location, sensor identifiers, and private material."
+          }
+        }
+      }
+    },
+    "privacy.local_diagnostics_empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No local diagnostic events yet."
+          }
+        }
+      }
+    },
+    "privacy.local_diagnostics_summary": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stored locally: %lld events, %lld bytes."
+          }
+        }
+      }
+    },
+    "privacy.local_diagnostics_invalid": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Some stored diagnostic lines could not be read."
+          }
+        }
+      }
+    },
+    "privacy.export_diagnostics": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export local diagnostics"
+          }
+        }
+      }
+    },
+    "privacy.export_diagnostics_hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shares the local JSON Lines diagnostic log; it is not uploaded."
           }
         }
       }
@@ -1124,7 +1201,29 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Workout overlay is not implemented in this slice."
+            "value": "Select a saved workout to show its target band."
+          }
+        }
+      }
+    },
+    "history.chart": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Glucose chart"
+          }
+        }
+      }
+    },
+    "history.chart_choose_workout": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a saved workout and phase in Workout to show its reference band here."
           }
         }
       }
@@ -1323,6 +1422,479 @@
           "stringUnit": {
             "state": "translated",
             "value": "Athlete insight only. This is not medical advice."
+          }
+        }
+      }
+    },
+    "workout.saved": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved workouts"
+          }
+        }
+      }
+    },
+    "workout.saved_empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save a workout with the phases and glucose bands you want to reference."
+          }
+        }
+      }
+    },
+    "workout.saved_footer": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap a workout, then choose Pre, Live, After, or Overnight. Choose No workout right now to hide the range. The selected band is shown on History's chart."
+          }
+        }
+      }
+    },
+    "workout.recorded": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recorded workouts"
+          }
+        }
+      }
+    },
+    "workout.recorded_empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No HealthKit workout records yet. Saved workouts above are your reusable references."
+          }
+        }
+      }
+    },
+    "workout.add": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add workout"
+          }
+        }
+      }
+    },
+    "workout.add_codex_template": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add two-day 150 km ride template"
+          }
+        }
+      }
+    },
+    "workout.create": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create a workout"
+          }
+        }
+      }
+    },
+    "workout.edit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit workout"
+          }
+        }
+      }
+    },
+    "workout.selected": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selected target"
+          }
+        }
+      }
+    },
+    "workout.none": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No workout right now"
+          }
+        }
+      }
+    },
+    "workout.phase": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workout phase"
+          }
+        }
+      }
+    },
+    "workout.phase_count": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d phases"
+          }
+        }
+      }
+    },
+    "workout.phase.pre": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pre-workout"
+          }
+        }
+      }
+    },
+    "workout.phase.during": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Live"
+          }
+        }
+      }
+    },
+    "workout.phase.post": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "After"
+          }
+        }
+      }
+    },
+    "workout.phase.overnight": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Overnight"
+          }
+        }
+      }
+    },
+    "workout.range_mgdl": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d–%d mg/dL"
+          }
+        }
+      }
+    },
+    "workout.range_mmol": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%.1f–%.1f mmol/L"
+          }
+        }
+      }
+    },
+    "workout.floor_format": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stay above %.1f %@"
+          }
+        }
+      }
+    },
+    "workout.chart_empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No glucose samples to plot yet. The selected target band will appear when readings arrive."
+          }
+        }
+      }
+    },
+    "workout.chart_readings": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Readings"
+          }
+        }
+      }
+    },
+    "workout.chart_target_legend": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reference %.1f–%.1f %@"
+          }
+        }
+      }
+    },
+    "workout.chart_accessibility_readings": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d glucose readings"
+          }
+        }
+      }
+    },
+    "workout.editor.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New workout"
+          }
+        }
+      }
+    },
+    "workout.editor.edit_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit workout"
+          }
+        }
+      }
+    },
+    "workout.editor.details": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workout details"
+          }
+        }
+      }
+    },
+    "workout.editor.name": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name"
+          }
+        }
+      }
+    },
+    "workout.editor.activity": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activity"
+          }
+        }
+      }
+    },
+    "workout.editor.phases": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reference phases"
+          }
+        }
+      }
+    },
+    "workout.editor.phase": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phase"
+          }
+        }
+      }
+    },
+    "workout.editor.phase_label": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Timing label (for example, Day 1 start)"
+          }
+        }
+      }
+    },
+    "workout.editor.lower": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lower mg/dL"
+          }
+        }
+      }
+    },
+    "workout.editor.upper": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Upper mg/dL"
+          }
+        }
+      }
+    },
+    "workout.editor.floor": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Optional floor mg/dL"
+          }
+        }
+      }
+    },
+    "workout.editor.notes": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phase notes"
+          }
+        }
+      }
+    },
+    "workout.editor.add_phase": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add phase"
+          }
+        }
+      }
+    },
+    "workout.editor.range_footer": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ranges are stored in mg/dL and converted for display. They are your reference notes, not medical advice."
+          }
+        }
+      }
+    },
+    "workout.editor.notes_section": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workout notes"
+          }
+        }
+      }
+    },
+    "workout.editor.plan_notes": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notes"
+          }
+        }
+      }
+    },
+    "workout.editor.cancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        }
+      }
+    },
+    "workout.editor.save": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save"
+          }
+        }
+      }
+    },
+    "workout.editor.saving": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saving…"
           }
         }
       }

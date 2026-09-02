@@ -10,6 +10,7 @@ public actor InMemorySugarmanStore: SugarmanStoring {
     private var sessions: [UUID: SensorSession] = [:]
     private var fueling: [UUID: FuelingEvent] = [:]
     private var workoutRecords: [UUID: WorkoutContext] = [:]
+    private var workoutPlanRecords: [UUID: WorkoutPlan] = [:]
     private var identityRecords: [UUID: SensorIdentity] = [:]
 
     public init() {}
@@ -147,6 +148,7 @@ public actor InMemorySugarmanStore: SugarmanStoring {
         samples.removeAll()
         fueling.removeAll()
         workoutRecords.removeAll()
+        workoutPlanRecords.removeAll()
         identityRecords.removeAll()
     }
 
@@ -179,6 +181,33 @@ public actor InMemorySugarmanStore: SugarmanStoring {
 
     public func workouts() async throws -> [WorkoutContext] {
         workoutRecords.values.sorted { $0.start < $1.start }
+    }
+
+    public func insertWorkoutPlan(_ plan: WorkoutPlan) async throws {
+        if workoutPlanRecords[plan.id] != nil {
+            throw StoreError.duplicateWorkout(plan.id)
+        }
+        workoutPlanRecords[plan.id] = plan
+    }
+
+    public func workoutPlans() async throws -> [WorkoutPlan] {
+        workoutPlanRecords.values.sorted { lhs, rhs in
+            if lhs.createdAt != rhs.createdAt {
+                return lhs.createdAt < rhs.createdAt
+            }
+            return lhs.id.uuidString < rhs.id.uuidString
+        }
+    }
+
+    public func updateWorkoutPlan(_ plan: WorkoutPlan) async throws {
+        guard workoutPlanRecords[plan.id] != nil else {
+            throw StoreError.notFound
+        }
+        workoutPlanRecords[plan.id] = plan
+    }
+
+    public func deleteWorkoutPlan(id: UUID) async throws {
+        workoutPlanRecords[id] = nil
     }
 
     public func insertIdentity(_ identity: SensorIdentity) async throws {

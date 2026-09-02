@@ -19,7 +19,26 @@ struct HistoryView: View {
                     Section {
                         SyntheticDemoBanner()
                             .listRowInsets(EdgeInsets())
-                            .listRowBackground(Color.clear)
+                        .listRowBackground(Color.clear)
+                    }
+                }
+                if !model.samples.isEmpty {
+                    Section("history.chart") {
+                        if let plan = model.selectedWorkoutPlan,
+                           let target = model.selectedWorkoutPhaseTarget {
+                            Text("\(plan.name) · \(target.label)")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text("history.chart_choose_workout")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+                        WorkoutGlucoseChart(
+                            samples: chartSamples,
+                            target: model.selectedWorkoutPhaseTarget,
+                            unit: model.preferredUnit
+                        )
                     }
                 }
                 Section("history.samples") {
@@ -34,13 +53,17 @@ struct HistoryView: View {
                 }
             }
             .navigationTitle("history.title")
-            .overlay(alignment: .bottom) {
-                Text("history.overlay_later")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .padding()
+        }
+    }
+
+    private var chartSamples: [GlucoseSample] {
+        if let activeSessionID = model.activeSessionID {
+            let active = model.samples.filter { $0.sessionID == activeSessionID }
+            if !active.isEmpty {
+                return active
             }
         }
+        return model.samples
     }
 
     private func sampleRow(_ sample: GlucoseSample) -> some View {

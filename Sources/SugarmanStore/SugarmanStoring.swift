@@ -105,6 +105,10 @@ public protocol SugarmanStoring: Sendable {
     func deleteFueling(id: UUID) async throws
     func insertWorkout(_ workout: WorkoutContext) async throws
     func workouts() async throws -> [WorkoutContext]
+    func insertWorkoutPlan(_ plan: WorkoutPlan) async throws
+    func workoutPlans() async throws -> [WorkoutPlan]
+    func updateWorkoutPlan(_ plan: WorkoutPlan) async throws
+    func deleteWorkoutPlan(id: UUID) async throws
     func insertIdentity(_ identity: SensorIdentity) async throws
     func identities() async throws -> [SensorIdentity]
 }
