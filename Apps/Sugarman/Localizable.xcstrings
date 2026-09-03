@@ -1029,6 +1029,17 @@
         }
       }
     },
+    "More": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "More"
+          }
+        }
+      }
+    },
     "Onboarding": {
       "extractionState": "manual",
       "localizations": {

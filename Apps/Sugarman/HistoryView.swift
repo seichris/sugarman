@@ -6,9 +6,25 @@ import SwiftUI
 
 struct HistoryView: View {
     @Environment(AppModel.self) private var model
+    private let embeddedInNavigationStack: Bool
 
+    init(embeddedInNavigationStack: Bool = false) {
+        self.embeddedInNavigationStack = embeddedInNavigationStack
+    }
+
+    @ViewBuilder
     var body: some View {
-        NavigationStack {
+        if embeddedInNavigationStack {
+            historyContent
+        } else {
+            NavigationStack {
+                historyContent
+            }
+        }
+    }
+
+    private var historyContent: some View {
+        Group {
             List {
                 Section {
                     ActiveSessionBanner()

@@ -25,6 +25,7 @@
 		38F266F75AE17DE2E58C7A03 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29BED539403ADB33595539AE /* DashboardView.swift */; };
 		3B2F680A22443E47D108D1AE /* GS3Transport in Frameworks */ = {isa = PBXBuildFile; productRef = 0F54958F160F02B5B6C6C373 /* GS3Transport */; };
 		3E7CB545F3803FFE8AC5EF8A /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 015AE5A8B5FB8B171B34FD9B /* Localizable.xcstrings */; };
+		412B56F619A5732BEAD3F58A /* MoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1083CCA05A8EEAA3505139DC /* MoreView.swift */; };
 		420B4B596CD0FA70A19BDF90 /* SugarmanDomain in Frameworks */ = {isa = PBXBuildFile; productRef = 7886D38C4750C23AF06F4666 /* SugarmanDomain */; };
 		4210AE5C6932FD01CD3B013A /* SugarmanStore in Frameworks */ = {isa = PBXBuildFile; productRef = F0E612B31C6AE1F0DAA6AE44 /* SugarmanStore */; };
 		435EEDC60E8276B3D37674F1 /* MacDeviceTestModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 327A3D3BAFDF1EBE39B246DE /* MacDeviceTestModel.swift */; };
@@ -44,6 +45,7 @@
 		7C26ECF32987BA12E374CEB3 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 7C55978BEAE353FD00B0FF99 /* PrivacyInfo.xcprivacy */; };
 		7EEA0EE53C2AC605578EA65E /* DataMatrixCameraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3488762722113D1DF2E2D318 /* DataMatrixCameraView.swift */; };
 		7F15A41C2BF5312E05733725 /* WorkoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 624C211ABA31163598C2C265 /* WorkoutView.swift */; };
+		7FC583DB47F942AF1CB089BC /* MoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1083CCA05A8EEAA3505139DC /* MoreView.swift */; };
 		837CABEF38C1FB95E82266F5 /* GS3Protocol in Frameworks */ = {isa = PBXBuildFile; productRef = 5391074AF6B3847D8D21EB21 /* GS3Protocol */; };
 		86248D0E4EB17F6FC2CDDA75 /* GS3DeviceProvisioning in Frameworks */ = {isa = PBXBuildFile; productRef = 10B8C77CF1EF6462BE94D73A /* GS3DeviceProvisioning */; };
 		868FDCD491194DAE71D42360 /* V3ProbeBluetoothRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9DEBFFC56BDC6FB81519643 /* V3ProbeBluetoothRuntime.swift */; };
@@ -100,6 +102,7 @@
 /* Begin PBXFileReference section */
 		000D344B1531771A82196E8E /* SensorOnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorOnboardingView.swift; sourceTree = "<group>"; };
 		015AE5A8B5FB8B171B34FD9B /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		1083CCA05A8EEAA3505139DC /* MoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoreView.swift; sourceTree = "<group>"; };
 		15DF313DF9367CC3CEA50640 /* ActiveSessionBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveSessionBanner.swift; sourceTree = "<group>"; };
 		1F1463176FB0AB503E0DBC95 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		29BED539403ADB33595539AE /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
@@ -122,8 +125,8 @@
 		9F709C40FC939809818D7ADF /* NoDosingBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoDosingBanner.swift; sourceTree = "<group>"; };
 		AC96B54C5A9982635D8FAA25 /* DevelopmentTeam.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = DevelopmentTeam.xcconfig; sourceTree = "<group>"; };
 		B4267C7DE28C61725933287C /* SugarmanDeviceTest.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SugarmanDeviceTest.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		BF74DB52FA25D6BED9C37F44 /* sugarman */ = {isa = PBXFileReference; lastKnownFileType = folder; name = sugarman; path = .; sourceTree = SOURCE_ROOT; };
 		C5986B6248ACE9BB1160335E /* SugarmanMacDeviceTest.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SugarmanMacDeviceTest.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BF74DB52FA25D6BED9C37F44 /* sugarman */ = {isa = PBXFileReference; lastKnownFileType = folder; name = sugarman; path = .; sourceTree = SOURCE_ROOT; };
 		CA4F6CD684BA19A9D21C9C65 /* SugarmanProbeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SugarmanProbeApp.swift; sourceTree = "<group>"; };
 		CD93DE80D8823F077A698FBA /* ProbeAppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProbeAppModel.swift; sourceTree = "<group>"; };
 		D9DEBFFC56BDC6FB81519643 /* V3ProbeBluetoothRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = V3ProbeBluetoothRuntime.swift; sourceTree = "<group>"; };
@@ -240,6 +243,7 @@
 				656BBC6B356424ED01B62A5C /* FuelingView.swift */,
 				860607D7CABFC1DCB652CAE8 /* HistoryView.swift */,
 				015AE5A8B5FB8B171B34FD9B /* Localizable.xcstrings */,
+				1083CCA05A8EEAA3505139DC /* MoreView.swift */,
 				9F709C40FC939809818D7ADF /* NoDosingBanner.swift */,
 				7C55978BEAE353FD00B0FF99 /* PrivacyInfo.xcprivacy */,
 				5D62AEF0933A5D37DBD9819B /* PrivacyView.swift */,
@@ -510,6 +514,7 @@
 				DB99391AB425A41FC0785CCC /* DiagnosticProbeSession.swift in Sources */,
 				1BF94CCC65C237F400445C72 /* FuelingView.swift in Sources */,
 				B81DE0655CBA983E0C8E7C5A /* HistoryView.swift in Sources */,
+				412B56F619A5732BEAD3F58A /* MoreView.swift in Sources */,
 				9FEA5F925193DB6A14980AC2 /* NoDosingBanner.swift in Sources */,
 				12724BCD612662109738652C /* PrivacyView.swift in Sources */,
 				4652CFF78AE7544266154C5E /* RootView.swift in Sources */,
@@ -534,6 +539,7 @@
 				99A5B09163915D3FB6532C55 /* DiagnosticProbeSession.swift in Sources */,
 				D5095075A1A49CBC804F65F7 /* FuelingView.swift in Sources */,
 				1BD5EF2CC6DEAB38AA7AC2C9 /* HistoryView.swift in Sources */,
+				7FC583DB47F942AF1CB089BC /* MoreView.swift in Sources */,
 				8C55E464E39F9A14F9E321F3 /* NoDosingBanner.swift in Sources */,
 				E957FF0A866DAEBEE78F454D /* PrivacyView.swift in Sources */,
 				9CD79405070151AA125610EB /* RootView.swift in Sources */,

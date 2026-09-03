@@ -12,10 +12,6 @@ struct RootView: View {
                 .tabItem {
                     Label("Live", systemImage: "heart.text.clipboard")
                 }
-            HistoryView()
-                .tabItem {
-                    Label("History", systemImage: "chart.xyaxis.line")
-                }
             WorkoutView()
                 .tabItem {
                     Label("Workout", systemImage: "figure.run")
@@ -28,9 +24,9 @@ struct RootView: View {
                 .tabItem {
                     Label("Sensor", systemImage: "sensor.tag.radiowaves.forward")
                 }
-            PrivacyView()
+            MoreView()
                 .tabItem {
-                    Label("Privacy", systemImage: "lock.shield")
+                    Label("More", systemImage: "ellipsis")
                 }
         }
         .task {

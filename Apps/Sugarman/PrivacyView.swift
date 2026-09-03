@@ -10,6 +10,7 @@ import SwiftUI
 
 struct PrivacyView: View {
     @Environment(AppModel.self) private var model
+    private let embeddedInNavigationStack: Bool
     @State private var confirmDeleteAll = false
     @State private var sessionPendingDelete: UUID?
     @State private var exportFileURL: URL?
@@ -17,8 +18,23 @@ struct PrivacyView: View {
     @State private var diagnosticSummary: LocalDiagnosticLogSummary?
     @State private var peripheralSearchText = ""
 
+    init(embeddedInNavigationStack: Bool = false) {
+        self.embeddedInNavigationStack = embeddedInNavigationStack
+    }
+
+    @ViewBuilder
     var body: some View {
-        NavigationStack {
+        if embeddedInNavigationStack {
+            privacyContent
+        } else {
+            NavigationStack {
+                privacyContent
+            }
+        }
+    }
+
+    private var privacyContent: some View {
+        Group {
             Form {
                 Section("privacy.retention") {
                     Text("privacy.retention_body")
