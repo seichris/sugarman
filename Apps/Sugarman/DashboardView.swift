@@ -130,12 +130,16 @@ struct DashboardView: View {
 
     @ViewBuilder
     private func readingHero(_ assessment: SafetyAssessment) -> some View {
-        if model.latestSample == nil {
-            missingReadingHero
-        } else {
+        if let latestSample = model.latestSample {
 #if !SUGARMAN_DEVICE_TEST
             if model.isSensorConnectionEnabled,
-               model.sensorConnectionActivity != .live {
+               model.sensorConnectionActivity == .synchronizing {
+                glucoseReadingHero(
+                    mgdl: latestSample.milligramsPerDeciliter,
+                    assessment: assessment
+                )
+            } else if model.isSensorConnectionEnabled,
+                      model.sensorConnectionActivity != .live {
                 unavailableReadingHero(sensorActivityText, assessment: assessment)
             } else {
                 assessmentReadingHero(assessment)
@@ -143,6 +147,8 @@ struct DashboardView: View {
 #else
             assessmentReadingHero(assessment)
 #endif
+        } else {
+            missingReadingHero
         }
     }
 
