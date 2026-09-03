@@ -1116,6 +1116,28 @@ def check_no_public_owner_health_observations() -> None:
                 )
 
 
+def check_nfc_declarations() -> None:
+    """Keep iOS 26 NFC declarations valid without enabling tag commands."""
+    entitlement_paths = (
+        ROOT / "Apps/Sugarman/Sugarman.entitlements",
+        ROOT / "Apps/SugarmanDeviceTest/SugarmanDeviceTest.entitlements",
+    )
+    for path in entitlement_paths:
+        body = path.read_text(encoding="utf-8", errors="replace")
+        if "<string>NDEF</string>" in body:
+            error(f"deprecated NDEF entitlement in {path.relative_to(ROOT)}")
+        if "<string>TAG</string>" not in body:
+            error(f"missing iOS 26 TAG entitlement in {path.relative_to(ROOT)}")
+
+    for path in (
+        ROOT / "Apps/Sugarman/Info.plist",
+        ROOT / "Apps/SugarmanDeviceTest/Info.plist",
+    ):
+        body = path.read_text(encoding="utf-8", errors="replace")
+        if "com.apple.developer.nfc.readersession.formats" in body:
+            error(f"NFC entitlement must not be in {path.relative_to(ROOT)}")
+
+
 def main() -> int:
     check_licence()
     check_provenance()
@@ -1124,6 +1146,7 @@ def main() -> int:
     check_sensor_ownership_and_foreground_slice()
     check_private_evidence_gitignore()
     check_no_public_owner_health_observations()
+    check_nfc_declarations()
     if ERRORS:
         print("Governance check failed:")
         for item in ERRORS:

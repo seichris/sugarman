@@ -20,10 +20,6 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>NFCReaderUsageDescription</key>
 	<string>Sugarman can read an owned sensor package or tag to identify the sensor. Scanning does not activate or bind the sensor.</string>
-	<key>com.apple.developer.nfc.readersession.formats</key>
-	<array>
-		<string>NDEF</string>
-	</array>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Sugarman uses Bluetooth to connect to an owned glucose sensor you have already set up. It does not send sensor commands until hardware evidence gates pass.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>

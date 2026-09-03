@@ -22,7 +22,7 @@ settings:
     ENABLE_USER_SELECTED_FILES: empty
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: ""
-    CURRENT_PROJECT_VERSION: 1
+    CURRENT_PROJECT_VERSION: 2
     MARKETING_VERSION: 1.0.0
 packages:
   Sugarman:
@@ -49,8 +49,6 @@ targets:
         NSBluetoothAlwaysUsageDescription: Sugarman uses Bluetooth to connect to an owned glucose sensor you have already set up. It does not send sensor commands until hardware evidence gates pass.
         NSBluetoothPeripheralUsageDescription: Sugarman uses Bluetooth to connect to an owned glucose sensor you have already set up.
         NFCReaderUsageDescription: Sugarman can read an owned sensor package or tag to identify the sensor. Scanning does not activate or bind the sensor.
-        com.apple.developer.nfc.readersession.formats:
-          - NDEF
         NSCameraUsageDescription: Sugarman can scan a package Data Matrix to identify an owned sensor. Scanning does not send sensor commands.
         NSHealthShareUsageDescription: Sugarman can read workouts you choose to share so you can overlay them with glucose. HealthKit glucose writes are disabled until validation gates pass.
         NSHealthUpdateUsageDescription: Sugarman may later write validated glucose to Apple Health. HealthKit glucose writes are disabled in this build.
@@ -58,7 +56,7 @@ targets:
       path: Apps/Sugarman/Sugarman.entitlements
       properties:
         com.apple.developer.nfc.readersession.formats:
-          - NDEF
+          - TAG
         com.apple.security.application-groups:
           - group.app.sugarman.sensor-owner
     settings:
@@ -130,8 +128,6 @@ targets:
         NSBluetoothAlwaysUsageDescription: Sugarman Device Test runs an explicitly armed managed foreground connection to one owned, already-active glucose sensor.
         NSBluetoothPeripheralUsageDescription: Sugarman Device Test runs an explicitly armed managed foreground connection to one owned, already-active glucose sensor.
         NFCReaderUsageDescription: Sugarman Device Test can read an owned sensor tag to store a redacted identity. Scanning does not activate or bind the sensor.
-        com.apple.developer.nfc.readersession.formats:
-          - NDEF
         NSCameraUsageDescription: Sugarman Device Test can scan a package Data Matrix to store a redacted identity. Scanning does not send sensor commands.
         NSHealthShareUsageDescription: Sugarman Device Test can read workouts you choose to share. HealthKit glucose writes remain disabled.
         NSHealthUpdateUsageDescription: HealthKit glucose writes are disabled in Sugarman Device Test.
@@ -139,7 +135,7 @@ targets:
       path: Apps/SugarmanDeviceTest/SugarmanDeviceTest.entitlements
       properties:
         com.apple.developer.nfc.readersession.formats:
-          - NDEF
+          - TAG
         com.apple.security.application-groups:
           - group.app.sugarman.sensor-owner
     settings:
