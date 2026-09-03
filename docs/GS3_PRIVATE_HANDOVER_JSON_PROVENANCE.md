@@ -87,8 +87,23 @@ This is a provenance record, not a promise of an automated acquisition path:
 6. A capture-backed history start and the exact advertised local name were
    selected from owned observations.
 7. Those values were manually placed into the strict version-1 Probe schema
-   and kept as a private local file for post-install import. No conversion tool
-   or committed generator produced it.
+   and kept as a private local file for post-install import. At the time of the
+   historical handover, no conversion tool or committed generator produced it.
+
+The current repository now includes a Mac-first offline builder for repeating
+that already-active construction without repeating APK/native-library analysis.
+It accepts one owner-supplied BTSnoop session, the owner-visible numeric user
+ID, and a separately held version-pinned private algorithm profile. It recovers
+the registered block only after exact authentication decrypt/re-encode parity,
+and accepts a history start only when the following valid data batch begins at
+the same index. It emits this same strict schema; it does not add a permissive
+format or a fresh-activation route. See
+[`GS3_PRIVATE_HANDOVER_BUILDER.md`](GS3_PRIVATE_HANDOVER_BUILDER.md).
+
+The HCI evidence cannot independently distinguish a correct private algorithm
+key/IV from another correctly sized pair. The builder validates the separate
+profile's exact public evidence pins and shape, while preserving that limitation
+instead of claiming capture parity for those two fixed private values.
 
 The current app validates this historical schema, copies it through a mutable
 non-memory-mapped buffer, normalizes the material into a production-specific

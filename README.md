@@ -144,6 +144,7 @@ dependencies. See [docs/UPSTREAMS.md](docs/UPSTREAMS.md).
 | `Sources/SafetyEngine` | Stale/disconnected/warm-up/error/expiry evaluator |
 | `Sources/Integrations` | HealthKit/export interfaces; HealthKit writes disabled |
 | `Sources/SugarmanDiagnostics` | Read-only GATT probe, redacted GATT export, BTSnoop analyzer |
+| `Sources/GS3PrivateHandoverBuilder` | Pure offline Mac-compatible extraction, replay validation, strict handover generation, and owner-only atomic output |
 | `Apps/Sugarman` | SwiftUI iOS application shell |
 | `Apps/SugarmanProbe` | Separate foreground-only developer handover application; not linked by `Sugarman` |
 | `Apps/SugarmanDeviceTest` | Signing metadata for the isolated normal-app production-lifecycle test target |
@@ -221,6 +222,20 @@ Governance check (also run in CI):
 ```sh
 python3 Scripts/check_governance.py
 ```
+
+Offline Mac-first private handover builder for one already-active,
+owner-controlled session:
+
+```sh
+swift run -c release gs3-private-handover build \
+  --capture '<PRIVATE_BTSNOOP_PATH>' \
+  --user-id '<OWNER_VISIBLE_NUMERIC_ID>' \
+  --private-profile '<PRIVATE_PROFILE_PATH>' \
+  --output '<PRIVATE_HANDOVER_OUTPUT_PATH>'
+```
+
+All private inputs and outputs stay outside Git. See the
+[private handover builder guide](docs/GS3_PRIVATE_HANDOVER_BUILDER.md).
 
 ## Upstream references
 

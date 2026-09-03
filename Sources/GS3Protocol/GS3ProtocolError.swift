@@ -30,6 +30,11 @@ public enum GS3ProtocolError: Error, Sendable, Equatable {
     case unsupportedV3ControlResponseCommand(UInt8)
     case invalidV3ControlResponseChecksum
     case v3EffectiveDataStartIndexOutOfRange
+    case invalidV3AuthenticationCaptureLength(Int)
+    case invalidV3AuthenticationCapture
+    case v3AuthenticationReplayMismatch
+    case invalidV3EffectiveDataCapture
+    case invalidV3DataBatchCapture
 }
 
 extension GS3ProtocolError: CustomStringConvertible {
@@ -85,6 +90,16 @@ extension GS3ProtocolError: CustomStringConvertible {
             return "V3 control response failed its additive checksum."
         case .v3EffectiveDataStartIndexOutOfRange:
             return "The durable V3 history cursor cannot be represented by the verified request."
+        case .invalidV3AuthenticationCaptureLength(let count):
+            return "The captured V3 authentication write must contain 38 bytes; received \(count)."
+        case .invalidV3AuthenticationCapture:
+            return "The captured V3 authentication write failed closed validation."
+        case .v3AuthenticationReplayMismatch:
+            return "The captured V3 authentication write did not reproduce exactly."
+        case .invalidV3EffectiveDataCapture:
+            return "The captured V3 history request failed closed validation."
+        case .invalidV3DataBatchCapture:
+            return "The captured V3 data batch failed closed validation."
         }
     }
 }

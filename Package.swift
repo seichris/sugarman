@@ -29,6 +29,14 @@ let package = Package(
         .library(name: "SafetyEngine", targets: ["SafetyEngine"]),
         .library(name: "Integrations", targets: ["Integrations"]),
         .library(name: "SugarmanDiagnostics", targets: ["SugarmanDiagnostics"]),
+        .library(
+            name: "GS3PrivateHandoverBuilder",
+            targets: ["GS3PrivateHandoverBuilder"]
+        ),
+        .executable(
+            name: "gs3-private-handover",
+            targets: ["GS3PrivateHandoverCLI"]
+        ),
     ],
     targets: [
         .target(name: "SugarmanDomain"),
@@ -91,6 +99,14 @@ let package = Package(
             name: "SugarmanDiagnostics",
             dependencies: ["SugarmanDomain", "GS3Transport"]
         ),
+        .target(
+            name: "GS3PrivateHandoverBuilder",
+            dependencies: ["GS3Protocol", "PrivateDocumentImport"]
+        ),
+        .executableTarget(
+            name: "GS3PrivateHandoverCLI",
+            dependencies: ["GS3PrivateHandoverBuilder"]
+        ),
         .testTarget(name: "SugarmanDomainTests", dependencies: ["SugarmanDomain"]),
         .testTarget(name: "GS3ProtocolTests", dependencies: ["GS3Protocol", "SugarmanDomain"]),
         .testTarget(
@@ -137,6 +153,15 @@ let package = Package(
         .testTarget(
             name: "SugarmanDiagnosticsTests",
             dependencies: ["SugarmanDiagnostics", "GS3Transport"]
+        ),
+        .testTarget(
+            name: "GS3PrivateHandoverBuilderTests",
+            dependencies: [
+                "GS3PrivateHandoverBuilder",
+                "GS3Protocol",
+                "GS3DeviceProvisioning",
+                "GS3DeveloperProbe",
+            ]
         ),
     ],
     swiftLanguageModes: [.v6]
