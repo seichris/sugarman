@@ -23,7 +23,7 @@ settings:
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: ""
     CURRENT_PROJECT_VERSION: 1
-    MARKETING_VERSION: 0.0.1
+    MARKETING_VERSION: 1.0.0
 packages:
   Sugarman:
     path: .
@@ -41,6 +41,8 @@ targets:
     info:
       path: Apps/Sugarman/Info.plist
       properties:
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
         UIBackgroundModes:
           - bluetooth-central
@@ -61,6 +63,7 @@ targets:
           - group.app.sugarman.sensor-owner
     settings:
       base:
+        TARGETED_DEVICE_FAMILY: "1"
         PRODUCT_BUNDLE_IDENTIFIER: app.sugarman.ios
         PRODUCT_NAME: Sugarman
         INFOPLIST_FILE: Apps/Sugarman/Info.plist
