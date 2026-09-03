@@ -30,28 +30,11 @@ call. Before the `0x39` write acknowledgement callback, FF31 delivered one
 but unsupported decrypted command. It did not retain the command byte or check
 the checksum after that command failure, and it disconnected without retrying.
 
-After the first run, the official Chinese Android app reconnected to the same
-active sensor and resumed fresh data. The owner-reported post-run control point
-was:
-
-- displayed update time `20:02` in the owner-local Asia/Singapore test context;
-- `8.8 mmol/L`; and
-- an arrow visually pointing right-down.
-
-The arrow wording is a visual observation only. This record does not map it to
-a native trend code or physiological meaning.
-
-Before the second run, the owner reported an official-app control point at
-`20:57`, `6.7 mmol/L`, with an arrow visually pointing right. After the second
-run, the official app reconnected and resumed fresh data at `21:17`,
-`6.2 mmol/L`, again with an arrow visually pointing right. The time context and
-visual-arrow caveat are the same as for the first run.
-
-Before the third run, the owner reported an official-app control point at
-`22:12`, `5.0 mmol/L`, with an arrow visually pointing right. After the third
-run, the official app reconnected and resumed fresh data at `22:27`,
-`5.2 mmol/L`, again with an arrow visually pointing right. No re-binding or
-reactivation was required.
+After each of the first three runs, the official Chinese Android app reconnected
+to the same active sensor and resumed fresh data. Private pre-run and post-run
+controls were recorded where applicable. Their glucose readings, observation
+times, timezone context, and trend details are intentionally omitted from Git.
+No re-binding or reactivation was required.
 
 ## Exact authorized artifacts and boundary
 
@@ -117,8 +100,8 @@ lifecycle, HealthKit, and every other sensor write.
   delivered one 24-byte value that failed the combined decoder.
 - The state machine failed closed with authorized effect counts `E2=1` and
   `0x39=1`, zero unique live readings, and no retry or reconnect.
-- The official Android app subsequently reconnected and displayed the fresh
-  `21:17` control point without re-binding or reactivation.
+- The official Android app subsequently reconnected and displayed fresh data
+  without re-binding or reactivation.
 
 ### Third-run redacted trace — high confidence
 
@@ -136,8 +119,8 @@ lifecycle, HealthKit, and every other sensor write.
   retained. Zero unique live readings were accepted.
 - The state machine disconnected with application-write counts `E2=1` and
   `0x39=1`, without retry or reconnect.
-- The official Android app subsequently reconnected and displayed the fresh
-  `22:27` control point without re-binding or reactivation.
+- The official Android app subsequently reconnected and displayed fresh data
+  without re-binding or reactivation.
 
 ### First-run source evidence — high confidence
 

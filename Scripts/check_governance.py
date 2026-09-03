@@ -52,6 +52,65 @@ SKIP_DIR_NAMES = {
     "private-evidence",
 }
 
+# Safe by default: a future concrete synthetic health value in public
+# documentation requires an exact reviewed path here. Runtime/test fixtures are
+# outside the README/docs publication scan and remain unaffected.
+PUBLIC_SYNTHETIC_HEALTH_VALUE_ALLOWLIST: set[str] = set()
+
+PUBLIC_HEALTH_OBSERVATION_PATTERNS = (
+    re.compile(
+        r"(?<![\w.])\d+(?:\.\d+)?\s*(?:mmol/L|mg/dL)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"(?:[\"']?glucose(?:Value|Reading)?[\"']?\s*[:=]\s*"
+        r"|glucose(?:\s+(?:value|reading))?(?:\s+(?:was|is|of))?\s+)"
+        r"\d+(?:\.\d+)?",
+        re.IGNORECASE,
+    ),
+    re.compile(r"(?<![\w.])\d+(?:\.\d+)?\s+tenths\b", re.IGNORECASE),
+    re.compile(
+        r"\b\d{1,2}:\d{2}(?::\d{2})?\b.{0,80}"
+        r"\b(?:Asia/Singapore|Singapore time|owner-local|local timezone)\b",
+        re.IGNORECASE | re.DOTALL,
+    ),
+    re.compile(r"\btrend\s+code\s+\d+\b", re.IGNORECASE),
+    re.compile(
+        r"\barrow(?:\s+visually)?\s+pointing\s+"
+        r"(?:right|left|up|down|right-down|right-up|left-down|left-up)\b",
+        re.IGNORECASE,
+    ),
+)
+
+PUBLIC_HEALTH_OBSERVATION_MARKERS = (
+    "displayedupdatetime",
+    "timecontext",
+    "glucosemillimolesperliter",
+    "arrowvisualdirection",
+    "officialdisplaymillimolesperliter",
+    "capturelocaltime",
+    "officialtrend",
+    "nativetrendcode",
+    "decodedtrendcode",
+    "observedtrendmapping",
+    "owner-local",
+    "arrow visually",
+    "straight-right",
+    "right-down",
+)
+
+
+def public_health_observation_reason(body: str) -> str | None:
+    """Return the blocked representation found in public evidence, if any."""
+    for pattern in PUBLIC_HEALTH_OBSERVATION_PATTERNS:
+        if pattern.search(body):
+            return pattern.pattern
+    folded_body = body.casefold()
+    for marker in PUBLIC_HEALTH_OBSERVATION_MARKERS:
+        if marker in folded_body:
+            return marker
+    return None
+
 
 def error(message: str) -> None:
     ERRORS.append(message)
@@ -1026,6 +1085,37 @@ def check_private_evidence_gitignore() -> None:
                 error(f"NFC write/tag-command API in {path.relative_to(ROOT).as_posix()}")
 
 
+def check_no_public_owner_health_observations() -> None:
+    """Keep public evidence outcome-only; owner health observations stay private."""
+    import subprocess
+
+    listed = subprocess.run(
+        ["git", "ls-files", "-z", "--", "README.md", "docs"],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+    )
+    if listed.returncode != 0:
+        error("could not enumerate tracked public documentation")
+        return
+
+    for raw in listed.stdout.split(b"\0"):
+        if not raw:
+            continue
+        relative = raw.decode("utf-8", errors="replace")
+        path = ROOT / relative
+        if path.suffix.lower() not in {".md", ".json"}:
+            continue
+        body = path.read_text(encoding="utf-8", errors="replace")
+        if relative not in PUBLIC_SYNTHETIC_HEALTH_VALUE_ALLOWLIST:
+            reason = public_health_observation_reason(body)
+            if reason is not None:
+                error(
+                    "public documentation contains a concrete owner health "
+                    f"observation ({reason!r}): {relative}"
+                )
+
+
 def main() -> int:
     check_licence()
     check_provenance()
@@ -1033,6 +1123,7 @@ def main() -> int:
     check_no_write_api()
     check_sensor_ownership_and_foreground_slice()
     check_private_evidence_gitignore()
+    check_no_public_owner_health_observations()
     if ERRORS:
         print("Governance check failed:")
         for item in ERRORS:

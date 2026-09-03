@@ -9,10 +9,11 @@ excluding activation and every lifecycle mutation.
 
 Merged PR #16 physically produced one validated live iPhone reading after exact
 authentication, one effective-data request, and history delivery. The iPhone's
-`5.3 mmol/L` matched the official Android pre-run control. The connection timed
-out before a second live value, and one checksum-valid `0x36` command was
+reading matched the private official Android pre-run control. The connection
+timed out before a second live value, and one checksum-valid `0x36` command was
 quarantined, so the five-reading/no-quarantine handover gate remains incomplete.
-Official Android handback passed with a fresh `5.2 mmol/L` reading. See
+Official Android handback passed with fresh data. The readings, observation
+times, and trend details remain private. See
 [`V3_FIRST_LIVE_READING_RESULT_2026-08-30.md`](V3_FIRST_LIVE_READING_RESULT_2026-08-30.md)
 and the [earlier physical results](V3_PROBE_PHYSICAL_RESULT_2026-08-30.md).
 The normal `Sugarman` application remains read-only; only the separate

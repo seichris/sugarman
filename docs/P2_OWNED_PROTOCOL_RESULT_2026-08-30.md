@@ -21,8 +21,8 @@ The payload-free machine-readable evidence is
 [`evidence/owned-mainland-gs3-p2-summary-v1.json`](evidence/owned-mainland-gs3-p2-summary-v1.json).
 All APK/native-library bytes and all owned runtime IV, registration,
 authentication, address, and account values remain private and gitignored. All
-glucose values remain private except the single owner-authorized 7.2 mmol/L
-parity point. The exact fixed interoperability constant required by the outer
+glucose readings, observation times, and trend details remain private. The exact
+fixed interoperability constant required by the outer
 algorithm is recorded once in the approved GPL Swift implementation with
 file-level provenance; the distinct algorithm-glucose key/IV remain private.
 

@@ -58,14 +58,7 @@
         "manifestSHA256": "1c15cbfcbde10135a0f93bd167fd0af06b807f51015f764feb75540005c16855",
         "outcome": "connected-then-generic-fail-closed",
         "actualApplicationWriteCountsCaptured": false,
-        "officialAndroidHandbackVerified": true,
-        "officialAndroidPostRunControl": {
-          "displayedUpdateTime": "20:02",
-          "timeContext": "owner-local Asia/Singapore test context",
-          "glucoseMillimolesPerLiter": 8.8,
-          "arrowVisualDirection": "right-down",
-          "nativeTrendMeaningClaimed": false
-        }
+        "officialAndroidHandbackVerified": true
       },
       {
         "run": 2,
@@ -82,21 +75,8 @@
         "effectiveDataControlAcknowledgements": 0,
         "unexpectedNotificationByteCount": 24,
         "unexpectedNotificationPayloadRetained": false,
-        "officialAndroidPreRunControl": {
-          "displayedUpdateTime": "20:57",
-          "timeContext": "owner-local Asia/Singapore test context",
-          "glucoseMillimolesPerLiter": 6.7,
-          "arrowVisualDirection": "right",
-          "nativeTrendMeaningClaimed": false
-        },
-        "officialAndroidHandbackVerified": true,
-        "officialAndroidPostRunControl": {
-          "displayedUpdateTime": "21:17",
-          "timeContext": "owner-local Asia/Singapore test context",
-          "glucoseMillimolesPerLiter": 6.2,
-          "arrowVisualDirection": "right",
-          "nativeTrendMeaningClaimed": false
-        }
+        "officialAndroidPreRunControlRecordedPrivately": true,
+        "officialAndroidHandbackVerified": true
       },
       {
         "run": 3,
@@ -118,21 +98,8 @@
         "unexpectedNotificationCommandRetained": false,
         "unexpectedNotificationChecksumEvaluated": false,
         "unexpectedNotificationPayloadRetained": false,
-        "officialAndroidPreRunControl": {
-          "displayedUpdateTime": "22:12",
-          "timeContext": "owner-local Asia/Singapore test context",
-          "glucoseMillimolesPerLiter": 5.0,
-          "arrowVisualDirection": "right",
-          "nativeTrendMeaningClaimed": false
-        },
-        "officialAndroidHandbackVerified": true,
-        "officialAndroidPostRunControl": {
-          "displayedUpdateTime": "22:27",
-          "timeContext": "owner-local Asia/Singapore test context",
-          "glucoseMillimolesPerLiter": 5.2,
-          "arrowVisualDirection": "right",
-          "nativeTrendMeaningClaimed": false
-        }
+        "officialAndroidPreRunControlRecordedPrivately": true,
+        "officialAndroidHandbackVerified": true
       },
       {
         "run": 4,
@@ -147,14 +114,7 @@
         "normalSugarmanAndProbeProcessesRunning": true,
         "localProcessContentionInferred": true,
         "localProcessContentionConfidence": "medium",
-        "officialAndroidHandbackVerified": true,
-        "officialAndroidPostRunControl": {
-          "displayedUpdateTime": "23:42",
-          "timeContext": "owner-local Asia/Singapore test context",
-          "glucoseMillimolesPerLiter": 5.3,
-          "arrowVisualDirection": "right",
-          "nativeTrendMeaningClaimed": false
-        }
+        "officialAndroidHandbackVerified": true
       },
       {
         "run": 5,
@@ -169,14 +129,7 @@
         "normalSugarmanAndProbeProcessesRunning": true,
         "localProcessContentionInferred": true,
         "localProcessContentionConfidence": "medium",
-        "officialAndroidHandbackVerified": true,
-        "officialAndroidPostRunControl": {
-          "displayedUpdateTime": "23:47",
-          "timeContext": "owner-local Asia/Singapore test context",
-          "glucoseMillimolesPerLiter": 5.3,
-          "arrowVisualDirection": "right",
-          "nativeTrendMeaningClaimed": false
-        }
+        "officialAndroidHandbackVerified": true
       },
       {
         "run": 6,
@@ -200,36 +153,12 @@
         "liveNotificationBatchCount": 1,
         "validatedLiveReadingCount": 1,
         "requiredLiveReadingCount": 5,
-        "iPhoneLiveControl": {
-          "glucoseMillimolesPerLiter": 5.3,
-          "nativeTrendCode": 2,
-          "source": "live-0x32",
-          "recordIndexCommittedOrPrinted": false
-        },
-        "officialAndroidPreRunControl": {
-          "displayedUpdateTime": "23:47",
-          "timeContext": "owner-local Asia/Singapore test context",
-          "glucoseMillimolesPerLiter": 5.3,
-          "arrowVisualDirection": "right",
-          "nativeTrendMeaningClaimed": false
-        },
-        "observedTrendMapping": {
-          "nativeTrendCode": 2,
-          "officialArrowVisualDirection": "right",
-          "scope": "single owned sensor observation",
-          "physiologicalMeaningClaimed": false
-        },
+        "iPhoneLiveControlRecordedPrivately": true,
+        "officialAndroidPreRunControlRecordedPrivately": true,
         "protocolInteroperabilityGatePassed": true,
         "fiveReadingDurabilityGatePassed": false,
         "noQuarantineGatePassed": false,
-        "officialAndroidHandbackVerified": true,
-        "officialAndroidPostRunControl": {
-          "displayedUpdateTime": "23:57",
-          "timeContext": "owner-local Asia/Singapore test context",
-          "glucoseMillimolesPerLiter": 5.2,
-          "arrowVisualDirection": "right",
-          "nativeTrendMeaningClaimed": false
-        }
+        "officialAndroidHandbackVerified": true
       }
     ],
     "iPhoneGlucoseValidated": true,

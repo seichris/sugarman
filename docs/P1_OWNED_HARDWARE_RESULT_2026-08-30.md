@@ -26,10 +26,10 @@ values, screenshots, glucose value, and Android HCI payloads.
    Device Information allowlist, wrote the redacted map locally, and
    disconnected. The success status is assigned only after those operations
    complete.
-4. Android Bluetooth was re-enabled. The official app produced a fresh reading
-   with a steady trend after the probe, confirming reconnection and continued
-   data flow. The owner supplied the exact post-probe value and time privately;
-   they are not needed for the protocol result and are omitted from Git.
+4. Android Bluetooth was re-enabled. The official app produced fresh data after
+   the probe, confirming reconnection and continued data flow. The owner supplied
+   the exact reading, observation time, and trend details privately; they are not
+   needed for the protocol result and are omitted from Git.
 
 No sensor authentication, binding, activation, reset, characteristic write,
 notification subscription, glucose decode, or sensor-level handover was part

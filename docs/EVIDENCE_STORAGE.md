@@ -12,6 +12,8 @@ This policy is operational, not a legal opinion.
 - Runtime/account key bytes, IVs, registration tokens, authentication IDs, and
   other owner-specific cipher material
 - Raw BLE/HCI captures that include authentication payloads
+- Owner health observations, including concrete glucose readings, exact
+  observation times or timezone context, and observed trend directions or codes
 - LLM transcripts used as if they were implementation specifications
 
 `.gitignore` already excludes `private-evidence/`, `*.apk`, `*.so`, `*.aar`,
@@ -60,9 +62,14 @@ phone models and OS versions; visible firmware/hardware/manufacturer.
 - Advertisement/GATT maps with payloads truncated or hashed
 - Protocol-identification reports that quote lengths, states, and hashes
 - Provenance records that name source paths and blob SHAs, not secrets
+- Outcome-only physical evidence such as parity or handback pass/fail booleans,
+  with owner readings, observation times, and trend details withheld
 
 Fixtures derived from upstream source rather than hardware must be marked
-GPL and recorded in the provenance registry.
+GPL and recorded in the provenance registry. Any public documentation that
+needs a concrete synthetic glucose value must also use an exact path explicitly
+listed in the governance script's synthetic-health-value allowlist; the default
+allowlist is empty.
 
 One fixed, non-owner-specific V3 protocol constant is present in the GPL source
 under the scoped approval and exact provenance recorded in
