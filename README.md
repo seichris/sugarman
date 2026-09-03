@@ -102,12 +102,13 @@ dependencies. See [docs/UPSTREAMS.md](docs/UPSTREAMS.md).
   or HealthKit path. It requires post-install private
   material import and a fresh exact physical-device confirmation; see the
   [probe guide](docs/V3_DEVELOPER_HANDOVER_PROBE.md).
-- Merged PR #16 physically produced the first validated iPhone live reading:
-  `5.3 mmol/L`, matching the official Android pre-run value, with one typed
-  `0xE2`, one typed `0x39`, history batches, and one live `0x32` batch. The link
-  then timed out at 1/5 readings and the run had quarantined one checksum-valid
-  `0x36`, so the full handover/durability gate remains incomplete. Android
-  handback passed with a fresh `5.2 mmol/L` reading. See the
+- Merged PR #16 physically produced the first validated iPhone live reading,
+  matching the private official Android pre-run control, with one typed `0xE2`,
+  one typed `0x39`, history batches, and one live `0x32` batch. The link then
+  timed out at 1/5 readings and the run had quarantined one checksum-valid
+  `0x36`, so the full handover/durability gate remains incomplete. Official
+  Android handback passed with fresh data. The readings, observation times, and
+  trend details remain private. See the
   [first-live-reading result](docs/V3_FIRST_LIVE_READING_RESULT_2026-08-30.md)
   and the [earlier probe results](docs/V3_PROBE_PHYSICAL_RESULT_2026-08-30.md).
 - The first managed Device Test run reached its durably prepared history

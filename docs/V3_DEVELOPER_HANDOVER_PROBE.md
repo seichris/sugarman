@@ -5,10 +5,11 @@
 `SugarmanProbe` is a separate, foreground-only iOS developer application for
 one owner-controlled, already-active Mainland GS3. Merged PR #16 physically
 validated authentication, one effective-data request, history delivery, and one
-live `0x32` iPhone reading. The `5.3 mmol/L` result matched the official Android
+live `0x32` iPhone reading. The result matched the private official Android
 pre-run control. The link then timed out at 1/5 readings, after one diagnostic
 `0x36` quarantine, so the full handover/durability gate remains incomplete.
-Official Android handback passed with a fresh `5.2 mmol/L` value. See
+Official Android handback passed with fresh data. The readings, observation
+times, and trend details remain private. See
 [`V3_FIRST_LIVE_READING_RESULT_2026-08-30.md`](V3_FIRST_LIVE_READING_RESULT_2026-08-30.md)
 and the [earlier physical results](V3_PROBE_PHYSICAL_RESULT_2026-08-30.md).
 

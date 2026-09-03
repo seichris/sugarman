@@ -7,11 +7,10 @@ app, HCI capture, and owned APK establishes an offline decoder for the observed
 V3 `0x32` glucose-notification family. The result has **high confidence for the
 exact app, library, sensor, and capture hashes below**.
 
-The private replay matches one owner-authorized visible point exactly: the
-official app showed **7.2 mmol/L with a straight-right arrow** at capture-local
-10:37, while the corresponding notification decoded to 72 tenths of mmol/L and
-native trend code 2. This is one parity point from one sensor, not validation of
-all states, trend codes, lots, or firmware.
+The private replay matches one withheld official-app observation exactly. The
+reading, observation time, timezone context, and trend details are intentionally
+omitted from Git. This is one parity point from one sensor, not validation of all
+states, trend codes, lots, or firmware.
 
 No sensor command was sent during this analysis. The new Swift decoder is
 offline-only and remains disconnected from scanning, transport, and the live
@@ -83,7 +82,7 @@ Each 16-byte record has this layout:
 | 4 | 2 | `rawCurrent` | Native boundary verified; unit/scale unresolved |
 | 6 | 2 | `rawDisplayGlucose` | Native `display_glouse` field; product semantics unresolved |
 | 8 | 2 | encrypted algorithm glucose | Separate inner transform verified below |
-| 10, bits 0–2 | 3 bits | `trendCode` | Code 2 correlates to flat at one visible point; other codes unresolved |
+| 10, bits 0–2 | 3 bits | `trendCode` | Bit boundary verified; semantic mapping remains private and unresolved for product use |
 | 10, bit 3 | 1 bit | `presentCState` | Bit boundary verified |
 | 10, bits 4–7 | 4 bits | `algorithmCState` | Bit boundary verified |
 | 11, bits 0–1 | 2 bits | `tState` | Bit boundary verified |
@@ -107,16 +106,16 @@ fields as raw integers rather than inventing units or state labels.
 | `struct_to_json_sdk_glouse_data_t` | `0x93c6c` | Corroborates the native field boundaries and names. |
 
 The two decrypted bytes form an unsigned little-endian value in tenths of
-mmol/L. Private replay produced the exact 72/7.2 parity point above. Every
+mmol/L. Private replay produced the exact withheld parity point above. Every
 post-calibration frame from that point through the end of the capture decoded
-to a plausible range of 20–400 tenths of mmol/L. Plausibility is only a sanity
-check; the exact visible parity point is the stronger evidence.
+to the expected technical range. Plausibility is only a sanity check; the
+private visible parity point is the stronger evidence.
 
-Two owner-readable official-app logcat snapshots independently contain seven
-managed `SDKGlucoseDataHandler` measurement records with native trend code 2.
-Their values and identifiers remain private. This corroborates that code 2
-reaches the managed layer, while the owner-visible arrow establishes its flat
-meaning for the single matched point.
+Two owner-readable official-app logcat snapshots independently contain managed
+`SDKGlucoseDataHandler` measurement records. Their readings, timestamps, trend
+details, and identifiers remain private. This corroborates that the parsed trend
+field reaches the managed layer without publishing an owner observation or
+claiming a product-level semantic mapping.
 
 ## Observed official-app connection sequence
 
@@ -225,9 +224,8 @@ copied, or redistributed. The vendor binary remains proprietary or
 unknown-licence evidence, not a Sugarman build input.
 
 Pinned Juggluco remains an Android-only behavioral reference. Its older GS3
-path maps trend code 0 as flat, while this V3 capture establishes code 2 as flat
-at one point. Sugarman must not import that older trend mapping into V3. No
-Juggluco or xdripswift source was copied for this decoder.
+trend mapping must not be imported into V3 because V3 product semantics remain
+unresolved. No Juggluco or xdripswift source was copied for this decoder.
 
 The project's GPL obligations continue to apply to every distributed Sugarman
 binary. App Store distribution and publication of additional fixed vendor
@@ -237,12 +235,12 @@ constants remain separate legal-review gates.
 
 **High confidence for the exact evidence hashes:** outer AES-OFB transport,
 address/IV order, `0x32` frame and record layout, additive checksum, separate
-inner AES-OFB, little-endian tenths-of-mmol/L result, one 7.2 parity point,
-trend code 2 at that point, and the observed reconnect command sequence.
+inner AES-OFB, little-endian tenths-of-mmol/L result, one private parity point,
+and the observed reconnect command sequence.
 
-**Medium product confidence:** one sensor/lot, one exact visible parity point,
-one flat trend state, and no iOS background lifecycle evidence are insufficient
-for general Mainland GS3 support.
+**Medium product confidence:** one sensor/lot, one private parity point, and no
+iOS background lifecycle evidence are insufficient for general Mainland GS3
+support.
 
 **Still requires physical testing:** already-active iPhone handover, official
 Android handback after release, multiple consecutive iPhone values, background

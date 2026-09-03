@@ -104,15 +104,14 @@ Bluetooth restart or sensor reconnect. Its private BTSnoop SHA-256 is
 `165d697f4126d0fa2a8ea4f6d822b8fe74dd03e5663ba1e0910c9a197882d3e7`.
 It is 480,730 bytes with 13,661 HCI records and 449 ATT PDUs.
 
-The capture contains 69 notifications with 24-byte values, including
-one-minute frames from device-wall time 10:36 through 10:42. The frame at
-10:37:03 Asia/Singapore was correlated with the official app's displayed
-10:37 glucose value and trend. The owner later authorized publication of this
-single point as 7.2 mmol/L with a straight-right arrow for decoder parity; all
-other values remain private. That frame's payload SHA-256 is
+The capture contains 69 notifications with 24-byte values, including a sequence
+of approximately one-minute frames. One frame was correlated with a private
+official-app observation for decoder parity. The reading, observation time,
+timezone context, and trend details are intentionally omitted from Git. That
+frame's payload SHA-256 is
 `e93199d156de4bed1ac58ef8515f785c3d12988ef8617b2e1e604163c3e94552`.
 
-This proves that a timestamped official value and encrypted live frame were
+This proves that a private official observation and encrypted live frame were
 captured together. Later static analysis and private replay decode that point
 exactly, but one ground-truth point remains insufficient for general product
 validation.

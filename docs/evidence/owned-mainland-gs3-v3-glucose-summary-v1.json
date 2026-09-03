@@ -15,7 +15,7 @@
     "canonicalHCICapture": {
       "sha256": "165d697f4126d0fa2a8ea4f6d822b8fe74dd03e5663ba1e0910c9a197882d3e7",
       "byteCount": 480730,
-      "recorderWallClockRange": "09:33:02-10:43:03"
+      "recorderWallClockRangeOmitted": true
     },
     "pinnedJugglucoCommit": "11d016eb3aeffe77e86d9522f5192e83790b5a21"
   },
@@ -41,14 +41,8 @@
       "integerByteOrder": "little-endian",
       "innerCipher": "AES-128-OFB with a distinct fixed key and IV",
       "glucoseScale": "unsigned little-endian tenths of mmol/L",
-      "exactOwnerAuthorizedParityPoint": {
-        "captureLocalTime": "10:37",
-        "officialDisplayMillimolesPerLiter": 7.2,
-        "decodedTenthsMillimolesPerLiter": 72,
-        "officialTrend": "straight-right",
-        "decodedTrendCode": 2
-      },
-      "otherGlucoseValuesOmitted": true
+      "privateOfficialObservationParityVerified": true,
+      "ownerObservationDetailsOmitted": true
     },
     "officialConnectionWrites": {
       "authenticationCommandE2Count": 4,

@@ -7,12 +7,10 @@ one live Mainland GS3 glucose reading on iPhone. The probe authenticated,
 requested effective data, received history, decoded one live `0x32` record, and
 then lost the CoreBluetooth connection before the five-reading durability gate.
 
-The iPhone displayed `5.3 mmol/L` with native trend code `2`. Immediately before
-the run, the official Chinese Android app displayed `5.3 mmol/L` with an arrow
-visually pointing right. After the iPhone disconnected and Android Bluetooth was
-re-enabled, the official app reconnected without re-binding or reactivation and
-displayed a fresh `5.2 mmol/L` reading at `23:57`, again with an arrow visually
-pointing right.
+The iPhone reading matched the private official Android pre-run control. After
+the iPhone disconnected and Android Bluetooth was re-enabled, the official app
+reconnected without re-binding or reactivation and displayed fresh data. The
+readings, observation times, and trend details remain private.
 
 This is a **protocol-interoperability pass for one live value** and an **Android
 handback pass**. It is not yet a same-owner handover pass: only one of five
@@ -58,19 +56,16 @@ localized timeout was a transport disconnect rather than the bounded timer.
 The exact underlying CoreBluetooth numeric error code was not retained by this
 artifact.
 
-## Value and trend comparison — high confidence within stated limits
+## Private parity comparison — high confidence within stated limits
 
-- Official Android pre-run control: `5.3 mmol/L` at `23:47`, arrow visually
-  right, owner-local Asia/Singapore context.
-- iPhone: `5.3 mmol/L`, native trend code `2`, source live `0x32`.
-- Official Android post-run handback: `5.2 mmol/L` at `23:57`, arrow visually
-  right, owner-local Asia/Singapore context.
+- Official Android pre-run control: recorded privately.
+- iPhone: matched the private control from a live `0x32` source.
+- Official Android post-run handback: fresh data recorded privately.
 
-The numeric pre-run parity and live source are physically verified for this
-owned sensor/app/library combination. The observations also map native trend
-code `2` to the official app's visually right-pointing arrow for this point.
-They do not independently establish a physiological definition for that code
-or generalize it to other firmware or sensor lots.
+The pre-run parity and live source are physically verified for this owned
+sensor/app/library combination. The specific measurements, timestamps, and
+trend observations remain private, and this result does not establish a general
+trend mapping for other firmware or sensor lots.
 
 ## Preflight contention observations
 
