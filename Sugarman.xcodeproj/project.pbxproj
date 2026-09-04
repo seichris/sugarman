@@ -19,12 +19,14 @@
 		2180F84F9A632C8BD78BEB55 /* AccountBinding in Frameworks */ = {isa = PBXBuildFile; productRef = 6816F1F47828A1F57E5EE72A /* AccountBinding */; };
 		22FB8A1D82E6E44903F30D43 /* WorkoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 624C211ABA31163598C2C265 /* WorkoutView.swift */; };
 		279867D011F2F2B3ED5C1F49 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3776611985DB564BF1E3EC5E /* Assets.xcassets */; };
+		2C3E0B6A6F73FA2ECC637172 /* NoWorkoutGlucoseRangeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11509AE757FF68B6DEAADD7C /* NoWorkoutGlucoseRangeView.swift */; };
 		3112B5FDC7B10EC2E0A7F499 /* PrivateDocumentImport in Frameworks */ = {isa = PBXBuildFile; productRef = E8F9BD44EEC5C184F92AE5BE /* PrivateDocumentImport */; };
 		32BE21F247BF960A65076A56 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3776611985DB564BF1E3EC5E /* Assets.xcassets */; };
 		342BAE49C2FB46735CA2ECD2 /* WorkoutGlucoseChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68D79D073CC92AD4D00434EF /* WorkoutGlucoseChart.swift */; };
 		36723C2EA4A5201A9B819C64 /* SensorOnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000D344B1531771A82196E8E /* SensorOnboardingView.swift */; };
 		38F266F75AE17DE2E58C7A03 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29BED539403ADB33595539AE /* DashboardView.swift */; };
 		3B2F680A22443E47D108D1AE /* GS3Transport in Frameworks */ = {isa = PBXBuildFile; productRef = 0F54958F160F02B5B6C6C373 /* GS3Transport */; };
+		3B765B36C8C0CB0586A02BFB /* NoWorkoutGlucoseRangeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11509AE757FF68B6DEAADD7C /* NoWorkoutGlucoseRangeView.swift */; };
 		3E7CB545F3803FFE8AC5EF8A /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 015AE5A8B5FB8B171B34FD9B /* Localizable.xcstrings */; };
 		412B56F619A5732BEAD3F58A /* MoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1083CCA05A8EEAA3505139DC /* MoreView.swift */; };
 		420B4B596CD0FA70A19BDF90 /* SugarmanDomain in Frameworks */ = {isa = PBXBuildFile; productRef = 7886D38C4750C23AF06F4666 /* SugarmanDomain */; };
@@ -109,6 +111,7 @@
 		00A9DAAA86AD725CB76487F6 /* sugarman-healthkit-implementation */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "sugarman-healthkit-implementation"; path = .; sourceTree = SOURCE_ROOT; };
 		015AE5A8B5FB8B171B34FD9B /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		1083CCA05A8EEAA3505139DC /* MoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoreView.swift; sourceTree = "<group>"; };
+		11509AE757FF68B6DEAADD7C /* NoWorkoutGlucoseRangeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoWorkoutGlucoseRangeView.swift; sourceTree = "<group>"; };
 		15DF313DF9367CC3CEA50640 /* ActiveSessionBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveSessionBanner.swift; sourceTree = "<group>"; };
 		1F1463176FB0AB503E0DBC95 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		29BED539403ADB33595539AE /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
@@ -255,6 +258,7 @@
 				015AE5A8B5FB8B171B34FD9B /* Localizable.xcstrings */,
 				1083CCA05A8EEAA3505139DC /* MoreView.swift */,
 				9F709C40FC939809818D7ADF /* NoDosingBanner.swift */,
+				11509AE757FF68B6DEAADD7C /* NoWorkoutGlucoseRangeView.swift */,
 				7C55978BEAE353FD00B0FF99 /* PrivacyInfo.xcprivacy */,
 				5D62AEF0933A5D37DBD9819B /* PrivacyView.swift */,
 				1F1463176FB0AB503E0DBC95 /* RootView.swift */,
@@ -529,6 +533,7 @@
 				B81DE0655CBA983E0C8E7C5A /* HistoryView.swift in Sources */,
 				412B56F619A5732BEAD3F58A /* MoreView.swift in Sources */,
 				9FEA5F925193DB6A14980AC2 /* NoDosingBanner.swift in Sources */,
+				3B765B36C8C0CB0586A02BFB /* NoWorkoutGlucoseRangeView.swift in Sources */,
 				12724BCD612662109738652C /* PrivacyView.swift in Sources */,
 				4652CFF78AE7544266154C5E /* RootView.swift in Sources */,
 				9A87060F6C719C7264AE82BB /* SensorConnectionSection.swift in Sources */,
@@ -556,6 +561,7 @@
 				1BD5EF2CC6DEAB38AA7AC2C9 /* HistoryView.swift in Sources */,
 				7FC583DB47F942AF1CB089BC /* MoreView.swift in Sources */,
 				8C55E464E39F9A14F9E321F3 /* NoDosingBanner.swift in Sources */,
+				2C3E0B6A6F73FA2ECC637172 /* NoWorkoutGlucoseRangeView.swift in Sources */,
 				E957FF0A866DAEBEE78F454D /* PrivacyView.swift in Sources */,
 				9CD79405070151AA125610EB /* RootView.swift in Sources */,
 				06F4E757C01D230F36516D89 /* SensorConnectionSection.swift in Sources */,

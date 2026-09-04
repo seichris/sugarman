@@ -35,6 +35,10 @@ struct WorkoutView: View {
                     Section("workout.selected") {
                         SelectedWorkoutTargetRow(plan: plan, target: target)
                     }
+                } else {
+                    Section("workout.selected") {
+                        NoWorkoutGlucoseRangeLabel()
+                    }
                 }
                 recordedWorkoutsSection
             }
@@ -67,6 +71,28 @@ struct WorkoutView: View {
     @ViewBuilder
     private var savedWorkoutsSection: some View {
         Section {
+            Button {
+                model.clearWorkoutSelection()
+            } label: {
+                HStack(spacing: 12) {
+                    Label("workout.none", systemImage: "circle.slash")
+                    Spacer(minLength: 4)
+                    if model.selectedWorkoutPlanID == nil {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.tint)
+                            .accessibilityHidden(true)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityAddTraits(model.selectedWorkoutPlanID == nil ? .isSelected : [])
+
+            NavigationLink {
+                NoWorkoutGlucoseRangeView()
+            } label: {
+                NoWorkoutGlucoseRangeLabel()
+            }
+
             if model.workoutPlans.isEmpty {
                 Text("workout.saved_empty")
                     .foregroundStyle(.secondary)
@@ -81,22 +107,6 @@ struct WorkoutView: View {
                     Label("workout.create", systemImage: "plus.circle")
                 }
             } else {
-                Button {
-                    model.clearWorkoutSelection()
-                } label: {
-                    HStack(spacing: 12) {
-                        Label("workout.none", systemImage: "circle.slash")
-                        Spacer(minLength: 4)
-                        if model.selectedWorkoutPlanID == nil {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(.tint)
-                                .accessibilityHidden(true)
-                        }
-                    }
-                }
-                .buttonStyle(.plain)
-                .accessibilityAddTraits(model.selectedWorkoutPlanID == nil ? .isSelected : [])
-
                 ForEach(model.workoutPlans) { plan in
                     NavigationLink {
                         WorkoutPlanDetailView(plan: plan)

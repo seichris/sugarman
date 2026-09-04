@@ -53,7 +53,7 @@ struct DashboardView: View {
                     rangePicker
                     glucoseChart(
                         timeline: timeline,
-                        target: model.selectedWorkoutPhaseTarget
+                        target: model.activeGlucoseReferenceRange
                     )
 
                     if let plan = model.selectedWorkoutPlan,
@@ -383,7 +383,7 @@ struct DashboardView: View {
 
     private func glucoseChart(
         timeline: GlucoseTimeline,
-        target: WorkoutPhaseTarget?
+        target: GlucoseReferenceRange
     ) -> some View {
         let scale = GlucoseChartScale(unit: model.preferredUnit)
         let selectedSample = nearestSample(
@@ -396,35 +396,33 @@ struct DashboardView: View {
                 .foregroundStyle(LivePalette.secondaryText)
 
             Chart {
-                if let target {
-                    RectangleMark(
-                        xStart: .value("workout.chart_target_start", timeline.start),
-                        xEnd: .value("workout.chart_target_end", timeline.end),
-                        yStart: .value(
-                            "workout.chart_target_low",
-                            target.lowerValue(in: model.preferredUnit)
-                        ),
-                        yEnd: .value(
-                            "workout.chart_target_high",
-                            target.upperValue(in: model.preferredUnit)
-                        )
+                RectangleMark(
+                    xStart: .value("workout.chart_target_start", timeline.start),
+                    xEnd: .value("workout.chart_target_end", timeline.end),
+                    yStart: .value(
+                        "workout.chart_target_low",
+                        target.lowerValue(in: model.preferredUnit)
+                    ),
+                    yEnd: .value(
+                        "workout.chart_target_high",
+                        target.upperValue(in: model.preferredUnit)
                     )
-                    .foregroundStyle(.green.opacity(0.18))
+                )
+                .foregroundStyle(.green.opacity(0.18))
 
-                    RuleMark(
-                        y: .value(
-                            "workout.chart_target_low",
-                            target.lowerValue(in: model.preferredUnit)
-                        )
+                RuleMark(
+                    y: .value(
+                        "workout.chart_target_low",
+                        target.lowerValue(in: model.preferredUnit)
                     )
-                    .foregroundStyle(.green.opacity(0.75))
-                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                )
+                .foregroundStyle(.green.opacity(0.75))
+                .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
 
-                    if let floor = target.floorValue(in: model.preferredUnit) {
-                        RuleMark(y: .value("workout.chart_floor", floor))
-                            .foregroundStyle(.orange.opacity(0.85))
-                            .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 2]))
-                    }
+                if let floor = target.floorValue(in: model.preferredUnit) {
+                    RuleMark(y: .value("workout.chart_floor", floor))
+                        .foregroundStyle(.orange.opacity(0.85))
+                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 2]))
                 }
 
                 ForEach(scale.gridValues, id: \.self) { gridValue in

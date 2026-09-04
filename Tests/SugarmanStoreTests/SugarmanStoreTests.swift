@@ -614,6 +614,35 @@ struct SugarmanStoreTests {
             userDefaults.object(forKey: WorkoutSelectionPreferences.selectedPhaseKey) == nil
         )
     }
+
+    @Test func noWorkoutRangePersistsAndInvalidStateUsesDefault() throws {
+        let suiteName =
+            "app.sugarman.tests.no-workout-range.\(UUID().uuidString)"
+        let userDefaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { userDefaults.removePersistentDomain(forName: suiteName) }
+        let preferences = NoWorkoutGlucoseRangePreferences(
+            userDefaults: userDefaults
+        )
+
+        #expect(preferences.load() == .healthyAdultDefault)
+
+        let custom = GlucoseReferenceRange(lowerMgdl: 75, upperMgdl: 135)
+        preferences.save(custom)
+        #expect(preferences.load() == custom)
+
+        userDefaults.set(160, forKey: NoWorkoutGlucoseRangePreferences.lowerMgdlKey)
+        userDefaults.set(120, forKey: NoWorkoutGlucoseRangePreferences.upperMgdlKey)
+        #expect(preferences.load() == .healthyAdultDefault)
+
+        preferences.reset()
+        #expect(preferences.load() == .healthyAdultDefault)
+        #expect(
+            userDefaults.object(forKey: NoWorkoutGlucoseRangePreferences.lowerMgdlKey) == nil
+        )
+        #expect(
+            userDefaults.object(forKey: NoWorkoutGlucoseRangePreferences.upperMgdlKey) == nil
+        )
+    }
 }
 
 #if canImport(SwiftData)

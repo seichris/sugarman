@@ -5,12 +5,11 @@ import Charts
 import SugarmanDomain
 import SwiftUI
 
-/// A compact glucose timeline. A selected workout target is rendered as a
-/// translucent band so the athlete can compare their readings with their own
-/// saved reference range.
+/// A compact glucose timeline. The active visual reference is rendered as a
+/// translucent band so the user can compare it with their readings.
 struct WorkoutGlucoseChart: View {
     let samples: [GlucoseSample]
-    let target: WorkoutPhaseTarget?
+    let target: GlucoseReferenceRange?
     let unit: GlucoseUnit
 
     private var sortedSamples: [GlucoseSample] {
@@ -139,7 +138,7 @@ struct WorkoutGlucoseChart: View {
         return "\(readingCount), \(targetRangeText(target))"
     }
 
-    private func targetRangeText(_ target: WorkoutPhaseTarget) -> String {
+    private func targetRangeText(_ target: GlucoseReferenceRange) -> String {
         let range = String(
             format: String(localized: "workout.range_mgdl"),
             locale: .current,
