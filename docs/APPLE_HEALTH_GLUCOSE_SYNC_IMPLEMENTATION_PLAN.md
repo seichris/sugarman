@@ -303,7 +303,15 @@ by HealthKit.
 
 ## Authorization and UI
 
-Add an **Apple Health** section to `PrivacyView` in the release app only.
+Make **Apple Health** a first-class destination at the top of `MoreView` in the
+release app only. Use a dedicated `AppleHealthView` for opt-in, status, history
+counts, retry, and the deletion boundary. Keep a secondary link in
+`PrivacyView` so the data-handling relationship remains discoverable without
+duplicating controls.
+
+Use the native `heart.fill` SF Symbol as a familiar health concept glyph. Do
+not copy or recreate the Apple Health app icon; it is an app/brand asset, not a
+general-purpose SF Symbol.
 
 ### States
 
@@ -463,7 +471,9 @@ and physical-device evidence clearly separated.
 | `Sources/SugarmanStore/UnavailableSugarmanStore.swift` | Fail-closed sync operations. |
 | `Apps/Sugarman/SugarmanApp.swift` | Wire release-only lifecycle/sample triggers. |
 | `Apps/Sugarman/AppleHealthAppBridge.swift` | Construct the release-only coordinator and expose privacy-safe app status. |
-| `Apps/Sugarman/PrivacyView.swift` | Release-only Apple Health controls and deletion disclosure. |
+| `Apps/Sugarman/AppleHealthView.swift` | First-class release-only opt-in, status, counts, retry, and privacy screen. |
+| `Apps/Sugarman/MoreView.swift` | Prominent Apple Health destination using a native SF Symbol. |
+| `Apps/Sugarman/PrivacyView.swift` | Secondary Apple Health link and deletion disclosure. |
 | `Apps/Sugarman/Localizable.xcstrings` | Permission, status, retry, accessibility, and deletion copy. |
 | `Apps/Sugarman/Info.plist` | Accurate write purpose string. |
 | `Apps/Sugarman/Sugarman.entitlements` | Release HealthKit entitlement. |

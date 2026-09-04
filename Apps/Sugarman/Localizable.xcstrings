@@ -1,6 +1,42 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "apple_health.blocked": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Blocked" } } }
+    },
+    "apple_health.history_section": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "History" } } }
+    },
+    "apple_health.manage": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Manage Apple Health Sync" } } }
+    },
+    "apple_health.more_enabled": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Glucose sync is on" } } }
+    },
+    "apple_health.more_subtitle": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Sync glucose history and new readings" } } }
+    },
+    "apple_health.pending": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Pending" } } }
+    },
+    "apple_health.privacy_section": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Privacy" } } }
+    },
+    "apple_health.sync_section": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Glucose Sync" } } }
+    },
+    "apple_health.synced": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Synced" } } }
+    },
     "common.cancel": {
       "extractionState": "manual",
       "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Cancel" } } }

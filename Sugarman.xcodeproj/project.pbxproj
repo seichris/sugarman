@@ -51,6 +51,7 @@
 		837CABEF38C1FB95E82266F5 /* GS3Protocol in Frameworks */ = {isa = PBXBuildFile; productRef = 5391074AF6B3847D8D21EB21 /* GS3Protocol */; };
 		86248D0E4EB17F6FC2CDDA75 /* GS3DeviceProvisioning in Frameworks */ = {isa = PBXBuildFile; productRef = 10B8C77CF1EF6462BE94D73A /* GS3DeviceProvisioning */; };
 		868FDCD491194DAE71D42360 /* V3ProbeBluetoothRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9DEBFFC56BDC6FB81519643 /* V3ProbeBluetoothRuntime.swift */; };
+		8798214846A4A32DD8E5A0A4 /* AppleHealthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C86F3D8E87C5F108C5A9718C /* AppleHealthView.swift */; };
 		8C55E464E39F9A14F9E321F3 /* NoDosingBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F709C40FC939809818D7ADF /* NoDosingBanner.swift */; };
 		8E05CC2263526ED24ACD9FE7 /* ProbeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60D75ABFD67CB22CB7D4C18B /* ProbeView.swift */; };
 		8ED86A0AEB8E274402518168 /* GS3DeviceTesting in Frameworks */ = {isa = PBXBuildFile; productRef = 6FC235AE34E14B74697CF164 /* GS3DeviceTesting */; };
@@ -76,6 +77,7 @@
 		B6ADB2D8260077121F557995 /* GS3Session in Frameworks */ = {isa = PBXBuildFile; productRef = 5C327622666A5DB814217DE2 /* GS3Session */; };
 		B81DE0655CBA983E0C8E7C5A /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 860607D7CABFC1DCB652CAE8 /* HistoryView.swift */; };
 		B8D977C868ED83DBF438C6E0 /* WorkoutPlanEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A691E452B5C2FB077F67F91 /* WorkoutPlanEditorView.swift */; };
+		BD977C8B29BFFB32FEDDAF25 /* AppleHealthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C86F3D8E87C5F108C5A9718C /* AppleHealthView.swift */; };
 		BFC2D08A368B37B491945544 /* SensorOwnership in Frameworks */ = {isa = PBXBuildFile; productRef = B74E57073811F62DE2D4E3BF /* SensorOwnership */; };
 		C415BCB114E2A449B39CC652 /* ProbeAppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD93DE80D8823F077A698FBA /* ProbeAppModel.swift */; };
 		C7E75782D209952D71C51624 /* GS3Transport in Frameworks */ = {isa = PBXBuildFile; productRef = 77D232E133BC26F477455789 /* GS3Transport */; };
@@ -130,6 +132,7 @@
 		AC96B54C5A9982635D8FAA25 /* DevelopmentTeam.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = DevelopmentTeam.xcconfig; sourceTree = "<group>"; };
 		B4267C7DE28C61725933287C /* SugarmanDeviceTest.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SugarmanDeviceTest.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C5986B6248ACE9BB1160335E /* SugarmanMacDeviceTest.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SugarmanMacDeviceTest.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C86F3D8E87C5F108C5A9718C /* AppleHealthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleHealthView.swift; sourceTree = "<group>"; };
 		CA4F6CD684BA19A9D21C9C65 /* SugarmanProbeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SugarmanProbeApp.swift; sourceTree = "<group>"; };
 		CD93DE80D8823F077A698FBA /* ProbeAppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProbeAppModel.swift; sourceTree = "<group>"; };
 		D350C8927A0631A4573939ED /* AppleHealthAppBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleHealthAppBridge.swift; sourceTree = "<group>"; };
@@ -241,6 +244,7 @@
 			children = (
 				15DF313DF9367CC3CEA50640 /* ActiveSessionBanner.swift */,
 				D350C8927A0631A4573939ED /* AppleHealthAppBridge.swift */,
+				C86F3D8E87C5F108C5A9718C /* AppleHealthView.swift */,
 				3776611985DB564BF1E3EC5E /* Assets.xcassets */,
 				29BED539403ADB33595539AE /* DashboardView.swift */,
 				3488762722113D1DF2E2D318 /* DataMatrixCameraView.swift */,
@@ -516,6 +520,7 @@
 			files = (
 				7A3339A58F11CBD32E22675E /* ActiveSessionBanner.swift in Sources */,
 				A55F08F612ABED2897EAB103 /* AppleHealthAppBridge.swift in Sources */,
+				BD977C8B29BFFB32FEDDAF25 /* AppleHealthView.swift in Sources */,
 				38F266F75AE17DE2E58C7A03 /* DashboardView.swift in Sources */,
 				7EEA0EE53C2AC605578EA65E /* DataMatrixCameraView.swift in Sources */,
 				624555F9F302675C3DAF4C73 /* DeviceTestProvisioningSection.swift in Sources */,
@@ -542,6 +547,7 @@
 			files = (
 				F31E6F71459357BB609CA8AE /* ActiveSessionBanner.swift in Sources */,
 				206C02F53BBBA246F8CF6719 /* AppleHealthAppBridge.swift in Sources */,
+				8798214846A4A32DD8E5A0A4 /* AppleHealthView.swift in Sources */,
 				560BC0BADE45D27FAC05D341 /* DashboardView.swift in Sources */,
 				4F3EAF6A77D5002026D89A18 /* DataMatrixCameraView.swift in Sources */,
 				002EFC6ED59C2E7037C2B4E2 /* DeviceTestProvisioningSection.swift in Sources */,

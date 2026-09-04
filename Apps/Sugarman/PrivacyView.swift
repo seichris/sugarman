@@ -17,9 +17,6 @@ struct PrivacyView: View {
     @State private var exportError: String?
     @State private var diagnosticSummary: LocalDiagnosticLogSummary?
     @State private var peripheralSearchText = ""
-#if !SUGARMAN_DEVICE_TEST
-    @State private var confirmAppleHealthEnable = false
-#endif
 
     init(embeddedInNavigationStack: Bool = false) {
         self.embeddedInNavigationStack = embeddedInNavigationStack
@@ -81,44 +78,14 @@ struct PrivacyView: View {
                 }
 #if !SUGARMAN_DEVICE_TEST
                 Section("privacy.apple_health") {
-                    Toggle(
-                        "privacy.apple_health_toggle",
-                        isOn: Binding(
-                            get: { model.appleHealth.isEnabled },
-                            set: { enabled in
-                                if enabled {
-                                    confirmAppleHealthEnable = true
-                                } else {
-                                    Task { await model.appleHealth.disable() }
-                                }
-                            }
-                        )
-                    )
-                    .disabled(!model.appleHealth.isEligibilityGateOpen)
-                    Text(appleHealthStatusKey)
-                        .foregroundStyle(.secondary)
-                    Text(
-                        String(
-                            format: String(localized: "privacy.apple_health_counts"),
-                            locale: .current,
-                            Int64(model.appleHealth.snapshot.summary.pendingCount),
-                            Int64(model.appleHealth.snapshot.summary.syncedCount)
-                        )
-                    )
-                    .font(.footnote)
-                    if let lastAttempt = model.appleHealth.snapshot.summary.lastAttemptAt {
-                        LabeledContent("privacy.apple_health_last_attempt") {
-                            Text(lastAttempt, format: .dateTime)
-                        }
-                    }
-                    if let lastSync = model.appleHealth.snapshot.summary.lastSyncedAt {
-                        LabeledContent("privacy.apple_health_last_sync") {
-                            Text(lastSync, format: .dateTime)
-                        }
-                    }
-                    if model.appleHealth.snapshot.summary.retryableFailureCount > 0 {
-                        Button("privacy.apple_health_retry") {
-                            Task { await model.appleHealth.drain(forceRetry: true) }
+                    NavigationLink {
+                        AppleHealthView()
+                    } label: {
+                        Label {
+                            Text("apple_health.manage")
+                        } icon: {
+                            Image(systemName: "heart.fill")
+                                .foregroundStyle(.red)
                         }
                     }
                     Text("privacy.apple_health_no_delete")
@@ -313,19 +280,6 @@ struct PrivacyView: View {
             } message: {
                 Text("privacy.delete_confirm_body")
             }
-#if !SUGARMAN_DEVICE_TEST
-            .confirmationDialog(
-                "privacy.apple_health_confirm_title",
-                isPresented: $confirmAppleHealthEnable
-            ) {
-                Button("privacy.apple_health_confirm") {
-                    Task { await model.appleHealth.enable() }
-                }
-                Button("common.cancel", role: .cancel) {}
-            } message: {
-                Text("privacy.apple_health_confirm_body")
-            }
-#endif
             .confirmationDialog(
                 "privacy.delete_session_title",
                 isPresented: Binding(
@@ -350,9 +304,6 @@ struct PrivacyView: View {
             }
             .task {
                 diagnosticSummary = model.diagnosticLogSummary()
-#if !SUGARMAN_DEVICE_TEST
-                await model.appleHealth.refresh()
-#endif
             }
         }
     }
@@ -363,30 +314,6 @@ struct PrivacyView: View {
             searchText: peripheralSearchText
         )
     }
-
-#if !SUGARMAN_DEVICE_TEST
-    private var appleHealthStatusKey: LocalizedStringKey {
-        let snapshot = model.appleHealth.snapshot
-        return switch snapshot.phase {
-        case .gateClosed:
-            "privacy.apple_health_gate_closed"
-        case .failed:
-            "privacy.apple_health_failed"
-        case .authorizationRequired where snapshot.authorization == .denied:
-            "privacy.apple_health_denied"
-        case .authorizationRequired:
-            "privacy.apple_health_authorization_required"
-        case .idle where snapshot.summary.pendingCount > 0:
-            "privacy.apple_health_pending"
-        case .idle:
-            "privacy.apple_health_caught_up"
-        case .disabled:
-            "privacy.apple_health_body"
-        case .syncing:
-            "privacy.apple_health_syncing"
-        }
-    }
-#endif
 
     private enum ExportKind {
         case json
