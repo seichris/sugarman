@@ -46,13 +46,13 @@ struct HistoryView: View {
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         } else {
-                            Text("history.chart_choose_workout")
+                            Text("history.chart_no_workout")
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
                         }
                         WorkoutGlucoseChart(
                             samples: chartSamples,
-                            target: model.selectedWorkoutPhaseTarget,
+                            target: model.activeGlucoseReferenceRange,
                             unit: model.preferredUnit
                         )
                     }

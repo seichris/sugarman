@@ -2,6 +2,9 @@
 // Copyright (C) 2026 Sugarman contributors
 
 import AccountBinding
+#if !SUGARMAN_DEVICE_TEST
+import AppleHealthIntegration
+#endif
 import GS3DeviceProvisioning
 import GS3ProvisioningScan
 #if SUGARMAN_DEVICE_TEST
@@ -62,6 +65,11 @@ final class AppModel {
     var fuelingEvents: [FuelingEvent]
     var workouts: [WorkoutContext]
     var workoutPlans: [WorkoutPlan]
+    var noWorkoutGlucoseRange: GlucoseReferenceRange {
+        didSet {
+            noWorkoutGlucoseRangePreferences.save(noWorkoutGlucoseRange)
+        }
+    }
     var selectedWorkoutPlanID: UUID? {
         didSet {
             persistWorkoutSelection()
@@ -82,11 +90,14 @@ final class AppModel {
     @ObservationIgnored private let userDefaults: UserDefaults
     @ObservationIgnored private let workoutSelectionPreferences:
         WorkoutSelectionPreferences
+    @ObservationIgnored private let noWorkoutGlucoseRangePreferences:
+        NoWorkoutGlucoseRangePreferences
     @ObservationIgnored private let diagnosticLogStore: LocalDiagnosticLogStore
     private var foregroundSessionBridge: GS3ForegroundSessionLifecycle
     private var currentScenePhase: ScenePhase
     private var didRecordLaunchDiagnostic: Bool
 #if !SUGARMAN_DEVICE_TEST
+    var appleHealth: AppleHealthAppBridge
     private var persistentSessionBridge: GS3PersistentSessionLifecycle
     private var didBootstrapPersistentSensorConnection: Bool
     var hasSensorProvisioning: Bool
@@ -147,9 +158,13 @@ final class AppModel {
         let workoutSelectionPreferences = WorkoutSelectionPreferences(
             userDefaults: userDefaults
         )
+        let noWorkoutGlucoseRangePreferences = NoWorkoutGlucoseRangePreferences(
+            userDefaults: userDefaults
+        )
         let workoutSelection = workoutSelectionPreferences.load()
         self.userDefaults = userDefaults
         self.workoutSelectionPreferences = workoutSelectionPreferences
+        self.noWorkoutGlucoseRangePreferences = noWorkoutGlucoseRangePreferences
         self.store = store
         self.primaryStore = store
         self.safety = safety
@@ -171,6 +186,7 @@ final class AppModel {
         self.fuelingEvents = []
         self.workouts = []
         self.workoutPlans = []
+        self.noWorkoutGlucoseRange = noWorkoutGlucoseRangePreferences.load()
         self.selectedWorkoutPlanID = workoutSelection.planID
         self.selectedWorkoutPhaseID = workoutSelection.phaseID
         self.identities = []
@@ -185,6 +201,10 @@ final class AppModel {
         self.currentScenePhase = .inactive
         self.didRecordLaunchDiagnostic = false
 #if !SUGARMAN_DEVICE_TEST
+        self.appleHealth = AppleHealthAppBridge(
+            store: store,
+            userDefaults: userDefaults
+        )
         self.persistentSessionBridge = GS3PersistentSessionLifecycle()
         self.didBootstrapPersistentSensorConnection = false
         let externalOwnershipGate = GS3ExternalOwnershipGate()
@@ -275,6 +295,10 @@ final class AppModel {
     var selectedWorkoutPhaseTarget: WorkoutPhaseTarget? {
         guard let plan = selectedWorkoutPlan, let selectedWorkoutPhaseID else { return nil }
         return plan.phases.first { $0.id == selectedWorkoutPhaseID }
+    }
+
+    var activeGlucoseReferenceRange: GlucoseReferenceRange {
+        selectedWorkoutPhaseTarget?.referenceRange ?? noWorkoutGlucoseRange
     }
 
     func diagnosticLogSummary() -> LocalDiagnosticLogSummary {
@@ -446,6 +470,13 @@ final class AppModel {
 #endif
         }
         await refresh()
+#if !SUGARMAN_DEVICE_TEST
+        if phase == .active {
+            await appleHealth.drain()
+        } else {
+            await appleHealth.refresh()
+        }
+#endif
     }
 
     func installForegroundSessionFactory(
@@ -523,6 +554,7 @@ final class AppModel {
                         attributes: ["state": connection.rawValue]
                     )
                     await self?.refresh()
+                    await self?.appleHealth.drain()
                 }
             },
             onLifecycleEvent: { [weak self] event in
@@ -1354,6 +1386,16 @@ final class AppModel {
         )
     }
 
+    func updateNoWorkoutGlucoseRange(_ range: GlucoseReferenceRange) {
+        guard range.isValid else { return }
+        noWorkoutGlucoseRange = range
+    }
+
+    func resetNoWorkoutGlucoseRange() {
+        noWorkoutGlucoseRange = .healthyAdultDefault
+        noWorkoutGlucoseRangePreferences.reset()
+    }
+
     func selectWorkoutPhase(_ id: UUID) {
         guard let plan = selectedWorkoutPlan,
               plan.phases.contains(where: { $0.id == id }) else { return }
@@ -1425,6 +1467,7 @@ final class AppModel {
         isDeviceTestProbeBridgeScanning = false
 #else
         sensorProbeBridgeScanner.cancel()
+        await appleHealth.disable()
         await stopSensorConnection()
         try await sensorProvisioning.delete()
         hasSensorProvisioning = false

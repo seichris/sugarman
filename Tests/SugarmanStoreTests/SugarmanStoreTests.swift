@@ -61,6 +61,49 @@ struct SugarmanStoreTests {
         #expect(listed.count == 1)
     }
 
+    @Test func appleHealthDeliveryLedgerPersistsRetriesAndSuccess() async throws {
+        let store = InMemorySugarmanStore()
+        let session = UUID()
+        let sample = makeSample(session: session, index: 1)
+        let now = Date(timeIntervalSince1970: 100)
+        try await store.insertSample(sample)
+        #expect(
+            try await store.appleHealthSyncCandidates(
+                limit: 100,
+                now: now,
+                ignoringRetryDeadline: false
+            ).map(\.sample.id) == [sample.id]
+        )
+
+        try await store.recordAppleHealthAttempt([sample.id], at: now)
+        try await store.recordAppleHealthFailure(
+            [sample.id],
+            reason: .healthKit,
+            retryable: true,
+            retryAfter: now.addingTimeInterval(60),
+            at: now
+        )
+        #expect(
+            try await store.appleHealthSyncCandidates(
+                limit: 100,
+                now: now.addingTimeInterval(30),
+                ignoringRetryDeadline: false
+            ).isEmpty
+        )
+        #expect(
+            try await store.appleHealthSyncCandidates(
+                limit: 100,
+                now: now,
+                ignoringRetryDeadline: true
+            ).first?.attemptCount == 1
+        )
+
+        try await store.recordAppleHealthSuccess([sample.id], version: 1, at: now)
+        let summary = try await store.appleHealthSyncSummary()
+        #expect(summary.syncedCount == 1)
+        #expect(summary.pendingCount == 0)
+    }
+
     @Test func deleteSessionAndDeleteAll() async throws {
         let store = InMemorySugarmanStore()
         let sessionA = UUID()
@@ -571,6 +614,35 @@ struct SugarmanStoreTests {
             userDefaults.object(forKey: WorkoutSelectionPreferences.selectedPhaseKey) == nil
         )
     }
+
+    @Test func noWorkoutRangePersistsAndInvalidStateUsesDefault() throws {
+        let suiteName =
+            "app.sugarman.tests.no-workout-range.\(UUID().uuidString)"
+        let userDefaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { userDefaults.removePersistentDomain(forName: suiteName) }
+        let preferences = NoWorkoutGlucoseRangePreferences(
+            userDefaults: userDefaults
+        )
+
+        #expect(preferences.load() == .healthyAdultDefault)
+
+        let custom = GlucoseReferenceRange(lowerMgdl: 75, upperMgdl: 135)
+        preferences.save(custom)
+        #expect(preferences.load() == custom)
+
+        userDefaults.set(160, forKey: NoWorkoutGlucoseRangePreferences.lowerMgdlKey)
+        userDefaults.set(120, forKey: NoWorkoutGlucoseRangePreferences.upperMgdlKey)
+        #expect(preferences.load() == .healthyAdultDefault)
+
+        preferences.reset()
+        #expect(preferences.load() == .healthyAdultDefault)
+        #expect(
+            userDefaults.object(forKey: NoWorkoutGlucoseRangePreferences.lowerMgdlKey) == nil
+        )
+        #expect(
+            userDefaults.object(forKey: NoWorkoutGlucoseRangePreferences.upperMgdlKey) == nil
+        )
+    }
 }
 
 #if canImport(SwiftData)
@@ -646,6 +718,80 @@ struct SwiftDataSugarmanStoreTests {
         }
         try await recovered.insertSample(second)
         #expect(try await recovered.samples(sessionID: session).count == 2)
+    }
+
+    @Test func legacySampleWithoutDeliveryRecordIsReconciledLazily() async throws {
+        guard #available(iOS 26, macOS 26, *) else { return }
+        let container = try SwiftDataSugarmanStore.makeContainer(inMemory: true)
+        let context = ModelContext(container)
+        let sample = makeSample(session: UUID(), index: 8)
+        context.insert(GlucoseSampleRecord(from: sample))
+        try context.save()
+
+        let store = SwiftDataSugarmanStore(modelContainer: container)
+        let summary = try await store.appleHealthSyncSummary()
+        #expect(summary.pendingCount == 1)
+        let candidates = try await store.appleHealthSyncCandidates(
+            limit: 100,
+            now: Date(timeIntervalSince1970: 100),
+            ignoringRetryDeadline: false
+        )
+        #expect(candidates.map(\.sample.id) == [sample.id])
+
+        try await store.recordAppleHealthSuccess(
+            [sample.id],
+            version: 1,
+            at: Date(timeIntervalSince1970: 101)
+        )
+        #expect(try await store.appleHealthSyncSummary().syncedCount == 1)
+    }
+
+    @Test func unversionedStoreMigratesToDeliveryLedgerSchema() async throws {
+        guard #available(iOS 26, macOS 26, *) else { return }
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "sugarman-health-migration-\(UUID().uuidString)",
+            isDirectory: true
+        )
+        try FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true
+        )
+        let url = directory.appendingPathComponent("sugarman.store")
+        let sample = makeSample(session: UUID(), index: 9)
+        do {
+            let oldSchema = Schema([
+                GlucoseSampleRecord.self,
+                SensorSessionRecord.self,
+                FuelingEventRecord.self,
+                WorkoutContextRecord.self,
+                WorkoutPlanRecord.self,
+                SensorIdentityRecord.self,
+            ])
+            let configuration = ModelConfiguration(
+                "Sugarman",
+                schema: oldSchema,
+                url: url,
+                cloudKitDatabase: .none
+            )
+            let oldContainer = try ModelContainer(
+                for: oldSchema,
+                configurations: [configuration]
+            )
+            let context = ModelContext(oldContainer)
+            context.insert(GlucoseSampleRecord(from: sample))
+            try context.save()
+        }
+
+        let migrated = SwiftDataSugarmanStore(
+            modelContainer: try SwiftDataSugarmanStore.makeContainer(url: url)
+        )
+        #expect(
+            try await migrated.sample(
+                sessionID: sample.sessionID,
+                sensorIndex: sample.sensorIndex
+            ) == sample
+        )
+        #expect(try await migrated.appleHealthSyncSummary().pendingCount == 1)
     }
 
     @Test func reopeningExistingContainerKeepsSamples() async throws {

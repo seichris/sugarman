@@ -28,6 +28,7 @@ let package = Package(
         .library(name: "SugarmanStore", targets: ["SugarmanStore"]),
         .library(name: "SafetyEngine", targets: ["SafetyEngine"]),
         .library(name: "Integrations", targets: ["Integrations"]),
+        .library(name: "AppleHealthIntegration", targets: ["AppleHealthIntegration"]),
         .library(name: "SugarmanDiagnostics", targets: ["SugarmanDiagnostics"]),
         .library(
             name: "GS3PrivateHandoverBuilder",
@@ -96,6 +97,11 @@ let package = Package(
         .target(name: "SafetyEngine", dependencies: ["SugarmanDomain"]),
         .target(name: "Integrations", dependencies: ["SugarmanDomain"]),
         .target(
+            name: "AppleHealthIntegration",
+            dependencies: ["Integrations", "SugarmanDomain", "SugarmanStore"],
+            linkerSettings: [.linkedFramework("HealthKit")]
+        ),
+        .target(
             name: "SugarmanDiagnostics",
             dependencies: ["SugarmanDomain", "GS3Transport"]
         ),
@@ -150,6 +156,10 @@ let package = Package(
         .testTarget(name: "SugarmanStoreTests", dependencies: ["SugarmanStore", "SugarmanDomain"]),
         .testTarget(name: "SafetyEngineTests", dependencies: ["SafetyEngine", "SugarmanDomain"]),
         .testTarget(name: "IntegrationsTests", dependencies: ["Integrations", "SugarmanDomain", "SugarmanStore"]),
+        .testTarget(
+            name: "AppleHealthIntegrationTests",
+            dependencies: ["AppleHealthIntegration", "SugarmanDomain", "SugarmanStore"]
+        ),
         .testTarget(
             name: "SugarmanDiagnosticsTests",
             dependencies: ["SugarmanDiagnostics", "GS3Transport"]

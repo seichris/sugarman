@@ -1,6 +1,122 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "apple_health.blocked": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Blocked" } } }
+    },
+    "apple_health.history_section": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "History" } } }
+    },
+    "apple_health.manage": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Manage Apple Health Sync" } } }
+    },
+    "apple_health.more_enabled": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Glucose sync is on" } } }
+    },
+    "apple_health.more_subtitle": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Sync glucose history and new readings" } } }
+    },
+    "apple_health.pending": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Pending" } } }
+    },
+    "apple_health.privacy_section": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Privacy" } } }
+    },
+    "apple_health.sync_section": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Glucose Sync" } } }
+    },
+    "apple_health.synced": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Synced" } } }
+    },
+    "common.cancel": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Cancel" } } }
+    },
+    "common.save": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Save" } } }
+    },
+    "privacy.apple_health": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Apple Health" } } }
+    },
+    "privacy.apple_health_body": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Sugarman writes glucose readings to Apple Health. Sugarman does not read glucose from Apple Health." } } }
+    },
+    "privacy.apple_health_authorization_required": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Apple Health permission is required before Sugarman can save glucose." } } }
+    },
+    "privacy.apple_health_caught_up": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Eligible local readings are caught up with Apple Health." } } }
+    },
+    "privacy.apple_health_denied": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Sugarman cannot save glucose. Review its Health access in Settings or the Health app." } } }
+    },
+    "privacy.apple_health_failed": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Apple Health sync is temporarily unavailable. Your local readings are intact." } } }
+    },
+    "privacy.apple_health_confirm": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Continue" } } }
+    },
+    "privacy.apple_health_confirm_body": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Apple will ask for permission to write blood glucose. If allowed, Sugarman will sync your complete eligible local history and future readings." } } }
+    },
+    "privacy.apple_health_confirm_title": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Sync glucose to Apple Health?" } } }
+    },
+    "privacy.apple_health_counts": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%lld pending, %lld synced" } } }
+    },
+    "privacy.apple_health_gate_closed": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Sync is installed but unavailable until physical sensor decoder and timestamp validation pass. No Health permission is requested and no glucose is written." } } }
+    },
+    "privacy.apple_health_no_delete": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Turning sync off or deleting local data does not remove readings already saved in Apple Health." } } }
+    },
+    "privacy.apple_health_last_attempt": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Last attempt" } } }
+    },
+    "privacy.apple_health_last_sync": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Last sync" } } }
+    },
+    "privacy.apple_health_pending": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Eligible local readings are waiting to be saved to Apple Health." } } }
+    },
+    "privacy.apple_health_retry": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Retry now" } } }
+    },
+    "privacy.apple_health_toggle": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Sync glucose" } } }
+    },
+    "privacy.apple_health_syncing": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Saving eligible readings to Apple Health." } } }
+    },
     "dashboard.title": {
       "extractionState": "manual",
       "localizations": {
@@ -738,7 +854,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This removes locally stored sessions, glucose samples, workouts, fueling, and diagnostic logs from Sugarman. It does not change the physical sensor."
+            "value": "This removes locally stored sessions, glucose samples, workouts, fueling, and diagnostic logs from Sugarman. It does not change the physical sensor or remove readings already saved in Apple Health."
           }
         }
       }
@@ -936,7 +1052,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This removes the selected session and its glucose samples from this device."
+            "value": "This removes the selected session and its glucose samples from this device. It does not remove readings already saved in Apple Health."
           }
         }
       }
@@ -1239,6 +1355,17 @@
         }
       }
     },
+    "history.chart_no_workout": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No workout · healthy-adult display reference"
+          }
+        }
+      }
+    },
     "history.synthetic_row": {
       "extractionState": "manual",
       "localizations": {
@@ -1437,6 +1564,138 @@
         }
       }
     },
+    "workout.no_workout_range.about": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The default is a general visual reference, not a diagnosis or a personalized medical target. There is no validated formula here based on age, sex, gender, or race. If a clinician has given you a range, enter that range directly."
+          }
+        }
+      }
+    },
+    "workout.no_workout_range.about_section": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About this range"
+          }
+        }
+      }
+    },
+    "workout.no_workout_range.ada_source": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ADA glucose diagnosis reference"
+          }
+        }
+      }
+    },
+    "workout.no_workout_range.cgm_source": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "International CGM target consensus"
+          }
+        }
+      }
+    },
+    "workout.no_workout_range.default_label": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Healthy-adult reference"
+          }
+        }
+      }
+    },
+    "workout.no_workout_range.default_section": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Default"
+          }
+        }
+      }
+    },
+    "workout.no_workout_range.footer": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shown as the green band on Live and History whenever no workout is selected."
+          }
+        }
+      }
+    },
+    "workout.no_workout_range.lower": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lower"
+          }
+        }
+      }
+    },
+    "workout.no_workout_range.reset": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reset to 70–140 mg/dL"
+          }
+        }
+      }
+    },
+    "workout.no_workout_range.section": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No-workout chart band"
+          }
+        }
+      }
+    },
+    "workout.no_workout_range.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No-workout range"
+          }
+        }
+      }
+    },
+    "workout.no_workout_range.upper": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Upper"
+          }
+        }
+      }
+    },
     "workout.saved": {
       "extractionState": "manual",
       "localizations": {
@@ -1465,7 +1724,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tap a workout, then choose Pre, Live, After, or Overnight. Choose No workout right now to hide the range. The selected band is shown on History's chart."
+            "value": "Tap a workout, then choose Pre, Live, After, or Overnight. With no workout selected, the saved no-workout range remains visible on Live and History."
           }
         }
       }

@@ -12,6 +12,17 @@ public actor InMemorySugarmanStore: SugarmanStoring {
     private var workoutRecords: [UUID: WorkoutContext] = [:]
     private var workoutPlanRecords: [UUID: WorkoutPlan] = [:]
     private var identityRecords: [UUID: SensorIdentity] = [:]
+    private var appleHealthDeliveries: [SampleKey: Delivery] = [:]
+
+    private struct Delivery: Sendable {
+        var state: AppleHealthDeliveryState = .pending
+        var syncVersion = 0
+        var attemptCount = 0
+        var lastAttemptAt: Date?
+        var syncedAt: Date?
+        var failureReason: AppleHealthSyncFailureReason?
+        var retryAfter: Date?
+    }
 
     public init() {}
 
@@ -46,8 +57,10 @@ public actor InMemorySugarmanStore: SugarmanStoring {
         // All validation happens before this copy-on-commit mutation so a
         // conflicting duplicate cannot leave a partial batch behind.
         var nextSamples = samples
+        var nextDeliveries = appleHealthDeliveries
         for sample in plan.samplesToInsert {
             nextSamples[sample.id] = sample
+            nextDeliveries[sample.id] = Delivery()
         }
         session.lastReceivedIndex = plan.result.lastReceivedIndex
         session.lastCommittedIndex = plan.result.lastCommittedIndex
@@ -55,6 +68,7 @@ public actor InMemorySugarmanStore: SugarmanStoring {
             session.sensorTimeAnchor = establishingTimeAnchor
         }
         samples = nextSamples
+        appleHealthDeliveries = nextDeliveries
         sessions[sessionID] = session
         return plan.result
     }
@@ -65,6 +79,7 @@ public actor InMemorySugarmanStore: SugarmanStoring {
             throw StoreError.duplicateSample(key)
         }
         samples[key] = sample
+        appleHealthDeliveries[key] = Delivery()
     }
 
     public func sample(sessionID: UUID, sensorIndex: UInt32) async throws -> GlucoseSample? {
@@ -99,6 +114,118 @@ public actor InMemorySugarmanStore: SugarmanStoring {
                 return lhs.sessionID.uuidString < rhs.sessionID.uuidString
             }
             return lhs.sensorIndex < rhs.sensorIndex
+        }
+    }
+
+    public func appleHealthSyncCandidates(
+        limit: Int,
+        now: Date,
+        ignoringRetryDeadline: Bool = false
+    ) async throws -> [AppleHealthSyncCandidate] {
+        guard limit > 0 else { return [] }
+        return samples.values
+            .filter { sample in
+                guard let delivery = appleHealthDeliveries[sample.id] else {
+                    return true
+                }
+                switch delivery.state {
+                case .pending:
+                    return true
+                case .retryableFailure:
+                    return ignoringRetryDeadline
+                        || delivery.retryAfter.map { $0 <= now } != false
+                case .synced, .blocked:
+                    return false
+                }
+            }
+            .sorted { lhs, rhs in
+                if lhs.sensorTimestamp != rhs.sensorTimestamp {
+                    return lhs.sensorTimestamp < rhs.sensorTimestamp
+                }
+                if lhs.sessionID != rhs.sessionID {
+                    return lhs.sessionID.uuidString < rhs.sessionID.uuidString
+                }
+                return lhs.sensorIndex < rhs.sensorIndex
+            }
+            .prefix(limit)
+            .map {
+                AppleHealthSyncCandidate(
+                    sample: $0,
+                    attemptCount: appleHealthDeliveries[$0.id]?.attemptCount ?? 0
+                )
+            }
+    }
+
+    public func recordAppleHealthAttempt(
+        _ keys: [SampleKey],
+        at date: Date
+    ) async throws {
+        try requireSamples(keys)
+        for key in keys {
+            var delivery = appleHealthDeliveries[key] ?? Delivery()
+            delivery.state = .pending
+            delivery.attemptCount += 1
+            delivery.lastAttemptAt = date
+            delivery.failureReason = nil
+            delivery.retryAfter = nil
+            appleHealthDeliveries[key] = delivery
+        }
+    }
+
+    public func recordAppleHealthSuccess(
+        _ keys: [SampleKey],
+        version: Int,
+        at date: Date
+    ) async throws {
+        try requireSamples(keys)
+        for key in keys {
+            var delivery = appleHealthDeliveries[key] ?? Delivery()
+            delivery.state = .synced
+            delivery.syncVersion = version
+            delivery.syncedAt = date
+            delivery.failureReason = nil
+            delivery.retryAfter = nil
+            appleHealthDeliveries[key] = delivery
+        }
+    }
+
+    public func recordAppleHealthFailure(
+        _ keys: [SampleKey],
+        reason: AppleHealthSyncFailureReason,
+        retryable: Bool,
+        retryAfter: Date?,
+        at date: Date
+    ) async throws {
+        try requireSamples(keys)
+        for key in keys {
+            var delivery = appleHealthDeliveries[key] ?? Delivery()
+            delivery.state = retryable ? .retryableFailure : .blocked
+            delivery.lastAttemptAt = date
+            delivery.failureReason = reason
+            delivery.retryAfter = retryable ? retryAfter : nil
+            appleHealthDeliveries[key] = delivery
+        }
+    }
+
+    public func appleHealthSyncSummary() async throws -> AppleHealthSyncSummary {
+        let missingCount = samples.keys.filter { appleHealthDeliveries[$0] == nil }.count
+        let deliveries = appleHealthDeliveries.values
+        return AppleHealthSyncSummary(
+            pendingCount: missingCount + deliveries.filter { $0.state == .pending }.count,
+            syncedCount: deliveries.filter { $0.state == .synced }.count,
+            retryableFailureCount: deliveries.filter {
+                $0.state == .retryableFailure
+            }.count,
+            blockedCount: deliveries.filter { $0.state == .blocked }.count,
+            lastAttemptAt: deliveries.compactMap(\.lastAttemptAt).max(),
+            lastSyncedAt: deliveries.compactMap(\.syncedAt).max()
+        )
+    }
+
+    private func requireSamples(_ keys: [SampleKey]) throws {
+        guard Set(keys).count == keys.count,
+              keys.allSatisfy({ samples[$0] != nil }) else {
+            throw StoreError.notFound
         }
     }
 
@@ -137,6 +264,9 @@ public actor InMemorySugarmanStore: SugarmanStoring {
         guard sessions[sessionID] != nil else { throw StoreError.notFound }
         sessions[sessionID] = nil
         samples = samples.filter { $0.key.sessionID != sessionID }
+        appleHealthDeliveries = appleHealthDeliveries.filter {
+            $0.key.sessionID != sessionID
+        }
         // Identities are global and are removed by deleteAll only. Scoped
         // fueling and workouts are deleted with their session.
         fueling = fueling.filter { $0.value.sessionID != sessionID }
@@ -150,6 +280,7 @@ public actor InMemorySugarmanStore: SugarmanStoring {
         workoutRecords.removeAll()
         workoutPlanRecords.removeAll()
         identityRecords.removeAll()
+        appleHealthDeliveries.removeAll()
     }
 
     public func sessionIDs() async throws -> [UUID] {

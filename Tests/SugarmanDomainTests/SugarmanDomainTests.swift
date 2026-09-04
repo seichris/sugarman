@@ -140,6 +140,19 @@ struct SugarmanDomainTests {
         #expect(during.upperValue(in: .millimolesPerLiter) == 150.0 / 18.0)
     }
 
+    @Test func noWorkoutReferenceRangeHasStableDefaultAndUnitConversion() {
+        let range = GlucoseReferenceRange.healthyAdultDefault
+        #expect(range.lowerMgdl == 70)
+        #expect(range.upperMgdl == 140)
+        #expect(range.floorMgdl == nil)
+        #expect(range.isValid)
+        #expect(range.lowerValue(in: .millimolesPerLiter) == 70.0 / 18.0)
+        #expect(range.upperValue(in: .millimolesPerLiter) == 140.0 / 18.0)
+
+        #expect(!GlucoseReferenceRange(lowerMgdl: 0, upperMgdl: 140).isValid)
+        #expect(!GlucoseReferenceRange(lowerMgdl: 140, upperMgdl: 140).isValid)
+    }
+
     @Test func syntheticDemoCatalogIsLabeledAndDrivesSafetyStates() {
         let now = Date(timeIntervalSince1970: 1_700_000_000)
         for scenario in SyntheticDemoScenario.allCases {

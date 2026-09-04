@@ -51,7 +51,7 @@ targets:
         NFCReaderUsageDescription: Sugarman can read an owned sensor package or tag to identify the sensor. Scanning does not activate or bind the sensor.
         NSCameraUsageDescription: Sugarman can scan a package Data Matrix to identify an owned sensor. Scanning does not send sensor commands.
         NSHealthShareUsageDescription: Sugarman can read workouts you choose to share so you can overlay them with glucose. HealthKit glucose writes are disabled until validation gates pass.
-        NSHealthUpdateUsageDescription: Sugarman may later write validated glucose to Apple Health. HealthKit glucose writes are disabled in this build.
+        NSHealthUpdateUsageDescription: Sugarman saves validated glucose readings to Apple Health only when you explicitly enable sync.
     entitlements:
       path: Apps/Sugarman/Sugarman.entitlements
       properties:
@@ -59,6 +59,7 @@ targets:
           - TAG
         com.apple.security.application-groups:
           - group.app.sugarman.sensor-owner
+        com.apple.developer.healthkit: true
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "1"
@@ -95,6 +96,8 @@ targets:
         product: SafetyEngine
       - package: Sugarman
         product: Integrations
+      - package: Sugarman
+        product: AppleHealthIntegration
       - package: Sugarman
         product: SugarmanDiagnostics
       - package: Sugarman

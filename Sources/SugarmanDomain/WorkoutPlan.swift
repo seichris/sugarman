@@ -14,6 +14,58 @@ public enum WorkoutPhase: String, Sendable, Codable, Equatable, CaseIterable, Id
     public var id: String { rawValue }
 }
 
+/// A glucose band used only as a visual reference on charts.
+/// Values are stored canonically in mg/dL and converted for display only.
+public struct GlucoseReferenceRange: Sendable, Equatable, Codable, Hashable {
+    public var lowerMgdl: Int
+    public var upperMgdl: Int
+    public var floorMgdl: Int?
+
+    public init(
+        lowerMgdl: Int,
+        upperMgdl: Int,
+        floorMgdl: Int? = nil
+    ) {
+        self.lowerMgdl = lowerMgdl
+        self.upperMgdl = upperMgdl
+        self.floorMgdl = floorMgdl
+    }
+
+    /// A general healthy-adult display reference. It is not a diagnostic
+    /// interval or a demographic calculation and can be replaced by the user.
+    public static let healthyAdultDefault = GlucoseReferenceRange(
+        lowerMgdl: 70,
+        upperMgdl: 140
+    )
+
+    public var isValid: Bool {
+        lowerMgdl > 0
+            && upperMgdl > lowerMgdl
+            && (floorMgdl == nil || floorMgdl! > 0 && floorMgdl! <= lowerMgdl)
+    }
+
+    public func lowerValue(in unit: GlucoseUnit) -> Double {
+        value(lowerMgdl, in: unit)
+    }
+
+    public func upperValue(in unit: GlucoseUnit) -> Double {
+        value(upperMgdl, in: unit)
+    }
+
+    public func floorValue(in unit: GlucoseUnit) -> Double? {
+        floorMgdl.map { value($0, in: unit) }
+    }
+
+    private func value(_ mgdl: Int, in unit: GlucoseUnit) -> Double {
+        switch unit {
+        case .milligramsPerDeciliter:
+            Double(mgdl)
+        case .millimolesPerLiter:
+            Double(mgdl) / 18.0
+        }
+    }
+}
+
 /// A user-owned glucose band attached to one phase of a saved workout.
 /// Values are stored canonically in mg/dL and converted for display only.
 public struct WorkoutPhaseTarget: Sendable, Equatable, Codable, Identifiable, Hashable {
@@ -49,6 +101,14 @@ public struct WorkoutPhaseTarget: Sendable, Equatable, Codable, Identifiable, Ha
         lowerMgdl > 0
             && upperMgdl >= lowerMgdl
             && (floorMgdl == nil || floorMgdl! > 0 && floorMgdl! <= lowerMgdl)
+    }
+
+    public var referenceRange: GlucoseReferenceRange {
+        GlucoseReferenceRange(
+            lowerMgdl: lowerMgdl,
+            upperMgdl: upperMgdl,
+            floorMgdl: floorMgdl
+        )
     }
 
     public func lowerValue(in unit: GlucoseUnit) -> Double {

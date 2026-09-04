@@ -87,6 +87,28 @@ public protocol SugarmanStoring: Sendable {
     func latestSample(sessionID: UUID) async throws -> GlucoseSample?
     func samples(sessionID: UUID) async throws -> [GlucoseSample]
     func allSamples() async throws -> [GlucoseSample]
+    /// Returns the oldest unsynced rows without exposing a second copy of the
+    /// glucose payload. Missing delivery records are treated as pending so a
+    /// pre-feature database is reconciled lazily.
+    func appleHealthSyncCandidates(
+        limit: Int,
+        now: Date,
+        ignoringRetryDeadline: Bool
+    ) async throws -> [AppleHealthSyncCandidate]
+    func recordAppleHealthAttempt(_ keys: [SampleKey], at: Date) async throws
+    func recordAppleHealthSuccess(
+        _ keys: [SampleKey],
+        version: Int,
+        at: Date
+    ) async throws
+    func recordAppleHealthFailure(
+        _ keys: [SampleKey],
+        reason: AppleHealthSyncFailureReason,
+        retryable: Bool,
+        retryAfter: Date?,
+        at: Date
+    ) async throws
+    func appleHealthSyncSummary() async throws -> AppleHealthSyncSummary
     func insertSession(_ session: SensorSession) async throws
     func updateSession(_ session: SensorSession) async throws
     /// Atomically updates only the UI connection projection, preserving

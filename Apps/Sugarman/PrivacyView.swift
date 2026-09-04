@@ -76,6 +76,23 @@ struct PrivacyView: View {
                             .font(.footnote)
                     }
                 }
+#if !SUGARMAN_DEVICE_TEST
+                Section("privacy.apple_health") {
+                    NavigationLink {
+                        AppleHealthView()
+                    } label: {
+                        Label {
+                            Text("apple_health.manage")
+                        } icon: {
+                            Image(systemName: "heart.fill")
+                                .foregroundStyle(.red)
+                        }
+                    }
+                    Text("privacy.apple_health_no_delete")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+#endif
                 Section("privacy.local_diagnostics") {
                     Text("privacy.local_diagnostics_body")
                         .font(.footnote)

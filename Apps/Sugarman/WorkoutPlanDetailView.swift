@@ -68,7 +68,7 @@ struct WorkoutPlanDetailView: View {
                     WorkoutPhaseTargetCard(target: selectedTarget)
                     WorkoutGlucoseChart(
                         samples: chartSamples,
-                        target: selectedTarget,
+                        target: selectedTarget.referenceRange,
                         unit: model.preferredUnit
                     )
                     if let notes = selectedTarget.notes, !notes.isEmpty {
@@ -83,6 +83,21 @@ struct WorkoutPlanDetailView: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
+
+                Divider()
+
+                NavigationLink {
+                    NoWorkoutGlucoseRangeView()
+                } label: {
+                    NoWorkoutGlucoseRangeLabel()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                        .background(
+                            .thinMaterial,
+                            in: RoundedRectangle(cornerRadius: 16)
+                        )
+                }
+                .buttonStyle(.plain)
 
                 Text(verbatim: ProductCopy.athleteInsightOnly)
                     .font(.footnote)

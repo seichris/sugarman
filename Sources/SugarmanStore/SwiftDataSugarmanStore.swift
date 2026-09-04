@@ -334,6 +334,68 @@ public final class SensorIdentityRecord {
     }
 }
 
+@available(iOS 26, macOS 26, *)
+@Model
+public final class AppleHealthDeliveryRecord {
+    #Unique<AppleHealthDeliveryRecord>([\.sessionID, \.sensorIndex])
+    public var sessionID: UUID
+    public var sensorIndex: Int64
+    public var stateRaw: String
+    public var syncVersion: Int
+    public var attemptCount: Int
+    public var lastAttemptAt: Date?
+    public var syncedAt: Date?
+    public var failureReasonRaw: String?
+    public var retryAfter: Date?
+
+    public init(sampleKey: SampleKey) {
+        self.sessionID = sampleKey.sessionID
+        self.sensorIndex = Int64(sampleKey.sensorIndex)
+        self.stateRaw = AppleHealthDeliveryState.pending.rawValue
+        self.syncVersion = 0
+        self.attemptCount = 0
+    }
+
+    public var state: AppleHealthDeliveryState {
+        get { AppleHealthDeliveryState(rawValue: stateRaw) ?? .pending }
+        set { stateRaw = newValue.rawValue }
+    }
+}
+
+@available(iOS 26, macOS 26, *)
+private enum SugarmanSchemaV1: VersionedSchema {
+    static let versionIdentifier = Schema.Version(1, 0, 0)
+    static var models: [any PersistentModel.Type] {
+        [
+            GlucoseSampleRecord.self,
+            SensorSessionRecord.self,
+            FuelingEventRecord.self,
+            WorkoutContextRecord.self,
+            WorkoutPlanRecord.self,
+            SensorIdentityRecord.self,
+        ]
+    }
+}
+
+@available(iOS 26, macOS 26, *)
+private enum SugarmanSchemaV2: VersionedSchema {
+    static let versionIdentifier = Schema.Version(2, 0, 0)
+    static var models: [any PersistentModel.Type] {
+        SugarmanSchemaV1.models + [AppleHealthDeliveryRecord.self]
+    }
+}
+
+@available(iOS 26, macOS 26, *)
+private enum SugarmanSchemaMigrationPlan: SchemaMigrationPlan {
+    static var schemas: [any VersionedSchema.Type] {
+        [SugarmanSchemaV1.self, SugarmanSchemaV2.self]
+    }
+
+    static var stages: [MigrationStage] {
+        [.lightweight(fromVersion: SugarmanSchemaV1.self, toVersion: SugarmanSchemaV2.self)]
+    }
+}
+
 /// SwiftData-backed store isolated behind the repository protocol. Uniqueness
 /// on `(sessionID, sensorIndex)` is enforced in the actor, not by CloudKit.
 /// CloudKit is not configured.
@@ -346,14 +408,7 @@ public actor SwiftDataSugarmanStore: SugarmanStoring {
     }
 
     nonisolated public static func makeContainer(inMemory: Bool) throws -> ModelContainer {
-        let schema = Schema([
-            GlucoseSampleRecord.self,
-            SensorSessionRecord.self,
-            FuelingEventRecord.self,
-            WorkoutContextRecord.self,
-            WorkoutPlanRecord.self,
-            SensorIdentityRecord.self,
-        ])
+        let schema = Schema(versionedSchema: SugarmanSchemaV2.self)
         let configuration: ModelConfiguration
         if inMemory {
             configuration = ModelConfiguration(
@@ -370,7 +425,11 @@ public actor SwiftDataSugarmanStore: SugarmanStoring {
                 cloudKitDatabase: .none
             )
         }
-        let container = try ModelContainer(for: schema, configurations: [configuration])
+        let container = try ModelContainer(
+            for: schema,
+            migrationPlan: SugarmanSchemaMigrationPlan.self,
+            configurations: [configuration]
+        )
         if !inMemory {
             try applyFileProtection(at: try persistentStoreURL())
         }
@@ -378,21 +437,18 @@ public actor SwiftDataSugarmanStore: SugarmanStoring {
     }
 
     nonisolated public static func makeContainer(url: URL) throws -> ModelContainer {
-        let schema = Schema([
-            GlucoseSampleRecord.self,
-            SensorSessionRecord.self,
-            FuelingEventRecord.self,
-            WorkoutContextRecord.self,
-            WorkoutPlanRecord.self,
-            SensorIdentityRecord.self,
-        ])
+        let schema = Schema(versionedSchema: SugarmanSchemaV2.self)
         let configuration = ModelConfiguration(
             "Sugarman",
             schema: schema,
             url: url,
             cloudKitDatabase: .none
         )
-        return try ModelContainer(for: schema, configurations: [configuration])
+        return try ModelContainer(
+            for: schema,
+            migrationPlan: SugarmanSchemaMigrationPlan.self,
+            configurations: [configuration]
+        )
     }
 
     nonisolated private static func persistentStoreURL() throws -> URL {
@@ -475,6 +531,7 @@ public actor SwiftDataSugarmanStore: SugarmanStoring {
 
         for sample in plan.samplesToInsert {
             modelContext.insert(GlucoseSampleRecord(from: sample))
+            modelContext.insert(AppleHealthDeliveryRecord(sampleKey: sample.id))
         }
         session.lastReceivedIndex = plan.result.lastReceivedIndex
         session.lastCommittedIndex = plan.result.lastCommittedIndex
@@ -505,7 +562,13 @@ public actor SwiftDataSugarmanStore: SugarmanStoring {
             throw StoreError.duplicateSample(sample.id)
         }
         modelContext.insert(GlucoseSampleRecord(from: sample))
-        try modelContext.save()
+        modelContext.insert(AppleHealthDeliveryRecord(sampleKey: sample.id))
+        do {
+            try modelContext.save()
+        } catch {
+            modelContext.rollback()
+            throw error
+        }
     }
 
     public func sample(sessionID: UUID, sensorIndex: UInt32) async throws -> GlucoseSample? {
@@ -545,6 +608,195 @@ public actor SwiftDataSugarmanStore: SugarmanStoring {
                 return lhs.sessionID.uuidString < rhs.sessionID.uuidString
             }
             return lhs.sensorIndex < rhs.sensorIndex
+        }
+    }
+
+    public func appleHealthSyncCandidates(
+        limit: Int,
+        now: Date,
+        ignoringRetryDeadline: Bool
+    ) async throws -> [AppleHealthSyncCandidate] {
+        guard limit > 0 else { return [] }
+        let pageSize = max(Self.appleHealthPageSize, limit)
+        var offset = 0
+        var candidates: [AppleHealthSyncCandidate] = []
+        while candidates.count < limit {
+            var descriptor = FetchDescriptor<GlucoseSampleRecord>(
+                sortBy: [
+                    SortDescriptor(\.sensorTimestamp),
+                    SortDescriptor(\.sessionID),
+                    SortDescriptor(\.sensorIndex),
+                ]
+            )
+            descriptor.fetchLimit = pageSize
+            descriptor.fetchOffset = offset
+            let page = try modelContext.fetch(descriptor)
+            guard !page.isEmpty else { break }
+            offset += page.count
+            for record in page {
+                let sample = try record.domainValue()
+                guard let delivery = try deliveryRecord(for: sample.id) else {
+                    candidates.append(
+                        AppleHealthSyncCandidate(sample: sample, attemptCount: 0)
+                    )
+                    continue
+                }
+                switch delivery.state {
+                case .pending:
+                    candidates.append(
+                        AppleHealthSyncCandidate(
+                            sample: sample,
+                            attemptCount: delivery.attemptCount
+                        )
+                    )
+                case .retryableFailure where ignoringRetryDeadline
+                    || delivery.retryAfter == nil
+                    || delivery.retryAfter! <= now:
+                    candidates.append(
+                        AppleHealthSyncCandidate(
+                            sample: sample,
+                            attemptCount: delivery.attemptCount
+                        )
+                    )
+                case .retryableFailure, .synced, .blocked:
+                    break
+                }
+                if candidates.count == limit { break }
+            }
+        }
+        return candidates
+    }
+
+    public func recordAppleHealthAttempt(
+        _ keys: [SampleKey],
+        at date: Date
+    ) async throws {
+        let records = try deliveryRecords(for: keys)
+        for record in records {
+            record.attemptCount += 1
+            record.lastAttemptAt = date
+        }
+        try saveOrRollback()
+    }
+
+    public func recordAppleHealthSuccess(
+        _ keys: [SampleKey],
+        version: Int,
+        at date: Date
+    ) async throws {
+        let records = try deliveryRecords(for: keys)
+        for record in records {
+            record.state = .synced
+            record.syncVersion = version
+            record.syncedAt = date
+            record.failureReasonRaw = nil
+            record.retryAfter = nil
+        }
+        try saveOrRollback()
+    }
+
+    public func recordAppleHealthFailure(
+        _ keys: [SampleKey],
+        reason: AppleHealthSyncFailureReason,
+        retryable: Bool,
+        retryAfter: Date?,
+        at date: Date
+    ) async throws {
+        let records = try deliveryRecords(for: keys)
+        for record in records {
+            record.state = retryable ? .retryableFailure : .blocked
+            record.lastAttemptAt = date
+            record.failureReasonRaw = reason.rawValue
+            record.retryAfter = retryable ? retryAfter : nil
+        }
+        try saveOrRollback()
+    }
+
+    public func appleHealthSyncSummary() async throws -> AppleHealthSyncSummary {
+        let sampleCount = try modelContext.fetchCount(FetchDescriptor<GlucoseSampleRecord>())
+        let totalDeliveryCount = try modelContext.fetchCount(
+            FetchDescriptor<AppleHealthDeliveryRecord>()
+        )
+        let pending = try deliveryCount(for: .pending)
+            + max(0, sampleCount - totalDeliveryCount)
+        return AppleHealthSyncSummary(
+            pendingCount: pending,
+            syncedCount: try deliveryCount(for: .synced),
+            retryableFailureCount: try deliveryCount(for: .retryableFailure),
+            blockedCount: try deliveryCount(for: .blocked),
+            lastAttemptAt: try latestAttemptDate(),
+            lastSyncedAt: try latestSyncedDate()
+        )
+    }
+
+    private func deliveryRecords(
+        for keys: [SampleKey]
+    ) throws -> [AppleHealthDeliveryRecord] {
+        let uniqueKeys = Array(Set(keys))
+        let samples = try modelContext.fetch(FetchDescriptor<GlucoseSampleRecord>())
+        let sampleKeys = Set(try samples.map { try $0.domainValue().id })
+        guard uniqueKeys.allSatisfy(sampleKeys.contains) else {
+            throw StoreError.notFound
+        }
+        return try uniqueKeys.map { key in
+            if let existing = try deliveryRecord(for: key) { return existing }
+            let record = AppleHealthDeliveryRecord(sampleKey: key)
+            modelContext.insert(record)
+            return record
+        }
+    }
+
+    private static let appleHealthPageSize = 100
+
+    private func deliveryRecord(
+        for key: SampleKey
+    ) throws -> AppleHealthDeliveryRecord? {
+        let sessionID = key.sessionID
+        let sensorIndex = Int64(key.sensorIndex)
+        return try modelContext.fetch(
+            FetchDescriptor<AppleHealthDeliveryRecord>(
+                predicate: #Predicate {
+                    $0.sessionID == sessionID && $0.sensorIndex == sensorIndex
+                }
+            )
+        ).first
+    }
+
+    private func deliveryCount(
+        for state: AppleHealthDeliveryState
+    ) throws -> Int {
+        let stateRaw = state.rawValue
+        return try modelContext.fetchCount(
+            FetchDescriptor<AppleHealthDeliveryRecord>(
+                predicate: #Predicate { $0.stateRaw == stateRaw }
+            )
+        )
+    }
+
+    private func latestAttemptDate() throws -> Date? {
+        var descriptor = FetchDescriptor<AppleHealthDeliveryRecord>(
+            predicate: #Predicate { $0.lastAttemptAt != nil },
+            sortBy: [SortDescriptor(\.lastAttemptAt, order: .reverse)]
+        )
+        descriptor.fetchLimit = 1
+        return try modelContext.fetch(descriptor).first?.lastAttemptAt
+    }
+
+    private func latestSyncedDate() throws -> Date? {
+        var descriptor = FetchDescriptor<AppleHealthDeliveryRecord>(
+            predicate: #Predicate { $0.syncedAt != nil },
+            sortBy: [SortDescriptor(\.syncedAt, order: .reverse)]
+        )
+        descriptor.fetchLimit = 1
+        return try modelContext.fetch(descriptor).first?.syncedAt
+    }
+
+    private func saveOrRollback() throws {
+        do {
+            try modelContext.save()
+        } catch {
+            modelContext.rollback()
+            throw error
         }
     }
 
@@ -626,6 +878,14 @@ public actor SwiftDataSugarmanStore: SugarmanStoring {
         for record in sampleRecords {
             modelContext.delete(record)
         }
+        let deliveryRecords = try modelContext.fetch(
+            FetchDescriptor<AppleHealthDeliveryRecord>(
+                predicate: #Predicate { $0.sessionID == sessionID }
+            )
+        )
+        for record in deliveryRecords {
+            modelContext.delete(record)
+        }
         let fuelingRecords = try modelContext.fetch(FetchDescriptor<FuelingEventRecord>())
         for record in fuelingRecords where record.sessionID == sessionID {
             modelContext.delete(record)
@@ -644,6 +904,7 @@ public actor SwiftDataSugarmanStore: SugarmanStoring {
         try modelContext.delete(model: WorkoutContextRecord.self)
         try modelContext.delete(model: WorkoutPlanRecord.self)
         try modelContext.delete(model: SensorIdentityRecord.self)
+        try modelContext.delete(model: AppleHealthDeliveryRecord.self)
         try modelContext.save()
     }
 
