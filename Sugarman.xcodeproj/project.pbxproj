@@ -15,6 +15,7 @@
 		18547DFCFF92039200422D99 /* GS3Transport in Frameworks */ = {isa = PBXBuildFile; productRef = 9BD053E9E2482A4DF749F1BC /* GS3Transport */; };
 		1BD5EF2CC6DEAB38AA7AC2C9 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 860607D7CABFC1DCB652CAE8 /* HistoryView.swift */; };
 		1BF94CCC65C237F400445C72 /* FuelingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 656BBC6B356424ED01B62A5C /* FuelingView.swift */; };
+		206C02F53BBBA246F8CF6719 /* AppleHealthAppBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = D350C8927A0631A4573939ED /* AppleHealthAppBridge.swift */; };
 		2180F84F9A632C8BD78BEB55 /* AccountBinding in Frameworks */ = {isa = PBXBuildFile; productRef = 6816F1F47828A1F57E5EE72A /* AccountBinding */; };
 		22FB8A1D82E6E44903F30D43 /* WorkoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 624C211ABA31163598C2C265 /* WorkoutView.swift */; };
 		279867D011F2F2B3ED5C1F49 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3776611985DB564BF1E3EC5E /* Assets.xcassets */; };
@@ -37,6 +38,7 @@
 		5AB576F431822FF1828D7CFA /* PrivateDocumentImport in Frameworks */ = {isa = PBXBuildFile; productRef = 5DF359744959C8FDEF95369B /* PrivateDocumentImport */; };
 		5EE6D2D51340768400D128F2 /* SugarmanMacDeviceTestApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5197BAABED85D493E72182F /* SugarmanMacDeviceTestApp.swift */; };
 		624555F9F302675C3DAF4C73 /* DeviceTestProvisioningSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C91B80E38A6B0F30FC5BA2F /* DeviceTestProvisioningSection.swift */; };
+		6E219638BA49514C0ED24092 /* SensorOwnership in Frameworks */ = {isa = PBXBuildFile; productRef = 0A8CB8EC5B8B728EAA009209 /* SensorOwnership */; };
 		70ACFF5FBCB1714DD6ED3052 /* SensorOnboarding in Frameworks */ = {isa = PBXBuildFile; productRef = E5C682ACDC44433C83C42DC0 /* SensorOnboarding */; };
 		74735FDEB0F1627C9F14766B /* GS3DeveloperProbe in Frameworks */ = {isa = PBXBuildFile; productRef = AA164286726B3EF92D3AAE1C /* GS3DeveloperProbe */; };
 		78E8C92384E18DBC9C515A18 /* SugarmanDomain in Frameworks */ = {isa = PBXBuildFile; productRef = ADE13AEECE159CEFFE400572 /* SugarmanDomain */; };
@@ -62,10 +64,11 @@
 		9FEA5F925193DB6A14980AC2 /* NoDosingBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F709C40FC939809818D7ADF /* NoDosingBanner.swift */; };
 		9FEBC5BFB46FBBAAB25040F5 /* SensorOwnership in Frameworks */ = {isa = PBXBuildFile; productRef = C7A47036ADC02F17DD6BCE03 /* SensorOwnership */; };
 		A3EE9E4BF2642B9D472B90C3 /* PrivateDocumentImport in Frameworks */ = {isa = PBXBuildFile; productRef = 0D36F4670FBDBF2845A24415 /* PrivateDocumentImport */; };
+		A55F08F612ABED2897EAB103 /* AppleHealthAppBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = D350C8927A0631A4573939ED /* AppleHealthAppBridge.swift */; };
 		AA5E71104F1C4450C6891D3E /* SensorOwnership in Frameworks */ = {isa = PBXBuildFile; productRef = 7E8B64029D6BD24F1A302D50 /* SensorOwnership */; };
 		B181D5BD932D039751E9E2BE /* WorkoutPlanEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A691E452B5C2FB077F67F91 /* WorkoutPlanEditorView.swift */; };
 		B1A68B3AD78A74A2EE80A515 /* SugarmanDomain in Frameworks */ = {isa = PBXBuildFile; productRef = 8315F3675E38C87BD98440E0 /* SugarmanDomain */; };
-		B28E54660ADD569225EF0BFB /* SensorOwnership in Frameworks */ = {isa = PBXBuildFile; productRef = 0A8CB8EC5B8B728EAA009209 /* SensorOwnership */; };
+		B28E54660ADD569225EF0BFB /* SugarmanDiagnostics in Frameworks */ = {isa = PBXBuildFile; productRef = 68C83594A30351E0BAA91AE3 /* SugarmanDiagnostics */; };
 		B2FC75E9F9317D3F50202930 /* SensorOnboarding in Frameworks */ = {isa = PBXBuildFile; productRef = F705304B1A41ECB50B19865E /* SensorOnboarding */; };
 		B38DA06F640C94A46D153927 /* SugarmanProbeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA4F6CD684BA19A9D21C9C65 /* SugarmanProbeApp.swift */; };
 		B4582411C3B055051A9517B8 /* AccountBinding in Frameworks */ = {isa = PBXBuildFile; productRef = 1A663E90A429605A1E565651 /* AccountBinding */; };
@@ -88,7 +91,7 @@
 		E0705F959641E06BB7FA75C0 /* GS3ProvisioningScan in Frameworks */ = {isa = PBXBuildFile; productRef = BFC2CEC82407C4BB12BA6CC5 /* GS3ProvisioningScan */; };
 		E15309AE01C533808742A893 /* SugarmanApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4704D8B1664BAC86165C699F /* SugarmanApp.swift */; };
 		E2A3D71DDE9AA6936853F84F /* SafetyEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 2682BE8D6FCE365BCCAA471F /* SafetyEngine */; };
-		E52DF7236B32F339BB5AA1BF /* SugarmanDiagnostics in Frameworks */ = {isa = PBXBuildFile; productRef = 68C83594A30351E0BAA91AE3 /* SugarmanDiagnostics */; };
+		E52DF7236B32F339BB5AA1BF /* AppleHealthIntegration in Frameworks */ = {isa = PBXBuildFile; productRef = 08BD79A3BF5B287A7BDA9BA3 /* AppleHealthIntegration */; };
 		E957FF0A866DAEBEE78F454D /* PrivacyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D62AEF0933A5D37DBD9819B /* PrivacyView.swift */; };
 		E9774F36FD34D802F3ECCA35 /* MacDeviceTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 546916A3A332E02DE574F2A6 /* MacDeviceTestView.swift */; };
 		ED55C38DB3BDE90CA92395C5 /* WorkoutPlanDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2761A8351E150E01C3F4F83 /* WorkoutPlanDetailView.swift */; };
@@ -101,6 +104,7 @@
 
 /* Begin PBXFileReference section */
 		000D344B1531771A82196E8E /* SensorOnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorOnboardingView.swift; sourceTree = "<group>"; };
+		00A9DAAA86AD725CB76487F6 /* sugarman-healthkit-implementation */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "sugarman-healthkit-implementation"; path = .; sourceTree = SOURCE_ROOT; };
 		015AE5A8B5FB8B171B34FD9B /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		1083CCA05A8EEAA3505139DC /* MoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoreView.swift; sourceTree = "<group>"; };
 		15DF313DF9367CC3CEA50640 /* ActiveSessionBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveSessionBanner.swift; sourceTree = "<group>"; };
@@ -126,9 +130,9 @@
 		AC96B54C5A9982635D8FAA25 /* DevelopmentTeam.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = DevelopmentTeam.xcconfig; sourceTree = "<group>"; };
 		B4267C7DE28C61725933287C /* SugarmanDeviceTest.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SugarmanDeviceTest.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C5986B6248ACE9BB1160335E /* SugarmanMacDeviceTest.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SugarmanMacDeviceTest.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		BF74DB52FA25D6BED9C37F44 /* sugarman */ = {isa = PBXFileReference; lastKnownFileType = folder; name = sugarman; path = .; sourceTree = SOURCE_ROOT; };
 		CA4F6CD684BA19A9D21C9C65 /* SugarmanProbeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SugarmanProbeApp.swift; sourceTree = "<group>"; };
 		CD93DE80D8823F077A698FBA /* ProbeAppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProbeAppModel.swift; sourceTree = "<group>"; };
+		D350C8927A0631A4573939ED /* AppleHealthAppBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleHealthAppBridge.swift; sourceTree = "<group>"; };
 		D9DEBFFC56BDC6FB81519643 /* V3ProbeBluetoothRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = V3ProbeBluetoothRuntime.swift; sourceTree = "<group>"; };
 		E2EE7DEAE55777159E636FBD /* DiagnosticProbeSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticProbeSession.swift; sourceTree = "<group>"; };
 		E36123A35F8C24B3945DE828 /* SensorConnectionSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorConnectionSection.swift; sourceTree = "<group>"; };
@@ -165,8 +169,9 @@
 				FF8873FC56CAC156D746ECE0 /* SugarmanStore in Frameworks */,
 				F85EFE7C19C587F8C7A6FB07 /* SafetyEngine in Frameworks */,
 				F52E9FE020289C848F0BB0E7 /* Integrations in Frameworks */,
-				E52DF7236B32F339BB5AA1BF /* SugarmanDiagnostics in Frameworks */,
-				B28E54660ADD569225EF0BFB /* SensorOwnership in Frameworks */,
+				E52DF7236B32F339BB5AA1BF /* AppleHealthIntegration in Frameworks */,
+				B28E54660ADD569225EF0BFB /* SugarmanDiagnostics in Frameworks */,
+				6E219638BA49514C0ED24092 /* SensorOwnership in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -235,6 +240,7 @@
 			isa = PBXGroup;
 			children = (
 				15DF313DF9367CC3CEA50640 /* ActiveSessionBanner.swift */,
+				D350C8927A0631A4573939ED /* AppleHealthAppBridge.swift */,
 				3776611985DB564BF1E3EC5E /* Assets.xcassets */,
 				29BED539403ADB33595539AE /* DashboardView.swift */,
 				3488762722113D1DF2E2D318 /* DataMatrixCameraView.swift */,
@@ -275,7 +281,7 @@
 		3935FB384078684757B5D8ED /* Packages */ = {
 			isa = PBXGroup;
 			children = (
-				BF74DB52FA25D6BED9C37F44 /* sugarman */,
+				00A9DAAA86AD725CB76487F6 /* sugarman-healthkit-implementation */,
 			);
 			name = Packages;
 			sourceTree = "<group>";
@@ -337,6 +343,7 @@
 				375AFB438175197FEB7F5409 /* SugarmanStore */,
 				A9114B2D0C315218CD65C655 /* SafetyEngine */,
 				67DE8DC36AEDDAE5D84B6DDD /* Integrations */,
+				08BD79A3BF5B287A7BDA9BA3 /* AppleHealthIntegration */,
 				68C83594A30351E0BAA91AE3 /* SugarmanDiagnostics */,
 				0A8CB8EC5B8B728EAA009209 /* SensorOwnership */,
 			);
@@ -508,6 +515,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				7A3339A58F11CBD32E22675E /* ActiveSessionBanner.swift in Sources */,
+				A55F08F612ABED2897EAB103 /* AppleHealthAppBridge.swift in Sources */,
 				38F266F75AE17DE2E58C7A03 /* DashboardView.swift in Sources */,
 				7EEA0EE53C2AC605578EA65E /* DataMatrixCameraView.swift in Sources */,
 				624555F9F302675C3DAF4C73 /* DeviceTestProvisioningSection.swift in Sources */,
@@ -533,6 +541,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F31E6F71459357BB609CA8AE /* ActiveSessionBanner.swift in Sources */,
+				206C02F53BBBA246F8CF6719 /* AppleHealthAppBridge.swift in Sources */,
 				560BC0BADE45D27FAC05D341 /* DashboardView.swift in Sources */,
 				4F3EAF6A77D5002026D89A18 /* DataMatrixCameraView.swift in Sources */,
 				002EFC6ED59C2E7037C2B4E2 /* DeviceTestProvisioningSection.swift in Sources */,
@@ -967,6 +976,10 @@
 		06147D6013644C5A118A2565 /* GS3DeviceProvisioning */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = GS3DeviceProvisioning;
+		};
+		08BD79A3BF5B287A7BDA9BA3 /* AppleHealthIntegration */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = AppleHealthIntegration;
 		};
 		0A8CB8EC5B8B728EAA009209 /* SensorOwnership */ = {
 			isa = XCSwiftPackageProductDependency;

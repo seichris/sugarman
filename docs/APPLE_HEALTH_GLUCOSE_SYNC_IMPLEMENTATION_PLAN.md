@@ -4,6 +4,11 @@
 
 - Planning base: GitHub `origin/main` at
   `c73ae37996e18c240c1fee89cd235845e96a8a8f` (2026-09-02).
+- Implementation base: freshly fetched GitHub `origin/main` at
+  `53bacef16be1444e51eafef39a421aabb48a4482` (2026-09-04).
+- Implementation status: source, migration, release-only app wiring, and host
+  verification are complete. Physical acceptance and product eligibility are
+  intentionally still open.
 - Product target: the release `Sugarman` iOS app only.
 - Direction: Sugarman writes eligible glucose samples to Apple Health. It does
   not import glucose from HealthKit.

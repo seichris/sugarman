@@ -26,6 +26,29 @@ public struct UnavailableSugarmanStore: SugarmanStoring {
     public func latestSample(sessionID _: UUID) async throws -> GlucoseSample? { try unavailable() }
     public func samples(sessionID _: UUID) async throws -> [GlucoseSample] { try unavailable() }
     public func allSamples() async throws -> [GlucoseSample] { try unavailable() }
+    public func appleHealthSyncCandidates(
+        limit _: Int,
+        now _: Date,
+        ignoringRetryDeadline _: Bool
+    ) async throws -> [AppleHealthSyncCandidate] { try unavailable() }
+    public func recordAppleHealthAttempt(_: [SampleKey], at _: Date) async throws {
+        try unavailable()
+    }
+    public func recordAppleHealthSuccess(
+        _: [SampleKey],
+        version _: Int,
+        at _: Date
+    ) async throws { try unavailable() }
+    public func recordAppleHealthFailure(
+        _: [SampleKey],
+        reason _: AppleHealthSyncFailureReason,
+        retryable _: Bool,
+        retryAfter _: Date?,
+        at _: Date
+    ) async throws { try unavailable() }
+    public func appleHealthSyncSummary() async throws -> AppleHealthSyncSummary {
+        try unavailable()
+    }
     public func insertSession(_: SensorSession) async throws { try unavailable() }
     public func updateSession(_: SensorSession) async throws { try unavailable() }
     public func setConnection(

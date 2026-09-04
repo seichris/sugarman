@@ -29,7 +29,7 @@
 	<key>NSHealthShareUsageDescription</key>
 	<string>Sugarman can read workouts you choose to share so you can overlay them with glucose. HealthKit glucose writes are disabled until validation gates pass.</string>
 	<key>NSHealthUpdateUsageDescription</key>
-	<string>Sugarman may later write validated glucose to Apple Health. HealthKit glucose writes are disabled in this build.</string>
+	<string>Sugarman saves validated glucose readings to Apple Health only when you explicitly enable sync.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>bluetooth-central</string>

@@ -2,6 +2,9 @@
 // Copyright (C) 2026 Sugarman contributors
 
 import AccountBinding
+#if !SUGARMAN_DEVICE_TEST
+import AppleHealthIntegration
+#endif
 import GS3DeviceProvisioning
 import GS3ProvisioningScan
 #if SUGARMAN_DEVICE_TEST
@@ -87,6 +90,7 @@ final class AppModel {
     private var currentScenePhase: ScenePhase
     private var didRecordLaunchDiagnostic: Bool
 #if !SUGARMAN_DEVICE_TEST
+    var appleHealth: AppleHealthAppBridge
     private var persistentSessionBridge: GS3PersistentSessionLifecycle
     private var didBootstrapPersistentSensorConnection: Bool
     var hasSensorProvisioning: Bool
@@ -185,6 +189,10 @@ final class AppModel {
         self.currentScenePhase = .inactive
         self.didRecordLaunchDiagnostic = false
 #if !SUGARMAN_DEVICE_TEST
+        self.appleHealth = AppleHealthAppBridge(
+            store: store,
+            userDefaults: userDefaults
+        )
         self.persistentSessionBridge = GS3PersistentSessionLifecycle()
         self.didBootstrapPersistentSensorConnection = false
         let externalOwnershipGate = GS3ExternalOwnershipGate()
@@ -446,6 +454,13 @@ final class AppModel {
 #endif
         }
         await refresh()
+#if !SUGARMAN_DEVICE_TEST
+        if phase == .active {
+            await appleHealth.drain()
+        } else {
+            await appleHealth.refresh()
+        }
+#endif
     }
 
     func installForegroundSessionFactory(
@@ -523,6 +538,7 @@ final class AppModel {
                         attributes: ["state": connection.rawValue]
                     )
                     await self?.refresh()
+                    await self?.appleHealth.drain()
                 }
             },
             onLifecycleEvent: { [weak self] event in
@@ -1425,6 +1441,7 @@ final class AppModel {
         isDeviceTestProbeBridgeScanning = false
 #else
         sensorProbeBridgeScanner.cancel()
+        await appleHealth.disable()
         await stopSensorConnection()
         try await sensorProvisioning.delete()
         hasSensorProvisioning = false

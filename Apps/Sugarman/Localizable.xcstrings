@@ -1,6 +1,82 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "common.cancel": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Cancel" } } }
+    },
+    "privacy.apple_health": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Apple Health" } } }
+    },
+    "privacy.apple_health_body": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Sugarman writes glucose readings to Apple Health. Sugarman does not read glucose from Apple Health." } } }
+    },
+    "privacy.apple_health_authorization_required": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Apple Health permission is required before Sugarman can save glucose." } } }
+    },
+    "privacy.apple_health_caught_up": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Eligible local readings are caught up with Apple Health." } } }
+    },
+    "privacy.apple_health_denied": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Sugarman cannot save glucose. Review its Health access in Settings or the Health app." } } }
+    },
+    "privacy.apple_health_failed": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Apple Health sync is temporarily unavailable. Your local readings are intact." } } }
+    },
+    "privacy.apple_health_confirm": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Continue" } } }
+    },
+    "privacy.apple_health_confirm_body": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Apple will ask for permission to write blood glucose. If allowed, Sugarman will sync your complete eligible local history and future readings." } } }
+    },
+    "privacy.apple_health_confirm_title": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Sync glucose to Apple Health?" } } }
+    },
+    "privacy.apple_health_counts": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "%lld pending, %lld synced" } } }
+    },
+    "privacy.apple_health_gate_closed": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Sync is installed but unavailable until physical sensor decoder and timestamp validation pass. No Health permission is requested and no glucose is written." } } }
+    },
+    "privacy.apple_health_no_delete": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Turning sync off or deleting local data does not remove readings already saved in Apple Health." } } }
+    },
+    "privacy.apple_health_last_attempt": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Last attempt" } } }
+    },
+    "privacy.apple_health_last_sync": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Last sync" } } }
+    },
+    "privacy.apple_health_pending": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Eligible local readings are waiting to be saved to Apple Health." } } }
+    },
+    "privacy.apple_health_retry": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Retry now" } } }
+    },
+    "privacy.apple_health_toggle": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Sync glucose" } } }
+    },
+    "privacy.apple_health_syncing": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Saving eligible readings to Apple Health." } } }
+    },
     "dashboard.title": {
       "extractionState": "manual",
       "localizations": {
@@ -738,7 +814,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This removes locally stored sessions, glucose samples, workouts, fueling, and diagnostic logs from Sugarman. It does not change the physical sensor."
+            "value": "This removes locally stored sessions, glucose samples, workouts, fueling, and diagnostic logs from Sugarman. It does not change the physical sensor or remove readings already saved in Apple Health."
           }
         }
       }
@@ -936,7 +1012,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This removes the selected session and its glucose samples from this device."
+            "value": "This removes the selected session and its glucose samples from this device. It does not remove readings already saved in Apple Health."
           }
         }
       }
