@@ -30,7 +30,7 @@ public actor SystemAppleHealthGlucoseWriter: AppleHealthGlucoseWritingClient {
 
     public init(
         healthStore: HKHealthStore = HKHealthStore(),
-        policy: AppleHealthValidationPolicy = .production,
+        policy: AppleHealthValidationPolicy = .closed,
         now: @escaping @Sendable () -> Date = Date.init
     ) {
         self.healthStore = healthStore

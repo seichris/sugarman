@@ -39,20 +39,39 @@ public enum AppleHealthEligibilityError: Error, Sendable, Equatable {
 
 public struct AppleHealthValidationPolicy: Sendable, Equatable {
     public let allowedDecoderRevisions: Set<String>
+    public let physicallyValidatedQuestionableDecoderRevisions: Set<String>
     public let maximumFutureSkew: TimeInterval
 
     public init(
         allowedDecoderRevisions: Set<String>,
+        physicallyValidatedQuestionableDecoderRevisions: Set<String> = [],
         maximumFutureSkew: TimeInterval = 5 * 60
     ) {
         self.allowedDecoderRevisions = allowedDecoderRevisions
+        self.physicallyValidatedQuestionableDecoderRevisions =
+            physicallyValidatedQuestionableDecoderRevisions
         self.maximumFutureSkew = maximumFutureSkew
     }
 
-    /// Intentionally empty until physical decoder and timestamp evidence pass.
-    public static let production = AppleHealthValidationPolicy(
+    public static let closed = AppleHealthValidationPolicy(
         allowedDecoderRevisions: []
     )
+
+    /// Opens production only for the exact decoder revision whose glucose and
+    /// timestamps the user compared against the official GS3 app. The explicit
+    /// exception preserves the unresolved native-state quality classification
+    /// instead of globally promoting every GS3 fingerprint to `.ok`.
+    public static func production(
+        physicallyValidatedGS3DecoderRevision revision: String
+    ) -> AppleHealthValidationPolicy {
+        guard !revision.isEmpty, revision != "synthetic-demo" else {
+            return .closed
+        }
+        return AppleHealthValidationPolicy(
+            allowedDecoderRevisions: [revision],
+            physicallyValidatedQuestionableDecoderRevisions: [revision]
+        )
+    }
 
     public var isGateOpen: Bool { !allowedDecoderRevisions.isEmpty }
 
@@ -66,7 +85,14 @@ public struct AppleHealthValidationPolicy: Sendable, Equatable {
               sample.decoderRevision != "synthetic-demo" else {
             throw AppleHealthEligibilityError.decoderNotAllowed
         }
-        guard sample.quality == .ok else {
+        let isQualityEligible = sample.quality == .ok
+            || (
+                sample.quality == .questionable
+                    && physicallyValidatedQuestionableDecoderRevisions.contains(
+                        sample.decoderRevision
+                    )
+            )
+        guard isQualityEligible else {
             throw AppleHealthEligibilityError.qualityNotValidated
         }
         guard sample.milligramsPerDeciliter > 0 else {

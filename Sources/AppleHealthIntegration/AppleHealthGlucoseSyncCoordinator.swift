@@ -44,7 +44,7 @@ public actor AppleHealthGlucoseSyncCoordinator {
     public init(
         store: any SugarmanStoring,
         writer: any AppleHealthGlucoseWritingClient,
-        policy: AppleHealthValidationPolicy = .production,
+        policy: AppleHealthValidationPolicy = .closed,
         now: @escaping @Sendable () -> Date = Date.init
     ) {
         self.store = store

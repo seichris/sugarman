@@ -7,16 +7,19 @@
 - Implementation base: freshly fetched GitHub `origin/main` at
   `53bacef16be1444e51eafef39a421aabb48a4482` (2026-09-04).
 - Implementation status: source, migration, release-only app wiring, and host
-  verification are complete. Physical acceptance and product eligibility are
-  intentionally still open.
+  verification are complete. The user confirmed physical value/timestamp
+  parity on 2026-09-04 and explicitly opened the exact current GS3 decoder
+  revision; end-to-end HealthKit acceptance remains open.
 - Product target: the release `Sugarman` iOS app only.
 - Direction: Sugarman writes eligible glucose samples to Apple Health. It does
   not import glucose from HealthKit.
 - User control: off by default and enabled only from an explicit in-app action.
 - History behavior: enabling the feature syncs all eligible locally retained
   history, then saves eligible new and backfilled readings.
-- Delivery boundary: this plan does not enable HealthKit writes. The current
-  physical-validation gates remain prerequisites.
+- Delivery boundary: production opt-in is enabled only for
+  `owned-mainland-gs3-v3-glucose-source-map-2026-08-30`. All other decoder
+  revisions and synthetic, unknown-quality, error-quality, invalid-value, or
+  invalid-timestamp samples remain blocked.
 
 The Device Test, Probe, Mac Device Test, synthetic demo, and package tests must
 never write glucose to a user's Health store.
@@ -51,7 +54,8 @@ The user-visible result is:
 - Deleting previously written Apple Health samples when the user deletes local
   Sugarman data. Health is a separate user-controlled store; the UI must state
   this before local deletion.
-- Retrofitting pre-validation samples whose stored quality is not `.ok`.
+- Retrofitting samples from unreviewed decoder revisions or samples stored with
+  `.unknown` or `.error` quality.
 - Uploading Health data, sync state, or authorization state to a server.
 - Claiming that an Apple Health save makes a reading clinically validated.
 
@@ -66,15 +70,18 @@ The implementation must extend, rather than bypass, the current boundaries:
 | Live callback | `GS3ForegroundSessionCoordinator` calls `onSamplesCommitted` after the store commit | The callback may trigger a drain, but must not carry or perform the HealthKit transaction. |
 | Integration seam | `HealthKitGlucoseWriting` exists, but only `DisabledHealthKitWriter` is implemented | Keep a writer protocol and replace the placeholder with an iOS adapter plus test doubles. |
 | Product guard | `HealthKitWritePolicy.glucoseWritesEnabled` is `false` | Replace the single Boolean with explicit eligibility and evidence-revision gates; never merely flip it. |
-| Sample quality | `V3NativeStateClassifier` always returns `.unvalidated`, which persists as `.questionable` | No sample produced by current main is eligible to write. A separately reviewed physical-state mapping must first produce `.ok`. |
+| Sample quality | `V3NativeStateClassifier` still returns `.unvalidated`, which persists as `.questionable` | The Health policy has an explicit user-confirmed exception for the exact current GS3 decoder revision. It does not globally promote native fingerprints to `.ok`; unknown/error quality and every other revision remain blocked. |
 | App configuration | Health usage strings exist, but they say writes are disabled; the release entitlement does not include HealthKit | Add the capability and accurate purpose text only to the release target. |
 | UI | `PrivacyView` owns local retention, export, and deletion controls | Add the Apple Health controls here, isolated from Device Test builds. |
 
-The one-value physical parity result in
+The initial one-value physical parity result in
 [`V3_FIRST_LIVE_READING_RESULT_2026-08-30.md`](V3_FIRST_LIVE_READING_RESULT_2026-08-30.md)
-does not complete the healthy/error state mapping or the full durability gate.
-Existing `.questionable` records therefore remain visible locally but are not
-silently promoted or exported.
+did not complete the healthy/error state mapping. On 2026-09-04, the user
+confirmed further comparison against the official GS3 app and explicitly
+approved enabling Apple Health for the exact decoder revision above; the
+detailed comparison capture is not stored in this repository. The production
+policy records that decision as a narrow `.questionable` exception rather than
+silently promoting every native-state fingerprint to `.ok`.
 
 ## Apple API contract
 
@@ -159,7 +166,8 @@ targets do not link this module at all.
 
 The writer validates each input again before constructing an `HKQuantitySample`:
 
-- quality is `.ok`;
+- quality is `.ok`, or `.questionable` only for the explicitly physically
+  confirmed decoder revision;
 - decoder revision is in the reviewed allowlist;
 - the sample is not synthetic/demo data;
 - the value is positive and representable in the chosen HealthKit unit;
@@ -361,14 +369,16 @@ license for unbounded HealthKit work.
 ### Phase 0 — close the data eligibility gate
 
 1. Complete the separately defined physical evidence for healthy/error native
-   state mapping and the supported decoder/firmware revision.
+   state mapping and the supported decoder/firmware revision, or record an
+   explicit user-confirmed decoder exception without changing domain quality.
 2. Update `V3NativeStateClassifier` so only reviewed healthy fingerprints yield
    `.ok`; unknown, warm-up, error, and unresolved states remain ineligible.
 3. Record the exact evidence revision in source and documentation.
 4. Add tests proving unknown revisions and synthetic samples fail closed.
 
-Exit: production can create at least one `.ok` sample without weakening the
-existing protocol, durability, or safety rules.
+Exit: production can create an eligible sample for one exact physically
+confirmed decoder revision without accepting unknown/error quality, synthetic
+data, or any other decoder revision.
 
 ### Phase 1 — durable delivery state and migration
 
@@ -474,8 +484,10 @@ side-effect boundaries above are required.
 - Deterministic sync identifier for a sample key; no sensor/account identity.
 - Numeric sync version is always paired with the identifier.
 - `mg/dL` quantity and `sensorTimestamp` start/end are exact.
-- `.questionable`, `.error`, unknown decoder, synthetic, nonpositive, future,
-  and too-old samples are rejected before a HealthKit call.
+- `.questionable` is accepted only for the explicit physically confirmed
+  decoder revision; `.error`, `.unknown`, unknown decoder, synthetic,
+  nonpositive, future, and too-old samples are rejected before a HealthKit
+  call.
 - Empty input does not call HealthKit.
 - Authorization request contains exactly the blood-glucose share type and an
   empty read set.
@@ -533,8 +545,9 @@ On an explicitly approved dedicated iPhone and Health data set:
   collection or history durability.
 - Turning the feature off causes zero new writes; turning it back on resumes the
   pending backlog without duplicates.
-- `.questionable`, warm-up/error, unsupported-revision, and synthetic samples
-  never appear in Health.
+- `.questionable` samples from unsupported revisions, plus `.unknown`,
+  warm-up/error, unsupported-revision, and synthetic samples never appear in
+  Health.
 - HealthKit outage/failure never changes the BLE cursor, connection state, local
   sample count, or current-reading safety presentation.
 - Local diagnostics contain only bounded status/count/timing fields—no glucose
@@ -547,13 +560,15 @@ On an explicitly approved dedicated iPhone and Health data set:
 Do not ship by changing `HealthKitWritePolicy.glucoseWritesEnabled` to `true`.
 Ship only after all of these are true:
 
-1. The native-state/sample-quality physical gate yields `.ok` only for a
-   reviewed supported decoder/firmware revision.
+1. The native-state/sample-quality physical gate yields `.ok`, or an explicit
+   user-confirmed `.questionable` exception exists only for one reviewed exact
+   decoder revision.
 2. Migration and crash-window idempotency tests pass.
 3. Release and negative-control target entitlements are verified from built
    artifacts.
 4. Physical HealthKit acceptance passes on the exact release source.
 5. Privacy, App Store, and product copy reviews are complete.
 
-Until then, the concrete implementation may be developed and tested behind an
-empty eligibility allowlist, but production writes remain unavailable.
+The exact current GS3 decoder exception is now active. End-to-end HealthKit
+authorization, history, retry, deduplication, and deletion-boundary acceptance
+must still be completed before release distribution.

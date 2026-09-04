@@ -4,6 +4,7 @@
 #if !SUGARMAN_DEVICE_TEST
 import AppleHealthIntegration
 import Foundation
+import GS3Protocol
 import Observation
 import SugarmanStore
 
@@ -18,7 +19,10 @@ final class AppleHealthAppBridge {
     @ObservationIgnored private let userDefaults: UserDefaults
 
     init(store: any SugarmanStoring, userDefaults: UserDefaults) {
-        let policy = AppleHealthValidationPolicy.production
+        let policy = AppleHealthValidationPolicy.production(
+            physicallyValidatedGS3DecoderRevision:
+                V3OfflineGlucoseNotificationDecoder.evidenceRevision
+        )
         self.userDefaults = userDefaults
         self.isEnabled = policy.isGateOpen
             && userDefaults.bool(forKey: Self.enabledDefaultsKey)
