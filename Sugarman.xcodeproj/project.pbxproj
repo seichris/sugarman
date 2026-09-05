@@ -57,6 +57,7 @@
 		8C55E464E39F9A14F9E321F3 /* NoDosingBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F709C40FC939809818D7ADF /* NoDosingBanner.swift */; };
 		8E05CC2263526ED24ACD9FE7 /* ProbeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60D75ABFD67CB22CB7D4C18B /* ProbeView.swift */; };
 		8ED86A0AEB8E274402518168 /* GS3DeviceTesting in Frameworks */ = {isa = PBXBuildFile; productRef = 6FC235AE34E14B74697CF164 /* GS3DeviceTesting */; };
+		8FEE42C11212E276875FA349 /* BluetoothOffNotice.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF63C99A013F2AC408E10441 /* BluetoothOffNotice.swift */; };
 		935EF8FAD536DD113B2011DE /* SugarmanApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4704D8B1664BAC86165C699F /* SugarmanApp.swift */; };
 		964846BA9BEFD88F5193DCEB /* GS3Session in Frameworks */ = {isa = PBXBuildFile; productRef = 0438062F9AA3F4F610323CDF /* GS3Session */; };
 		99A5B09163915D3FB6532C55 /* DiagnosticProbeSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2EE7DEAE55777159E636FBD /* DiagnosticProbeSession.swift */; };
@@ -101,6 +102,7 @@
 		ED55C38DB3BDE90CA92395C5 /* WorkoutPlanDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2761A8351E150E01C3F4F83 /* WorkoutPlanDetailView.swift */; };
 		F27F9F842B024BED2B419B2A /* WorkoutGlucoseChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68D79D073CC92AD4D00434EF /* WorkoutGlucoseChart.swift */; };
 		F31E6F71459357BB609CA8AE /* ActiveSessionBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15DF313DF9367CC3CEA50640 /* ActiveSessionBanner.swift */; };
+		F50FF3CC27A398E5FA71B22D /* BluetoothOffNotice.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF63C99A013F2AC408E10441 /* BluetoothOffNotice.swift */; };
 		F52E9FE020289C848F0BB0E7 /* Integrations in Frameworks */ = {isa = PBXBuildFile; productRef = 67DE8DC36AEDDAE5D84B6DDD /* Integrations */; };
 		F85EFE7C19C587F8C7A6FB07 /* SafetyEngine in Frameworks */ = {isa = PBXBuildFile; productRef = A9114B2D0C315218CD65C655 /* SafetyEngine */; };
 		FF8873FC56CAC156D746ECE0 /* SugarmanStore in Frameworks */ = {isa = PBXBuildFile; productRef = 375AFB438175197FEB7F5409 /* SugarmanStore */; };
@@ -140,6 +142,7 @@
 		CD93DE80D8823F077A698FBA /* ProbeAppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProbeAppModel.swift; sourceTree = "<group>"; };
 		D350C8927A0631A4573939ED /* AppleHealthAppBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleHealthAppBridge.swift; sourceTree = "<group>"; };
 		D9DEBFFC56BDC6FB81519643 /* V3ProbeBluetoothRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = V3ProbeBluetoothRuntime.swift; sourceTree = "<group>"; };
+		DF63C99A013F2AC408E10441 /* BluetoothOffNotice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BluetoothOffNotice.swift; sourceTree = "<group>"; };
 		E2EE7DEAE55777159E636FBD /* DiagnosticProbeSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticProbeSession.swift; sourceTree = "<group>"; };
 		E36123A35F8C24B3945DE828 /* SensorConnectionSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorConnectionSection.swift; sourceTree = "<group>"; };
 		E6EE39F377CDFD5147B0BA60 /* Sugarman.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Sugarman.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -249,6 +252,7 @@
 				D350C8927A0631A4573939ED /* AppleHealthAppBridge.swift */,
 				C86F3D8E87C5F108C5A9718C /* AppleHealthView.swift */,
 				3776611985DB564BF1E3EC5E /* Assets.xcassets */,
+				DF63C99A013F2AC408E10441 /* BluetoothOffNotice.swift */,
 				29BED539403ADB33595539AE /* DashboardView.swift */,
 				3488762722113D1DF2E2D318 /* DataMatrixCameraView.swift */,
 				4C91B80E38A6B0F30FC5BA2F /* DeviceTestProvisioningSection.swift */,
@@ -525,6 +529,7 @@
 				7A3339A58F11CBD32E22675E /* ActiveSessionBanner.swift in Sources */,
 				A55F08F612ABED2897EAB103 /* AppleHealthAppBridge.swift in Sources */,
 				BD977C8B29BFFB32FEDDAF25 /* AppleHealthView.swift in Sources */,
+				F50FF3CC27A398E5FA71B22D /* BluetoothOffNotice.swift in Sources */,
 				38F266F75AE17DE2E58C7A03 /* DashboardView.swift in Sources */,
 				7EEA0EE53C2AC605578EA65E /* DataMatrixCameraView.swift in Sources */,
 				624555F9F302675C3DAF4C73 /* DeviceTestProvisioningSection.swift in Sources */,
@@ -553,6 +558,7 @@
 				F31E6F71459357BB609CA8AE /* ActiveSessionBanner.swift in Sources */,
 				206C02F53BBBA246F8CF6719 /* AppleHealthAppBridge.swift in Sources */,
 				8798214846A4A32DD8E5A0A4 /* AppleHealthView.swift in Sources */,
+				8FEE42C11212E276875FA349 /* BluetoothOffNotice.swift in Sources */,
 				560BC0BADE45D27FAC05D341 /* DashboardView.swift in Sources */,
 				4F3EAF6A77D5002026D89A18 /* DataMatrixCameraView.swift in Sources */,
 				002EFC6ED59C2E7037C2B4E2 /* DeviceTestProvisioningSection.swift in Sources */,

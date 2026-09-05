@@ -1,6 +1,14 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Bluetooth is off": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Bluetooth is off" } } }
+    },
+    "Turn on Bluetooth in iPhone Settings to receive sensor readings.": {
+      "extractionState": "manual",
+      "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Turn on Bluetooth in iPhone Settings to receive sensor readings." } } }
+    },
     "apple_health.blocked": {
       "extractionState": "manual",
       "localizations": { "en": { "stringUnit": { "state": "translated", "value": "Blocked" } } }
