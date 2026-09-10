@@ -8,6 +8,7 @@ struct FuelingView: View {
     @Environment(AppModel.self) private var model
     @State private var label = ""
     @State private var carbsText = ""
+    @State private var emoji = FuelingEvent.defaultEmoji
     @State private var timestamp = Date()
     @State private var actionError: String?
 
@@ -19,12 +20,11 @@ struct FuelingView: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
-                Section {
-                    ActiveSessionBanner()
-                        .listRowInsets(EdgeInsets())
-                        .listRowBackground(Color.clear)
+                Section("fueling.quick_add") {
+                    quickAddGrid
                 }
                 Section("fueling.add") {
+                    emojiChooser
                     TextField("fueling.label_field", text: $label)
                     TextField("fueling.carbs_field", text: $carbsText)
                         .keyboardType(.decimalPad)
@@ -67,27 +67,97 @@ struct FuelingView: View {
         }
     }
 
-    private func fuelingRow(_ event: FuelingEvent) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(event.label)
-                .font(.headline)
-            if let grams = event.carbohydrateGrams {
-                Text(
-                    String(
-                        format: String(localized: "fueling.carbs_format"),
-                        locale: .current,
-                        grams
+    private var quickAddGrid: some View {
+        let columns = Array(
+            repeating: GridItem(.flexible(), spacing: 10),
+            count: 3
+        )
+        return LazyVGrid(columns: columns, spacing: 10) {
+            ForEach(FuelingPreset.defaults) { preset in
+                Button {
+                    apply(preset)
+                } label: {
+                    VStack(spacing: 6) {
+                        Text(preset.emoji)
+                            .font(.title2)
+                        Text(verbatim: preset.label)
+                            .font(.caption)
+                            .multilineTextAlignment(.center)
+                            .lineLimit(2)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 72)
+                    .padding(.vertical, 4)
+                    .background(
+                        Color.secondary.opacity(0.12),
+                        in: RoundedRectangle(cornerRadius: 12)
                     )
-                )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text(verbatim: preset.emoji + ", " + preset.label))
+                .accessibilityHint(Text("fueling.quick_add_hint"))
             }
-            Text(event.timestamp.formatted(date: .abbreviated, time: .shortened))
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var emojiChooser: some View {
+        let columns = Array(
+            repeating: GridItem(.flexible(), spacing: 8),
+            count: 5
+        )
+        return VStack(alignment: .leading, spacing: 8) {
+            Text("fueling.emoji")
+                .font(.subheadline.weight(.medium))
+            LazyVGrid(columns: columns, spacing: 8) {
+                ForEach(FuelingPreset.emojiChoices, id: \.self) { choice in
+                    Button {
+                        emoji = choice
+                    } label: {
+                        Text(choice)
+                            .font(.title2)
+                            .frame(maxWidth: .infinity, minHeight: 38)
+                            .background(
+                                emoji == choice
+                                    ? Color.accentColor.opacity(0.2)
+                                    : Color.clear,
+                                in: RoundedRectangle(cornerRadius: 8)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(Text(verbatim: choice))
+                    .accessibilityAddTraits(emoji == choice ? .isSelected : [])
+                }
+            }
+        }
+    }
+
+    private func fuelingRow(_ event: FuelingEvent) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text(event.emoji)
+                .font(.title2)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(event.label)
+                    .font(.headline)
+                if let grams = event.carbohydrateGrams {
+                    Text(
+                        String(
+                            format: String(localized: "fueling.carbs_format"),
+                            locale: .current,
+                            grams
+                        )
+                    )
+                }
+                Text(event.timestamp.formatted(date: .abbreviated, time: .shortened))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 
     private func fuelingAccessibilityLabel(_ event: FuelingEvent) -> String {
-        var parts = [event.label]
+        var parts = [event.emoji, event.label]
         if let grams = event.carbohydrateGrams {
             parts.append(
                 String(
@@ -117,14 +187,31 @@ struct FuelingView: View {
             return
         }
         do {
-            try await model.addFueling(label: trimmed, carbohydrateGrams: carbs, timestamp: timestamp)
+            try await model.addFueling(
+                label: trimmed,
+                carbohydrateGrams: carbs,
+                timestamp: timestamp,
+                emoji: emoji
+            )
             actionError = nil
             label = ""
             carbsText = ""
+            emoji = FuelingEvent.defaultEmoji
             timestamp = Date()
         } catch {
             actionError = error.localizedDescription
         }
+    }
+
+    private func apply(_ preset: FuelingPreset) {
+        label = preset.label
+        emoji = preset.emoji
+        if let grams = preset.carbohydrateGrams {
+            carbsText = String(format: "%.0f", locale: .current, grams)
+        } else {
+            carbsText = ""
+        }
+        actionError = nil
     }
 
     private func delete(_ id: UUID) async {

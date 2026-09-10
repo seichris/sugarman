@@ -191,6 +191,7 @@ public final class FuelingEventRecord {
     public var timestamp: Date
     public var carbohydrateGrams: Double?
     public var label: String
+    public var emoji: String = FuelingEvent.defaultEmoji
     public var notes: String?
     public var sessionID: UUID?
 
@@ -199,6 +200,7 @@ public final class FuelingEventRecord {
         self.timestamp = event.timestamp
         self.carbohydrateGrams = event.carbohydrateGrams
         self.label = event.label
+        self.emoji = event.emoji
         self.notes = event.notes
         self.sessionID = event.sessionID
     }
@@ -210,7 +212,8 @@ public final class FuelingEventRecord {
             carbohydrateGrams: carbohydrateGrams,
             label: label,
             notes: notes,
-            sessionID: sessionID
+            sessionID: sessionID,
+            emoji: emoji
         )
     }
 }
@@ -363,8 +366,39 @@ public final class AppleHealthDeliveryRecord {
 }
 
 @available(iOS 26, macOS 26, *)
-private enum SugarmanSchemaV1: VersionedSchema {
+enum SugarmanSchemaV1: VersionedSchema {
     static let versionIdentifier = Schema.Version(1, 0, 0)
+
+    // Keep the pre-emoji entity definition in the historical schema. The
+    // entity name remains `FuelingEventRecord`, allowing the V2 store shipped
+    // before emoji support to be recognized by the staged migrator.
+    @Model
+    final class FuelingEventRecord {
+        #Unique<FuelingEventRecord>([\.eventID])
+        var eventID: UUID
+        var timestamp: Date
+        var carbohydrateGrams: Double?
+        var label: String
+        var notes: String?
+        var sessionID: UUID?
+
+        init(
+            eventID: UUID,
+            timestamp: Date,
+            carbohydrateGrams: Double?,
+            label: String,
+            notes: String?,
+            sessionID: UUID?
+        ) {
+            self.eventID = eventID
+            self.timestamp = timestamp
+            self.carbohydrateGrams = carbohydrateGrams
+            self.label = label
+            self.notes = notes
+            self.sessionID = sessionID
+        }
+    }
+
     static var models: [any PersistentModel.Type] {
         [
             GlucoseSampleRecord.self,
@@ -386,13 +420,32 @@ private enum SugarmanSchemaV2: VersionedSchema {
 }
 
 @available(iOS 26, macOS 26, *)
+private enum SugarmanSchemaV3: VersionedSchema {
+    static let versionIdentifier = Schema.Version(3, 0, 0)
+    static var models: [any PersistentModel.Type] {
+        [
+            GlucoseSampleRecord.self,
+            SensorSessionRecord.self,
+            FuelingEventRecord.self,
+            WorkoutContextRecord.self,
+            WorkoutPlanRecord.self,
+            SensorIdentityRecord.self,
+            AppleHealthDeliveryRecord.self,
+        ]
+    }
+}
+
+@available(iOS 26, macOS 26, *)
 private enum SugarmanSchemaMigrationPlan: SchemaMigrationPlan {
     static var schemas: [any VersionedSchema.Type] {
-        [SugarmanSchemaV1.self, SugarmanSchemaV2.self]
+        [SugarmanSchemaV1.self, SugarmanSchemaV2.self, SugarmanSchemaV3.self]
     }
 
     static var stages: [MigrationStage] {
-        [.lightweight(fromVersion: SugarmanSchemaV1.self, toVersion: SugarmanSchemaV2.self)]
+        [
+            .lightweight(fromVersion: SugarmanSchemaV1.self, toVersion: SugarmanSchemaV2.self),
+            .lightweight(fromVersion: SugarmanSchemaV2.self, toVersion: SugarmanSchemaV3.self),
+        ]
     }
 }
 
@@ -408,7 +461,7 @@ public actor SwiftDataSugarmanStore: SugarmanStoring {
     }
 
     nonisolated public static func makeContainer(inMemory: Bool) throws -> ModelContainer {
-        let schema = Schema(versionedSchema: SugarmanSchemaV2.self)
+        let schema = Schema(versionedSchema: SugarmanSchemaV3.self)
         let configuration: ModelConfiguration
         if inMemory {
             configuration = ModelConfiguration(
@@ -437,7 +490,7 @@ public actor SwiftDataSugarmanStore: SugarmanStoring {
     }
 
     nonisolated public static func makeContainer(url: URL) throws -> ModelContainer {
-        let schema = Schema(versionedSchema: SugarmanSchemaV2.self)
+        let schema = Schema(versionedSchema: SugarmanSchemaV3.self)
         let configuration = ModelConfiguration(
             "Sugarman",
             schema: schema,

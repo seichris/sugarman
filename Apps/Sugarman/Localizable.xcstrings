@@ -2199,6 +2199,39 @@
         }
       }
     },
+    "fueling.quick_add": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quick add"
+          }
+        }
+      }
+    },
+    "fueling.quick_add_hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copies this food or drink into the fueling event form."
+          }
+        }
+      }
+    },
+    "fueling.emoji": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose an emoji"
+          }
+        }
+      }
+    },
     "fueling.label_field": {
       "extractionState": "manual",
       "localizations": {

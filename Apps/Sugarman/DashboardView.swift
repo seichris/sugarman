@@ -386,6 +386,9 @@ struct DashboardView: View {
         target: GlucoseReferenceRange
     ) -> some View {
         let scale = GlucoseChartScale(unit: model.preferredUnit)
+        let timelineFuelingEvents = model.visibleFuelingEvents.filter { event in
+            event.timestamp >= timeline.start && event.timestamp <= timeline.end
+        }
         let selectedSample = nearestSample(
             to: selectedChartTimestamp,
             in: timeline.samples
@@ -446,6 +449,25 @@ struct DashboardView: View {
                     .symbol {
                         Circle()
                             .frame(width: 2, height: 2)
+                    }
+                }
+
+                ForEach(timelineFuelingEvents) { event in
+                    if let sample = nearestSample(to: event.timestamp, in: timeline.samples) {
+                        PointMark(
+                            x: .value("Fueling time", event.timestamp),
+                            y: .value(
+                                "Fueling glucose",
+                                sample.value(in: model.preferredUnit)
+                            )
+                        )
+                        .foregroundStyle(.clear)
+                        .annotation(position: .bottom, alignment: .center, spacing: 5) {
+                            Text(event.emoji)
+                                .font(.title3)
+                                .shadow(color: .black.opacity(0.8), radius: 2)
+                                .accessibilityLabel(Text(verbatim: event.label))
+                        }
                     }
                 }
 

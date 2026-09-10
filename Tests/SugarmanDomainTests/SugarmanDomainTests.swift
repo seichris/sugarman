@@ -115,12 +115,55 @@ struct SugarmanDomainTests {
 
     @Test func workoutAndFuelingHaveNoPrescription() {
         let workout = WorkoutContext(start: Date(), activityType: "run")
-        let fueling = FuelingEvent(timestamp: Date(), carbohydrateGrams: 30, label: "gel")
+        let fueling = FuelingEvent(
+            timestamp: Date(),
+            carbohydrateGrams: 30,
+            label: "gel",
+            emoji: "⚡️"
+        )
         let scoped = FuelingEvent(timestamp: Date(), label: "bar", sessionID: UUID())
         #expect(workout.activityType == "run")
         #expect(fueling.label == "gel")
+        #expect(fueling.emoji == "⚡️")
         #expect(fueling.sessionID == nil)
         #expect(scoped.sessionID != nil)
+    }
+
+    @Test func fuelingPresetsHaveStableIDsAndVisibleEmojis() {
+        let presets = FuelingPreset.defaults
+        #expect(presets.count == 5)
+        #expect(presets.map(\.id) == [
+            "pocari-pouch-13g",
+            "energy-gel-25g",
+            "banana-27g",
+            "rice-ball-40g",
+            "energy-bar-40g",
+        ])
+        #expect(presets.allSatisfy { !$0.emoji.isEmpty })
+        #expect(Set(presets.map(\.emoji)).count == presets.count)
+        #expect(presets.first?.carbohydrateGrams == 13)
+        #expect(FuelingPreset.emojiChoices.contains("🍌"))
+    }
+
+    @Test func fuelingEmojiCodableDefaultsLegacyEventsAndPreservesSelection() throws {
+        let event = FuelingEvent(
+            id: UUID(uuidString: "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA")!,
+            timestamp: Date(timeIntervalSince1970: 10),
+            label: "banana",
+            emoji: "🍌"
+        )
+        let encoded = try JSONEncoder().encode(event)
+        #expect(try JSONDecoder().decode(FuelingEvent.self, from: encoded).emoji == "🍌")
+
+        let legacy = """
+        {
+          "id": "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+          "timestamp": 10,
+          "label": "legacy gel"
+        }
+        """.data(using: .utf8)!
+        let decodedLegacy = try JSONDecoder().decode(FuelingEvent.self, from: legacy)
+        #expect(decodedLegacy.emoji == FuelingEvent.defaultEmoji)
     }
 
     @Test func workoutPlanCatalogStoresTwoDayReferenceBands() {
