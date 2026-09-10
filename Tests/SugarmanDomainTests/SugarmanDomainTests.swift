@@ -131,8 +131,8 @@ struct SugarmanDomainTests {
 
     @Test func fuelingPresetsHaveStableIDsAndVisibleEmojis() {
         let presets = FuelingPreset.defaults
-        #expect(presets.count == 5)
-        #expect(presets.map(\.id) == [
+        #expect(presets.count == 12)
+        #expect(presets.prefix(5).map(\.id) == [
             "pocari-pouch-13g",
             "energy-gel-25g",
             "banana-27g",
@@ -140,6 +140,8 @@ struct SugarmanDomainTests {
             "energy-bar-40g",
         ])
         #expect(presets.allSatisfy { !$0.emoji.isEmpty })
+        #expect(Set(presets.map(\.id)).count == presets.count)
+        #expect(presets.allSatisfy { FuelingPreset.emojiChoices.contains($0.emoji) })
         #expect(Set(presets.map(\.emoji)).count == presets.count)
         #expect(presets.first?.carbohydrateGrams == 13)
         #expect(FuelingPreset.emojiChoices.contains("🍌"))

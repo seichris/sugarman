@@ -64,6 +64,7 @@ struct FuelingView: View {
                 }
             }
             .navigationTitle("fueling.title")
+            .scrollDismissesKeyboard(.interactively)
         }
     }
 

@@ -59,9 +59,18 @@ public struct FuelingPreset: Sendable, Equatable, Hashable, Identifiable {
             emoji: "🍫",
             carbohydrateGrams: 40
         ),
+        // Portion sizes vary; these choices leave the amount for the user.
+        FuelingPreset(id: "apple", label: "Apple", emoji: "🍎"),
+        FuelingPreset(id: "orange", label: "Orange", emoji: "🍊"),
+        FuelingPreset(id: "sandwich", label: "Sandwich", emoji: "🥪"),
+        FuelingPreset(id: "oatmeal", label: "Oatmeal", emoji: "🥣"),
+        FuelingPreset(id: "pretzels", label: "Pretzels", emoji: "🥨"),
+        FuelingPreset(id: "dried-fruit", label: "Dried fruit", emoji: "🍇"),
+        FuelingPreset(id: "sports-drink", label: "Sports drink", emoji: "🧃"),
     ]
 
     public static let emojiChoices = [
-        "🍽️", "🥤", "⚡️", "🍌", "🍙", "🍫", "💧", "☕️", "🥨"
+        "🍽️", "🥤", "⚡️", "🍌", "🍙", "🍫", "💧", "☕️", "🥨",
+        "🍎", "🍊", "🥪", "🥣", "🍇", "🧃"
     ]
 }
