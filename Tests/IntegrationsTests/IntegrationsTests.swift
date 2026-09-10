@@ -200,7 +200,8 @@ struct IntegrationsTests {
             carbohydrateGrams: 25,
             label: "gel, banana",
             notes: "athlete log",
-            sessionID: sessionID
+            sessionID: sessionID,
+            emoji: "🍌"
         )
         try await store.insertFueling(gel)
         let samples = try await store.allSamples()
@@ -210,6 +211,7 @@ struct IntegrationsTests {
         #expect(document.schemaVersion == 2)
         #expect(document.fueling.count == 1)
         #expect(document.fueling[0].label == "gel, banana")
+        #expect(document.fueling[0].emoji == "🍌")
         #expect(document.fueling[0].carbohydrateGrams == 25)
         #expect(document.fueling[0].sessionID == sessionID.uuidString)
         #expect(document.fueling[0].timestamp == "1970-01-01T00:00:50Z")

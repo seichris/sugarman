@@ -22,12 +22,58 @@ public struct GlucoseExportRow: Sendable, Equatable, Codable {
 }
 
 public struct FuelingExportRow: Sendable, Equatable, Codable {
+    public static let defaultEmoji = FuelingEvent.defaultEmoji
+
     public var id: String
     public var timestamp: String
     public var carbohydrateGrams: Double?
     public var label: String
+    public var emoji: String
     public var notes: String?
     public var sessionID: String?
+
+    public init(
+        id: String,
+        timestamp: String,
+        carbohydrateGrams: Double?,
+        label: String,
+        emoji: String = FuelingExportRow.defaultEmoji,
+        notes: String?,
+        sessionID: String?
+    ) {
+        self.id = id
+        self.timestamp = timestamp
+        self.carbohydrateGrams = carbohydrateGrams
+        self.label = label
+        self.emoji = emoji
+        self.notes = notes
+        self.sessionID = sessionID
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case timestamp
+        case carbohydrateGrams
+        case label
+        case emoji
+        case notes
+        case sessionID
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decode(String.self, forKey: .id)
+        self.timestamp = try container.decode(String.self, forKey: .timestamp)
+        self.carbohydrateGrams = try container.decodeIfPresent(
+            Double.self,
+            forKey: .carbohydrateGrams
+        )
+        self.label = try container.decode(String.self, forKey: .label)
+        self.emoji = try container.decodeIfPresent(String.self, forKey: .emoji)
+            ?? Self.defaultEmoji
+        self.notes = try container.decodeIfPresent(String.self, forKey: .notes)
+        self.sessionID = try container.decodeIfPresent(String.self, forKey: .sessionID)
+    }
 }
 
 public struct GlucoseExportDocument: Sendable, Equatable, Codable {
@@ -98,8 +144,9 @@ public enum RFC4180CSV: Sendable {
 /// the caller passes a local `TimeZone`. That keeps the declared zone
 /// consistent with the formatted timestamps.
 ///
-/// JSON schema version 2 adds an optional-looking `fueling` array. CSV remains
-/// glucose rows only. Neither format includes owner account IDs.
+/// JSON schema version 2 adds an optional-looking `fueling` array, including
+/// each event's selected emoji. CSV remains glucose rows only. Neither format
+/// includes owner account IDs.
 ///
 /// Small datasets (including empty and fewer than 50 rows) are exported in
 /// full. This does not copy xDrip modulus-based chunking, which dropped
@@ -207,6 +254,7 @@ public struct VersionedDataExporter: DataExporting {
                 timestamp: formatter.string(from: event.timestamp),
                 carbohydrateGrams: event.carbohydrateGrams,
                 label: event.label,
+                emoji: event.emoji,
                 notes: event.notes,
                 sessionID: event.sessionID?.uuidString
             )

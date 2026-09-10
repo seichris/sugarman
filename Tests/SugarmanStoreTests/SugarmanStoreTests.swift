@@ -194,7 +194,12 @@ struct SugarmanStoreTests {
 
     @Test func fuelingPersistenceUniquenessAndDelete() async throws {
         let store = InMemorySugarmanStore()
-        let event = FuelingEvent(timestamp: Date(timeIntervalSince1970: 100), carbohydrateGrams: 25, label: "gel")
+        let event = FuelingEvent(
+            timestamp: Date(timeIntervalSince1970: 100),
+            carbohydrateGrams: 25,
+            label: "gel",
+            emoji: "⚡️"
+        )
         try await store.insertFueling(event)
         await #expect(throws: StoreError.duplicateFueling(event.id)) {
             try await store.insertFueling(event)
@@ -202,6 +207,7 @@ struct SugarmanStoreTests {
         let listed = try await store.fuelingEvents()
         #expect(listed.count == 1)
         #expect(listed.first?.label == "gel")
+        #expect(listed.first?.emoji == "⚡️")
         #expect(listed.first?.sessionID == nil)
         try await store.deleteFueling(id: event.id)
         #expect(try await store.fuelingEvents().isEmpty)
@@ -700,6 +706,19 @@ struct SwiftDataSugarmanStoreTests {
         #expect(latest?.sensorIndex == 2)
     }
 
+    @Test func fuelingEmojiRoundTripsThroughSwiftData() async throws {
+        guard #available(iOS 26, macOS 26, *) else { return }
+        let container = try SwiftDataSugarmanStore.makeContainer(inMemory: true)
+        let store = SwiftDataSugarmanStore(modelContainer: container)
+        let event = FuelingEvent(
+            timestamp: Date(timeIntervalSince1970: 100),
+            label: "banana",
+            emoji: "🍌"
+        )
+        try await store.insertFueling(event)
+        #expect(try await store.fuelingEvents().first?.emoji == "🍌")
+    }
+
     @Test func crashBetweenInsertsPreservesUniqueness() async throws {
         guard #available(iOS 26, macOS 26, *) else { return }
         let container = try SwiftDataSugarmanStore.makeContainer(inMemory: true)
@@ -762,7 +781,7 @@ struct SwiftDataSugarmanStoreTests {
             let oldSchema = Schema([
                 GlucoseSampleRecord.self,
                 SensorSessionRecord.self,
-                FuelingEventRecord.self,
+                SugarmanSchemaV1.FuelingEventRecord.self,
                 WorkoutContextRecord.self,
                 WorkoutPlanRecord.self,
                 SensorIdentityRecord.self,

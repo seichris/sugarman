@@ -1224,18 +1224,25 @@ final class AppModel {
         await refresh()
     }
 
-    func addFueling(label: String, carbohydrateGrams: Double?, timestamp: Date) async throws {
+    func addFueling(
+        label: String,
+        carbohydrateGrams: Double?,
+        timestamp: Date,
+        emoji: String = FuelingEvent.defaultEmoji
+    ) async throws {
         let trimmed = label.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, trimmed.count <= 100 else { throw AppInputError.invalidFuelingLabel }
         if let carbohydrateGrams,
            !carbohydrateGrams.isFinite || !(0...1000).contains(carbohydrateGrams) {
             throw AppInputError.invalidCarbohydrateAmount
         }
+        let trimmedEmoji = emoji.trimmingCharacters(in: .whitespacesAndNewlines)
         let event = FuelingEvent(
             timestamp: timestamp,
             carbohydrateGrams: carbohydrateGrams,
             label: trimmed,
-            sessionID: activeSessionID
+            sessionID: activeSessionID,
+            emoji: trimmedEmoji.isEmpty ? FuelingEvent.defaultEmoji : trimmedEmoji
         )
         try await store.insertFueling(event)
         try await refreshFromStore()
