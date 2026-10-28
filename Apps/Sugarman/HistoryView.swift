@@ -38,7 +38,7 @@ struct HistoryView: View {
                         .listRowBackground(Color.clear)
                     }
                 }
-                if !model.samples.isEmpty {
+                if !model.activeSamples.isEmpty {
                     Section("history.chart") {
                         if let plan = model.selectedWorkoutPlan,
                            let target = model.selectedWorkoutPhaseTarget {
@@ -73,13 +73,7 @@ struct HistoryView: View {
     }
 
     private var chartSamples: [GlucoseSample] {
-        if let activeSessionID = model.activeSessionID {
-            let active = model.samples.filter { $0.sessionID == activeSessionID }
-            if !active.isEmpty {
-                return active
-            }
-        }
-        return model.samples
+        model.activeSamples
     }
 
     private func sampleRow(_ sample: GlucoseSample) -> some View {

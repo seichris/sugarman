@@ -25,13 +25,7 @@ struct WorkoutPlanDetailView: View {
     }
 
     private var chartSamples: [GlucoseSample] {
-        if let activeSessionID = model.activeSessionID {
-            let active = model.samples.filter { $0.sessionID == activeSessionID }
-            if !active.isEmpty {
-                return active
-            }
-        }
-        return model.samples
+        model.activeSamples
     }
 
     private func phaseLabel(_ phase: WorkoutPhase) -> String {
@@ -125,6 +119,11 @@ struct WorkoutPlanDetailView: View {
             } else if let first = currentPlan.phases.first {
                 selectedPhaseID = first.id
                 model.selectWorkoutPhase(first.id)
+            }
+        }
+        .onChange(of: currentPlan.phases.map(\.id)) { _, ids in
+            if !ids.contains(selectedPhaseID), let first = ids.first {
+                selectedPhaseID = first
             }
         }
         .onChange(of: selectedPhaseID) { _, newValue in
