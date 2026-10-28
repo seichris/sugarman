@@ -11,6 +11,7 @@ import SwiftUI
 struct PrivacyView: View {
     @Environment(AppModel.self) private var model
     private let embeddedInNavigationStack: Bool
+    @State private var isPerformingDataOperation = false
     @State private var confirmDeleteAll = false
     @State private var sessionPendingDelete: UUID?
     @State private var exportFileURL: URL?
@@ -265,10 +266,15 @@ struct PrivacyView: View {
                     Text("privacy.gpl")
                 }
             }
+            .disabled(isPerformingDataOperation)
             .navigationTitle("privacy.title")
             .confirmationDialog("privacy.delete_confirm_title", isPresented: $confirmDeleteAll) {
                 Button("privacy.delete_all", role: .destructive) {
                     Task {
+                        guard !isPerformingDataOperation else { return }
+                        isPerformingDataOperation = true
+                        defer { isPerformingDataOperation = false }
+                        exportFileURL = nil
                         do {
                             try await model.deleteAllLocalData()
                             diagnosticSummary = model.diagnosticLogSummary()
@@ -290,6 +296,10 @@ struct PrivacyView: View {
                 Button("privacy.delete_session", role: .destructive) {
                     if let id = sessionPendingDelete {
                         Task {
+                            guard !isPerformingDataOperation else { return }
+                            isPerformingDataOperation = true
+                            defer { isPerformingDataOperation = false }
+                            exportFileURL = nil
                             do {
                                 try await model.deleteSession(id)
                             } catch {
@@ -322,10 +332,13 @@ struct PrivacyView: View {
     }
 
     private func export(kind: ExportKind) async {
+        guard !isPerformingDataOperation else { return }
+        isPerformingDataOperation = true
+        defer { isPerformingDataOperation = false }
         exportError = nil
         do {
             let writer = model.exportFileWriter
-            let directory = FileManager.default.temporaryDirectory
+            let directory = model.exportDirectory
             switch kind {
             case .json:
                 let data = try await model.exportJSON()

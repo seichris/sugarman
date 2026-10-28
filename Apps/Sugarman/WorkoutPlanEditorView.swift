@@ -10,74 +10,28 @@ struct WorkoutPlanEditorView: View {
 
     private let existingPlan: WorkoutPlan?
 
-    @State private var name = ""
-    @State private var activityType = "Cycling"
-    @State private var notes = ""
-    @State private var phases = [DraftPhase()]
+    @State private var draft: WorkoutPlanDraft
     @State private var isSaving = false
-
-    private struct DraftPhase: Identifiable {
-        let id: UUID
-        var phase: WorkoutPhase = .preWorkout
-        var label = "Pre-workout"
-        var lower = "90"
-        var upper = "130"
-        var floor = ""
-        var notes = ""
-
-        init() {
-            id = UUID()
-        }
-
-        init(target: WorkoutPhaseTarget) {
-            self.id = target.id
-            self.phase = target.phase
-            self.label = target.label
-            self.lower = String(target.lowerMgdl)
-            self.upper = String(target.upperMgdl)
-            self.floor = target.floorMgdl.map(String.init) ?? ""
-            self.notes = target.notes ?? ""
-        }
-    }
+    @State private var saveError: String?
 
     init(plan: WorkoutPlan? = nil) {
         self.existingPlan = plan
-        _name = State(initialValue: plan?.name ?? "")
-        _activityType = State(initialValue: plan?.activityType ?? "Cycling")
-        _notes = State(initialValue: plan?.notes ?? "")
-        _phases = State(initialValue: plan?.phases.map { DraftPhase(target: $0) } ?? [DraftPhase()])
-    }
-
-    private var canSave: Bool {
-        guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              !activityType.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              !phases.isEmpty else {
-            return false
-        }
-        return phases.allSatisfy { draft in
-            guard let lower = Int(draft.lower.trimmingCharacters(in: .whitespacesAndNewlines)),
-                  let upper = Int(draft.upper.trimmingCharacters(in: .whitespacesAndNewlines)),
-                  lower > 0,
-                  upper >= lower else {
-                return false
-            }
-            if let floor = parsedFloor(draft), floor > 0, floor <= lower {
-                return true
-            }
-            return draft.floor.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        }
+        _draft = State(initialValue: WorkoutPlanDraft(plan: plan))
     }
 
     var body: some View {
         NavigationStack {
             Form {
+                if let saveError {
+                    Section { Text(saveError).foregroundStyle(.red) }
+                }
                 Section("workout.editor.details") {
-                    TextField("workout.editor.name", text: $name)
-                    TextField("workout.editor.activity", text: $activityType)
+                    TextField("workout.editor.name", text: $draft.name)
+                    TextField("workout.editor.activity", text: $draft.activityType)
                 }
 
                 Section {
-                    ForEach($phases) { $draft in
+                    ForEach($draft.phases) { $draft in
                         VStack(alignment: .leading, spacing: 10) {
                             Picker("workout.editor.phase", selection: $draft.phase) {
                                 ForEach(WorkoutPhase.allCases) { phase in
@@ -101,11 +55,11 @@ struct WorkoutPlanEditorView: View {
                         .padding(.vertical, 4)
                     }
                     .onDelete { offsets in
-                        phases.remove(atOffsets: offsets)
+                        draft.phases.remove(atOffsets: offsets)
                     }
 
                     Button {
-                        phases.append(DraftPhase())
+                        draft.phases.append(WorkoutPlanDraft.Phase())
                     } label: {
                         Label("workout.editor.add_phase", systemImage: "plus.circle")
                     }
@@ -116,7 +70,7 @@ struct WorkoutPlanEditorView: View {
                 }
 
                 Section("workout.editor.notes_section") {
-                    TextField("workout.editor.plan_notes", text: $notes, axis: .vertical)
+                    TextField("workout.editor.plan_notes", text: $draft.notes, axis: .vertical)
                         .lineLimit(3...6)
                 }
 
@@ -138,68 +92,35 @@ struct WorkoutPlanEditorView: View {
                     Button(isSaving ? "workout.editor.saving" : "workout.editor.save") {
                         Task { await save() }
                     }
-                    .disabled(!canSave || isSaving)
+                    .disabled(!draft.canSave || isSaving)
                 }
             }
         }
     }
 
     private func save() async {
-        guard let plan = makePlan() else { return }
+        guard !isSaving, let plan = draft.makePlan() else { return }
         isSaving = true
+        let saved: Bool
         if existingPlan == nil {
-            await model.addWorkoutPlan(plan)
+            saved = await model.addWorkoutPlan(plan)
         } else {
-            await model.updateWorkoutPlan(plan)
+            saved = await model.updateWorkoutPlan(plan)
         }
         isSaving = false
-        dismiss()
-    }
-
-    private func makePlan() -> WorkoutPlan? {
-        guard canSave else { return nil }
-        let targets = phases.compactMap { draft -> WorkoutPhaseTarget? in
-            guard let lower = Int(draft.lower.trimmingCharacters(in: .whitespacesAndNewlines)),
-                  let upper = Int(draft.upper.trimmingCharacters(in: .whitespacesAndNewlines)) else {
-                return nil
-            }
-            let label = draft.label.trimmingCharacters(in: .whitespacesAndNewlines)
-            let phaseNotes = draft.notes.trimmingCharacters(in: .whitespacesAndNewlines)
-            return WorkoutPhaseTarget(
-                phase: draft.phase,
-                label: label.isEmpty ? phaseLabel(draft.phase) : label,
-                lowerMgdl: lower,
-                upperMgdl: upper,
-                floorMgdl: parsedFloor(draft),
-                notes: phaseNotes.isEmpty ? nil : phaseNotes
-            )
+        if saved {
+            dismiss()
+        } else {
+            saveError = model.workoutActionError
         }
-        guard targets.count == phases.count else { return nil }
-        let trimmedNotes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
-        return WorkoutPlan(
-            name: name.trimmingCharacters(in: .whitespacesAndNewlines),
-            activityType: activityType.trimmingCharacters(in: .whitespacesAndNewlines),
-            phases: targets,
-            notes: trimmedNotes.isEmpty ? nil : trimmedNotes
-        )
-    }
-
-    private func parsedFloor(_ draft: DraftPhase) -> Int? {
-        let value = draft.floor.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !value.isEmpty else { return nil }
-        return Int(value)
     }
 
     private func phaseLabel(_ phase: WorkoutPhase) -> String {
         switch phase {
-        case .preWorkout:
-            String(localized: "workout.phase.pre")
-        case .duringWorkout:
-            String(localized: "workout.phase.during")
-        case .postWorkout:
-            String(localized: "workout.phase.post")
-        case .overnight:
-            String(localized: "workout.phase.overnight")
+        case .preWorkout: String(localized: "workout.phase.pre")
+        case .duringWorkout: String(localized: "workout.phase.during")
+        case .postWorkout: String(localized: "workout.phase.post")
+        case .overnight: String(localized: "workout.phase.overnight")
         }
     }
 }

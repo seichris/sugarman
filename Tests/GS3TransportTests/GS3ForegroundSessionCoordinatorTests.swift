@@ -1146,6 +1146,34 @@ struct GS3ForegroundSessionCoordinatorTests {
         #expect(await transport.commands().isEmpty)
     }
 
+    @Test func stopStillDisconnectsWhenConnectionProjectionCannotBeSaved() async throws {
+        let harness = try await ForegroundHarness.make()
+        try await harness.advanceToLive()
+        try await harness.store.delete(sessionID: harness.sessionID)
+
+        await harness.coordinator.stop()
+
+        #expect(await harness.transport.commands().last == .disconnect)
+        #expect(await harness.coordinator.currentPhase() == .disconnecting)
+        #expect(harness.ownership.latestLease?.isActive == true)
+        await harness.coordinator.receive(.transportDisconnected)
+        #expect(harness.ownership.latestLease?.isActive == false)
+        #expect(await harness.coordinator.currentPhase() == .stopped)
+    }
+
+    @Test func terminalDisconnectReleasesOwnershipWhenProjectionCannotBeSaved() async throws {
+        let harness = try await ForegroundHarness.make()
+        try await harness.advanceToLive()
+        try await harness.store.delete(sessionID: harness.sessionID)
+
+        await harness.coordinator.receive(.disconnected(.permissionDenied))
+
+        #expect(await harness.coordinator.currentPhase() == .stopped)
+        #expect(await harness.transport.commands().last == .disconnect)
+        #expect(harness.ownership.latestLease?.isActive == false)
+        #expect(await harness.scheduler.pending().isEmpty)
+    }
+
     @Test func connectionRevalidationStopsBeforeHistoryWriteOnNewCorruption() async throws {
         let harness = try await ForegroundHarness.make()
         try await harness.coordinator.start()

@@ -29,6 +29,9 @@ struct WorkoutView: View {
                             .listRowBackground(Color.clear)
                     }
                 }
+                if let error = model.workoutActionError {
+                    Section { Text(error).foregroundStyle(.red) }
+                }
                 savedWorkoutsSection
                 if let plan = model.selectedWorkoutPlan,
                    let target = model.selectedWorkoutPhaseTarget {

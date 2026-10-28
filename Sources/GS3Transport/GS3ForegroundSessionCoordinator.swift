@@ -408,6 +408,11 @@ package actor GS3ForegroundSessionCoordinator: GS3ForegroundSessionControlling {
                 callbacks.onConnection(connection)
             } catch {
                 callbacks.onFailure(.persistence)
+                // Persisting the UI projection must never suppress the
+                // remaining disconnect/release effects of a terminal path.
+                if machine.phase == .disconnecting || machine.phase == .stopped {
+                    return true
+                }
                 await advance(.persistenceFailed)
                 return false
             }

@@ -806,11 +806,16 @@ def check_sensor_ownership_and_foreground_slice() -> None:
         arm_body = arm_slice[1].split("func stopDeviceTest()", 1)[0]
         for required in (
             "provisioning.makeManagedForegroundDeviceTestController",
-            "foregroundSessionBridge.install { controller }",
+            "foregroundSessionBridge.install {",
             "foregroundSessionBridge.enterForeground()",
         ):
             if required not in arm_body:
                 error(f"explicit device-test arm boundary missing: {required}")
+        factory_body = arm_body.split("foregroundSessionBridge.install {", 1)[-1].split(
+            "isDeviceTestArmed = true", 1
+        )[0]
+        if "provisioning.makeManagedForegroundDeviceTestController" not in factory_body:
+            error("device-test factory must construct a fresh controller on each foreground entry")
     main_app_body = "\n".join(
         path.read_text(encoding="utf-8", errors="replace")
         for path in sorted((ROOT / "Apps/Sugarman").glob("*.swift"))

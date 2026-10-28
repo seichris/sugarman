@@ -13,6 +13,16 @@ public struct PrivacyExportFileWriter: Sendable {
 
     public init() {}
 
+    /// Remove only Sugarman-owned share copies after the source data is deleted.
+    public func removeExports(in directory: URL) throws {
+        for filename in [Self.jsonFilename, Self.csvFilename, Self.diagnosticsFilename] {
+            let url = directory.appendingPathComponent(filename)
+            if FileManager.default.fileExists(atPath: url.path) {
+                try FileManager.default.removeItem(at: url)
+            }
+        }
+    }
+
     public func writeJSON(_ data: Data, to directory: URL) throws -> URL {
         let url = directory.appendingPathComponent(Self.jsonFilename)
         try data.write(to: url, options: .atomic)

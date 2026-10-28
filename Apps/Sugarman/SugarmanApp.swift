@@ -22,6 +22,7 @@ import SugarmanDomain
 import SugarmanStore
 import SwiftUI
 
+#if !SWIFT_PACKAGE
 @main
 struct SugarmanApp: App {
     @State private var model = AppModel.bootstrapped()
@@ -37,6 +38,8 @@ struct SugarmanApp: App {
         }
     }
 }
+
+#endif
 
 @Observable
 @MainActor
@@ -84,6 +87,7 @@ final class AppModel {
     var ownerAccountID: OwnerAccountID?
     var exporter: VersionedDataExporter
     var exportFileWriter: PrivacyExportFileWriter
+    let exportDirectory: URL
     var demoLoadError: String?
     var storeErrorMessage: String?
     var diagnosticLogError: String?
@@ -92,6 +96,7 @@ final class AppModel {
         WorkoutSelectionPreferences
     @ObservationIgnored private let noWorkoutGlucoseRangePreferences:
         NoWorkoutGlucoseRangePreferences
+    var workoutActionError: String? = nil
     @ObservationIgnored private let diagnosticLogStore: LocalDiagnosticLogStore
     private var foregroundSessionBridge: GS3ForegroundSessionLifecycle
     private var currentScenePhase: ScenePhase
@@ -102,6 +107,7 @@ final class AppModel {
     private var didBootstrapPersistentSensorConnection: Bool
     var hasSensorProvisioning: Bool
     var provisionedSensorID: UUID?
+    var provisionedSessionID: UUID?
     var isSensorConnectionEnabled: Bool
     var sensorConnectionStatus: String
     var sensorConnectionActivity: SensorConnectionActivity
@@ -118,6 +124,7 @@ final class AppModel {
 #if SUGARMAN_DEVICE_TEST
     var hasDeviceTestProvisioning: Bool
     var deviceTestLinkedSensorID: UUID?
+    var deviceTestLinkedSessionID: UUID?
     var isDeviceTestArmed: Bool
     var deviceTestStatus: String
     var deviceTestLifecycleLines: [String]
@@ -153,7 +160,9 @@ final class AppModel {
         probeEnabled: Bool = false,
         initialStoreError: String? = nil,
         diagnosticLogStore: LocalDiagnosticLogStore? = nil,
-        userDefaults: UserDefaults = .standard
+        userDefaults: UserDefaults = .standard,
+        exportDirectory: URL = FileManager.default.temporaryDirectory,
+        sensorProvisioning: DeviceOnlyGS3Provisioning? = nil
     ) {
         let workoutSelectionPreferences = WorkoutSelectionPreferences(
             userDefaults: userDefaults
@@ -193,6 +202,7 @@ final class AppModel {
         self.ownerAccountID = nil
         self.exporter = VersionedDataExporter()
         self.exportFileWriter = PrivacyExportFileWriter()
+        self.exportDirectory = exportDirectory
         self.demoLoadError = nil
         self.storeErrorMessage = initialStoreError
         self.diagnosticLogError = nil
@@ -210,13 +220,14 @@ final class AppModel {
         let externalOwnershipGate = GS3ExternalOwnershipGate()
         self.hasSensorProvisioning = false
         self.provisionedSensorID = nil
+        self.provisionedSessionID = nil
         self.isSensorConnectionEnabled = false
         self.sensorConnectionStatus =
             "Import the private handover file for this already-active sensor."
         self.sensorConnectionActivity = .notConfigured
         self.hasSensorProbeBridgePending = false
         self.isSensorProbeBridgeScanning = false
-        self.sensorProvisioning = DeviceOnlyGS3Provisioning(scope: .production)
+        self.sensorProvisioning = sensorProvisioning ?? DeviceOnlyGS3Provisioning(scope: .production)
         self.sensorExternalOwnershipGate = externalOwnershipGate
         self.sensorProbeBridgeScanner = GS3ProbeProvisioningScanner(
             externalOwnershipGate: externalOwnershipGate
@@ -227,6 +238,7 @@ final class AppModel {
         let externalOwnershipGate = GS3ExternalOwnershipGate()
         self.hasDeviceTestProvisioning = false
         self.deviceTestLinkedSensorID = nil
+        self.deviceTestLinkedSessionID = nil
         self.isDeviceTestArmed = false
         self.deviceTestStatus = "Import private material after storing an owned sensor identity."
         self.deviceTestLifecycleLines = []
@@ -272,7 +284,26 @@ final class AppModel {
         return sessions.first { $0.id == activeSessionID }
     }
 
-    var activeConnection: ConnectionState { activeSession?.connection ?? connection }
+    var activeConnection: ConnectionState {
+#if !SUGARMAN_DEVICE_TEST
+        if !isSyntheticDemo {
+            // A persisted connection is historical state, not proof that this
+            // process currently owns a live connection to the selected sensor.
+            guard isSensorConnectionEnabled, activeSessionID == provisionedSessionID else {
+                return .disconnected
+            }
+            return connection
+        }
+#else
+        if !isSyntheticDemo {
+            guard isDeviceTestArmed, activeSessionID == deviceTestLinkedSessionID else {
+                return .disconnected
+            }
+            return connection
+        }
+#endif
+        return activeSession?.connection ?? connection
+    }
     var activeLifecycle: SensorLifecycleState { activeSession?.lifecycle ?? lifecycle }
 
     var activeSamples: [GlucoseSample] {
@@ -511,6 +542,7 @@ final class AppModel {
             let summary = try await sensorProvisioning.summary()
             hasSensorProvisioning = summary != nil
             provisionedSensorID = summary?.linkedSensorID
+            provisionedSessionID = summary?.linkedSessionID
             guard summary?.connectionIntentEnabled == true else {
                 isSensorConnectionEnabled = false
                 sensorConnectionActivity = summary == nil ? .notConfigured : .stopped
@@ -637,6 +669,7 @@ final class AppModel {
             let summary = try await sensorProvisioning.summary()
             hasSensorProvisioning = summary != nil
             provisionedSensorID = summary?.linkedSensorID
+            provisionedSessionID = summary?.linkedSessionID
             if !isSensorConnectionEnabled {
                 sensorConnectionActivity = summary == nil ? .notConfigured : .stopped
             }
@@ -651,6 +684,7 @@ final class AppModel {
         } catch {
             hasSensorProvisioning = false
             provisionedSensorID = nil
+            provisionedSessionID = nil
             sensorConnectionStatus = error.localizedDescription
         }
     }
@@ -798,6 +832,7 @@ final class AppModel {
             try await sensorProvisioning.delete()
             hasSensorProvisioning = false
             provisionedSensorID = nil
+            provisionedSessionID = nil
             sensorProbeBridgeRequest = nil
             hasSensorProbeBridgePending = false
             isSensorProbeBridgeScanning = false
@@ -832,8 +867,9 @@ final class AppModel {
         }
         return GS3ForegroundSessionCallbacks(
             onConnection: { [weak self] connection in
-                refresh()
                 Task { @MainActor [weak self] in
+                    self?.connection = connection
+                    await self?.refresh()
                     self?.recordDiagnostic(
                         category: .sensor,
                         event: .sensorConnectionChanged,
@@ -906,6 +942,7 @@ final class AppModel {
                         event: .sensorFailure,
                         attributes: ["reason": failure.rawValue]
                     )
+                    await self?.stopDeviceTest()
                     self?.deviceTestStatus =
                         "Managed foreground session failed closed (\(failure.rawValue))."
                 }
@@ -928,6 +965,7 @@ final class AppModel {
             let summary = try await deviceTestProvisioning.summary()
             hasDeviceTestProvisioning = summary != nil
             deviceTestLinkedSensorID = summary?.linkedSensorID
+            deviceTestLinkedSessionID = summary?.linkedSessionID
             if summary != nil, !isDeviceTestArmed {
                 deviceTestStatus = "Private material is available in this device's Keychain."
             } else if summary == nil {
@@ -938,6 +976,7 @@ final class AppModel {
         } catch {
             hasDeviceTestProvisioning = false
             deviceTestLinkedSensorID = nil
+            deviceTestLinkedSessionID = nil
             deviceTestStatus = error.localizedDescription
         }
     }
@@ -1091,17 +1130,15 @@ final class AppModel {
         deviceTestPhase = .idle
         isDeviceTestLinkLossInjectionPending = false
         let callbacks = makeDeviceTestCallbacks()
-        do {
+        foregroundSessionBridge.install { [weak self] in
             let controller = try await provisioning.makeManagedForegroundDeviceTestController(
                 store: liveStore,
                 callbacks: callbacks
             )
-            managedDeviceTestController = controller
-            foregroundSessionBridge.install { controller }
-        } catch {
-            deviceTestExternalOwnershipGate.revoke()
-            deviceTestStatus = error.localizedDescription
-            return
+            await MainActor.run { [weak self] in
+                self?.managedDeviceTestController = controller
+            }
+            return controller
         }
         isDeviceTestArmed = true
         deviceTestStatus = "Managed foreground session armed."
@@ -1154,6 +1191,7 @@ final class AppModel {
             try await deviceTestProvisioning.delete()
             hasDeviceTestProvisioning = false
             deviceTestLinkedSensorID = nil
+            deviceTestLinkedSessionID = nil
             deviceTestProbeBridgeRequest = nil
             hasDeviceTestProbeBridgePending = false
             isDeviceTestProbeBridgeScanning = false
@@ -1264,25 +1302,29 @@ final class AppModel {
         )
     }
 
-    func addWorkoutPlan(_ plan: WorkoutPlan) async {
+    @discardableResult
+    func addWorkoutPlan(_ plan: WorkoutPlan) async -> Bool {
+        workoutActionError = nil
         guard plan.isValid else {
+            workoutActionError = "Enter a valid workout name, activity, and glucose range."
             recordDiagnostic(
                 category: .workout,
                 event: .workoutPlanWriteFailed,
                 attributes: ["operation": "insert", "validation": "failed"]
             )
-            return
+            return false
         }
         do {
             try await store.insertWorkoutPlan(plan)
         } catch {
+            workoutActionError = error.localizedDescription
             recordDiagnostic(
                 category: .workout,
                 event: .workoutPlanWriteFailed,
                 attributes: ["operation": "insert"]
             )
             await refresh()
-            return
+            return false
         }
         await refresh()
         recordDiagnostic(
@@ -1291,27 +1333,32 @@ final class AppModel {
             attributes: ["phase_count": String(plan.phases.count)]
         )
         selectWorkoutPlan(plan.id)
+        return true
     }
 
-    func updateWorkoutPlan(_ plan: WorkoutPlan) async {
+    @discardableResult
+    func updateWorkoutPlan(_ plan: WorkoutPlan) async -> Bool {
+        workoutActionError = nil
         guard plan.isValid else {
+            workoutActionError = "Enter a valid workout name, activity, and glucose range."
             recordDiagnostic(
                 category: .workout,
                 event: .workoutPlanWriteFailed,
                 attributes: ["operation": "update", "validation": "failed"]
             )
-            return
+            return false
         }
         do {
             try await store.updateWorkoutPlan(plan)
         } catch {
+            workoutActionError = error.localizedDescription
             recordDiagnostic(
                 category: .workout,
                 event: .workoutPlanWriteFailed,
                 attributes: ["operation": "update"]
             )
             await refresh()
-            return
+            return false
         }
         await refresh()
         recordDiagnostic(
@@ -1320,9 +1367,11 @@ final class AppModel {
             attributes: ["phase_count": String(plan.phases.count)]
         )
         selectWorkoutPlan(plan.id)
+        return true
     }
 
     func addCodexTwoDayRide() async {
+        workoutActionError = nil
         let existingIDs = Set(workoutPlans.map(\.id))
         var insertedCount = 0
         var failedCount = 0
@@ -1332,6 +1381,7 @@ final class AppModel {
                 insertedCount += 1
             } catch {
                 failedCount += 1
+                workoutActionError = error.localizedDescription
             }
         }
         await refresh()
@@ -1350,9 +1400,11 @@ final class AppModel {
     }
 
     func deleteWorkoutPlan(_ id: UUID) async {
+        workoutActionError = nil
         do {
             try await store.deleteWorkoutPlan(id: id)
         } catch {
+            workoutActionError = error.localizedDescription
             recordDiagnostic(
                 category: .workout,
                 event: .workoutPlanDeleteFailed
@@ -1443,10 +1495,25 @@ final class AppModel {
     }
 
     func deleteSession(_ id: UUID) async throws {
+        if !isSyntheticDemo {
+#if SUGARMAN_DEVICE_TEST
+            if try await deviceTestProvisioning.summary()?.linkedSessionID == id {
+                await stopDeviceTest()
+            }
+#else
+            if try await sensorProvisioning.summary()?.linkedSessionID == id {
+                await stopSensorConnection()
+                // Do not delete the session unless restart intent was durably
+                // cleared; otherwise a relaunch silently backfills it again.
+                try await sensorProvisioning.setConnectionIntentEnabled(false)
+            }
+#endif
+        }
         let wasOnlySession = sessions.count <= 1
         let wasDemoSession = demoSessionID == id
         let wasSelected = selectedSessionID == id
         try await store.delete(sessionID: id)
+        try exportFileWriter.removeExports(in: exportDirectory)
         if wasOnlySession || wasDemoSession {
             if wasDemoSession {
                 await exitDemo()
@@ -1469,6 +1536,7 @@ final class AppModel {
         try await deviceTestProvisioning.delete()
         hasDeviceTestProvisioning = false
         deviceTestLinkedSensorID = nil
+        deviceTestLinkedSessionID = nil
         deviceTestProbeBridgeRequest = nil
         hasDeviceTestProbeBridgePending = false
         isDeviceTestProbeBridgeScanning = false
@@ -1479,11 +1547,14 @@ final class AppModel {
         try await sensorProvisioning.delete()
         hasSensorProvisioning = false
         provisionedSensorID = nil
+        provisionedSessionID = nil
         sensorProbeBridgeRequest = nil
         hasSensorProbeBridgePending = false
         isSensorProbeBridgeScanning = false
 #endif
+        await probeSession.setEnabled(false)
         try await primaryStore.deleteAll()
+        try exportFileWriter.removeExports(in: exportDirectory)
         try diagnosticLogStore.removeAll()
         store = primaryStore
         clearLivePresentation()

@@ -113,6 +113,63 @@ let package = Package(
             name: "GS3PrivateHandoverCLI",
             dependencies: ["GS3PrivateHandoverBuilder"]
         ),
+        // Compile the actual app model on the host so UI orchestration has
+        // regression coverage without connecting to a sensor.
+        .target(
+            name: "SugarmanAppTestSupport",
+            dependencies: [
+                "AccountBinding",
+                "AppleHealthIntegration",
+                "GS3DeviceProvisioning",
+                "GS3ProvisioningScan",
+                "GS3Transport",
+                "Integrations",
+                "PrivateDocumentImport",
+                "SafetyEngine",
+                "SensorOnboarding",
+                "SugarmanDiagnostics",
+                "SugarmanDomain",
+                "SugarmanStore",
+                "SensorOwnership",
+            ],
+            path: "Apps/Sugarman",
+            exclude: [
+                "ActiveSessionBanner.swift",
+                "AppleHealthView.swift",
+                "Assets.xcassets",
+                "BluetoothOffNotice.swift",
+                "DashboardView.swift",
+                "DataMatrixCameraView.swift",
+                "DeviceTestProvisioningSection.swift",
+                "FuelingView.swift",
+                "HistoryView.swift",
+                "Info.plist",
+                "Localizable.xcstrings",
+                "MoreView.swift",
+                "NoDosingBanner.swift",
+                "NoWorkoutGlucoseRangeView.swift",
+                "PrivacyInfo.xcprivacy",
+                "PrivacyView.swift",
+                "RootView.swift",
+                "SensorConnectionSection.swift",
+                "SensorOnboardingView.swift",
+                "Sugarman.entitlements",
+                "WorkoutGlucoseChart.swift",
+                "WorkoutPlanDetailView.swift",
+                "WorkoutPlanEditorView.swift",
+                "WorkoutView.swift",
+            ],
+            sources: [
+                "SugarmanApp.swift",
+                "DiagnosticProbeSession.swift",
+                "WorkoutPlanDraft.swift",
+                "AppleHealthAppBridge.swift",
+            ]
+        ),
+        .testTarget(
+            name: "SugarmanAppTests",
+            dependencies: ["SugarmanAppTestSupport", "SugarmanStore", "SugarmanDomain", "Integrations", "GS3DeviceProvisioning"]
+        ),
         .testTarget(name: "SugarmanDomainTests", dependencies: ["SugarmanDomain"]),
         .testTarget(name: "GS3ProtocolTests", dependencies: ["GS3Protocol", "SugarmanDomain"]),
         .testTarget(

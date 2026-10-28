@@ -14,10 +14,12 @@ public struct GS3DeviceProvisioningSummary:
 {
     /// Local random identity key only. Descriptions and reflection redact it.
     public let linkedSensorID: UUID
+    public let linkedSessionID: UUID
     public let connectionIntentEnabled: Bool
 
-    public init(linkedSensorID: UUID, connectionIntentEnabled: Bool) {
+    public init(linkedSensorID: UUID, linkedSessionID: UUID, connectionIntentEnabled: Bool) {
         self.linkedSensorID = linkedSensorID
+        self.linkedSessionID = linkedSessionID
         self.connectionIntentEnabled = connectionIntentEnabled
     }
 
@@ -77,6 +79,7 @@ public actor DeviceOnlyGS3Provisioning {
         guard let record = try loadRecord() else { return nil }
         return GS3DeviceProvisioningSummary(
             linkedSensorID: record.sensorID,
+            linkedSessionID: record.sessionID,
             connectionIntentEnabled: record.connectionIntentEnabled
         )
     }
