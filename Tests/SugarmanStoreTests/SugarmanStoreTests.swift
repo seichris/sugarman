@@ -765,6 +765,22 @@ struct SwiftDataSugarmanStoreTests {
         #expect(try await store.appleHealthSyncSummary().syncedCount == 1)
     }
 
+    @Test func legacyCandidatesRespectTheRequestedLimit() async throws {
+        guard #available(iOS 26, macOS 26, *) else { return }
+        let container = try SwiftDataSugarmanStore.makeContainer(inMemory: true)
+        let context = ModelContext(container)
+        let sessionID = UUID()
+        for index: UInt32 in 0..<3 {
+            context.insert(GlucoseSampleRecord(from: makeSample(session: sessionID, index: index)))
+        }
+        try context.save()
+        let store = SwiftDataSugarmanStore(modelContainer: container)
+        let candidates = try await store.appleHealthSyncCandidates(
+            limit: 2, now: .now, ignoringRetryDeadline: false
+        )
+        #expect(candidates.map(\.sample.sensorIndex) == [0, 1])
+    }
+
     @Test func unversionedStoreMigratesToDeliveryLedgerSchema() async throws {
         guard #available(iOS 26, macOS 26, *) else { return }
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(

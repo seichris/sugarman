@@ -38,7 +38,8 @@ public actor AppleHealthGlucoseSyncCoordinator {
     private let writer: any AppleHealthGlucoseWritingClient
     private let policy: AppleHealthValidationPolicy
     private let now: @Sendable () -> Date
-    private var isDraining = false
+    private var activeDrain: Task<AppleHealthSyncSnapshot, Never>?
+    private var queuedRetry: Bool?
     private var enabledDuringDrain = false
 
     public init(
@@ -66,23 +67,24 @@ public actor AppleHealthGlucoseSyncCoordinator {
     }
 
     public func snapshot(isEnabled: Bool) async -> AppleHealthSyncSnapshot {
-        let summary = (try? await store.appleHealthSyncSummary()) ?? .empty
+        let summary = try? await store.appleHealthSyncSummary()
         if !policy.isGateOpen {
             return AppleHealthSyncSnapshot(
                 phase: .gateClosed,
                 authorization: .unavailable,
-                summary: summary
+                summary: summary ?? .empty
             )
         }
-        let authorization = await writer.authorizationState()
+        let authorization = isEnabled ? await writer.authorizationState() : .unavailable
         let phase: AppleHealthSyncPhase
         if !isEnabled { phase = .disabled }
         else if authorization != .authorized { phase = .authorizationRequired }
+        else if summary == nil || (summary?.retryableFailureCount ?? 0) > 0 { phase = .failed }
         else { phase = .idle }
         return AppleHealthSyncSnapshot(
             phase: phase,
             authorization: authorization,
-            summary: summary
+            summary: summary ?? .empty
         )
     }
 
@@ -91,16 +93,40 @@ public actor AppleHealthGlucoseSyncCoordinator {
         forceRetry: Bool = false
     ) async -> AppleHealthSyncSnapshot {
         enabledDuringDrain = isEnabled
-        guard !isDraining else { return await snapshot(isEnabled: isEnabled) }
-        guard policy.isGateOpen else { return await snapshot(isEnabled: isEnabled) }
-        guard isEnabled else { return await snapshot(isEnabled: false) }
-        let authorization = await writer.authorizationState()
-        guard authorization == .authorized else {
-            return await snapshot(isEnabled: true)
+        guard isEnabled, policy.isGateOpen else { return await snapshot(isEnabled: isEnabled) }
+        if let activeDrain {
+            queuedRetry = (queuedRetry ?? false) || forceRetry
+            return await activeDrain.value
         }
 
-        isDraining = true
-        defer { isDraining = false }
+        // Reserve ownership before the first suspension, including authorization.
+        let task = Task { await drainQueuedBatches(forceRetry: forceRetry) }
+        activeDrain = task
+        return await task.value
+    }
+
+    private func drainQueuedBatches(forceRetry: Bool) async -> AppleHealthSyncSnapshot {
+        var retry = forceRetry
+        while true {
+            let result = await drainOnce(forceRetry: retry)
+            if enabledDuringDrain, let queued = queuedRetry {
+                queuedRetry = nil
+                retry = queued
+            } else {
+                queuedRetry = nil
+                activeDrain = nil
+                return result
+            }
+        }
+    }
+
+    private func drainOnce(forceRetry: Bool) async -> AppleHealthSyncSnapshot {
+        guard enabledDuringDrain else { return await snapshot(isEnabled: false) }
+        let authorization = await writer.authorizationState()
+        guard authorization == .authorized else {
+            return await snapshot(isEnabled: enabledDuringDrain)
+        }
+
         do {
             let earliestDate = try await writer.earliestPermittedSampleDate()
             for _ in 0..<Self.maximumBatchesPerDrain {
@@ -140,6 +166,7 @@ public actor AppleHealthGlucoseSyncCoordinator {
                 guard !payloads.isEmpty else { continue }
                 let keys = payloads.map(\.key)
                 try await store.recordAppleHealthAttempt(keys, at: attemptDate)
+                guard enabledDuringDrain else { break }
                 do {
                     try await writer.save(payloads)
                     try await store.recordAppleHealthSuccess(
@@ -167,11 +194,7 @@ public actor AppleHealthGlucoseSyncCoordinator {
                     break
                 }
             }
-            return AppleHealthSyncSnapshot(
-                phase: .idle,
-                authorization: .authorized,
-                summary: try await store.appleHealthSyncSummary()
-            )
+            return await snapshot(isEnabled: enabledDuringDrain)
         } catch {
             return AppleHealthSyncSnapshot(
                 phase: .failed,

@@ -18,7 +18,11 @@ final class AppleHealthAppBridge {
     private let coordinator: AppleHealthGlucoseSyncCoordinator
     @ObservationIgnored private let userDefaults: UserDefaults
 
-    init(store: any SugarmanStoring, userDefaults: UserDefaults) {
+    init(
+        store: any SugarmanStoring,
+        userDefaults: UserDefaults,
+        writer: (any AppleHealthGlucoseWritingClient)? = nil
+    ) {
         let policy = AppleHealthValidationPolicy.production(
             physicallyValidatedGS3DecoderRevision:
                 V3OfflineGlucoseNotificationDecoder.evidenceRevision
@@ -28,7 +32,7 @@ final class AppleHealthAppBridge {
             && userDefaults.bool(forKey: Self.enabledDefaultsKey)
         self.coordinator = AppleHealthGlucoseSyncCoordinator(
             store: store,
-            writer: SystemAppleHealthGlucoseWriter(policy: policy),
+            writer: writer ?? SystemAppleHealthGlucoseWriter(policy: policy),
             policy: policy
         )
         self.snapshot = AppleHealthSyncSnapshot(
@@ -43,7 +47,9 @@ final class AppleHealthAppBridge {
     }
 
     func refresh() async {
-        snapshot = await coordinator.snapshot(isEnabled: isEnabled)
+        let enabled = isEnabled
+        let result = await coordinator.snapshot(isEnabled: enabled)
+        if enabled == isEnabled { snapshot = result }
     }
 
     func enable() async {
@@ -81,10 +87,12 @@ final class AppleHealthAppBridge {
                 summary: snapshot.summary
             )
         }
-        snapshot = await coordinator.drain(
-            isEnabled: isEnabled,
+        let enabled = isEnabled
+        let result = await coordinator.drain(
+            isEnabled: enabled,
             forceRetry: forceRetry
         )
+        if enabled == isEnabled { snapshot = result }
     }
 }
 #endif

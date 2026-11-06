@@ -111,6 +111,40 @@ struct AppleHealthIntegrationTests {
         #expect(await writer.savedBatchSizes().isEmpty)
     }
 
+    @Test func overlappingTriggersSaveEachReadingOnce() async throws {
+        let store = InMemorySugarmanStore()
+        try await store.insertSample(makeSample(index: 1))
+        let writer = RecordingWriter(delay: .milliseconds(40))
+        let coordinator = AppleHealthGlucoseSyncCoordinator(
+            store: store, writer: writer,
+            policy: AppleHealthValidationPolicy(allowedDecoderRevisions: ["validated-v1"])
+        )
+
+        async let first = coordinator.drain(isEnabled: true)
+        async let second = coordinator.drain(isEnabled: true)
+        let results = await [first, second]
+        #expect(results.allSatisfy { $0.summary.syncedCount == 1 })
+        #expect(await writer.savedBatchSizes() == [1])
+    }
+
+    @Test func failedWritesStayVisibleUntilRetrySucceeds() async throws {
+        let store = InMemorySugarmanStore()
+        try await store.insertSample(makeSample(index: 1))
+        let writer = RecordingWriter(failOnce: true)
+        let coordinator = AppleHealthGlucoseSyncCoordinator(
+            store: store, writer: writer,
+            policy: AppleHealthValidationPolicy(allowedDecoderRevisions: ["validated-v1"])
+        )
+        let failed = await coordinator.drain(isEnabled: true)
+        #expect(failed.phase == .failed)
+        #expect(failed.summary.pendingCount == 0)
+        #expect(failed.summary.retryableFailureCount == 1)
+        #expect(await coordinator.snapshot(isEnabled: true).phase == .failed)
+        let retry = await coordinator.drain(isEnabled: true, forceRetry: true)
+        #expect(retry.phase == .idle)
+        #expect(retry.summary.syncedCount == 1)
+    }
+
     private static let sessionID = UUID(
         uuidString: "11111111-2222-3333-4444-555555555555"
     )!
@@ -136,10 +170,26 @@ struct AppleHealthIntegrationTests {
 private actor RecordingWriter: AppleHealthGlucoseWritingClient {
     private var batches: [[AppleHealthGlucosePayload]] = []
 
-    func authorizationState() async -> AppleHealthAuthorizationState { .authorized }
+    private let delay: Duration
+    private var failOnce: Bool
+
+    init(delay: Duration = .zero, failOnce: Bool = false) {
+        self.delay = delay
+        self.failOnce = failOnce
+    }
+
+    func authorizationState() async -> AppleHealthAuthorizationState {
+        try? await Task.sleep(for: delay)
+        return .authorized
+    }
     func requestWriteAuthorization() async throws {}
     func earliestPermittedSampleDate() async throws -> Date { .distantPast }
     func save(_ payloads: [AppleHealthGlucosePayload]) async throws {
+        try await Task.sleep(for: delay)
+        if failOnce {
+            failOnce = false
+            throw AppleHealthWriterError.unavailable
+        }
         batches.append(payloads)
     }
     func savedBatchSizes() -> [Int] { batches.map(\.count) }

@@ -133,14 +133,12 @@ struct DashboardView: View {
     private func readingHero(_ assessment: SafetyAssessment) -> some View {
         if let latestSample = model.latestSample {
 #if !SUGARMAN_DEVICE_TEST
-            if model.isSensorConnectionEnabled,
-               model.sensorConnectionActivity == .synchronizing {
+            if model.selectedSensorActivity == .synchronizing {
                 glucoseReadingHero(
                     mgdl: latestSample.milligramsPerDeciliter,
                     assessment: assessment
                 )
-            } else if model.isSensorConnectionEnabled,
-                      model.sensorConnectionActivity != .live {
+            } else if let activity = model.selectedSensorActivity, activity != .live {
                 unavailableReadingHero(sensorActivityText, assessment: assessment)
             } else {
                 assessmentReadingHero(assessment)
@@ -219,7 +217,7 @@ struct DashboardView: View {
 
     private var chartNotCurrentKey: LocalizedStringKey {
 #if !SUGARMAN_DEVICE_TEST
-        if model.sensorConnectionActivity == .live {
+        if model.selectedSensorActivity == .live {
             return "live.chart_native_state_unvalidated"
         }
 #endif

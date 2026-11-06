@@ -168,7 +168,7 @@ let package = Package(
         ),
         .testTarget(
             name: "SugarmanAppTests",
-            dependencies: ["SugarmanAppTestSupport", "SugarmanStore", "SugarmanDomain", "Integrations", "GS3DeviceProvisioning"]
+            dependencies: ["SugarmanAppTestSupport", "SugarmanStore", "SugarmanDomain", "Integrations", "GS3DeviceProvisioning", "AppleHealthIntegration", "GS3Protocol"]
         ),
         .testTarget(name: "SugarmanDomainTests", dependencies: ["SugarmanDomain"]),
         .testTarget(name: "GS3ProtocolTests", dependencies: ["GS3Protocol", "SugarmanDomain"]),

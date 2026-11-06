@@ -10,6 +10,7 @@ struct FuelingView: View {
     @State private var carbsText = ""
     @State private var emoji = FuelingEvent.defaultEmoji
     @State private var timestamp = Date()
+    @State private var isSaving = false
     @State private var actionError: String?
 
     var body: some View {
@@ -32,12 +33,12 @@ struct FuelingView: View {
                     Button("fueling.save") {
                         Task { await save() }
                     }
-                    .disabled(label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(isSaving || label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     .accessibilityHint(Text("fueling.save_hint"))
                 }
                 Section("fueling.list") {
-                    if let actionError {
-                        Text(actionError).foregroundStyle(.red)
+                    if let error = actionError ?? model.storeErrorMessage {
+                        Text(error).foregroundStyle(.red)
                     }
                     if model.visibleFuelingEvents.isEmpty {
                         Text("fueling.empty")
@@ -174,7 +175,9 @@ struct FuelingView: View {
 
     private func save() async {
         let trimmed = label.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        guard !isSaving, !trimmed.isEmpty else { return }
+        isSaving = true
+        defer { isSaving = false }
         let normalizedCarbs = carbsText.trimmingCharacters(in: .whitespacesAndNewlines)
             .replacingOccurrences(of: ",", with: ".")
         let carbs: Double?
