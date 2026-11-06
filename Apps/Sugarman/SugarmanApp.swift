@@ -104,6 +104,7 @@ final class AppModel {
 #if !SUGARMAN_DEVICE_TEST
     var appleHealth: AppleHealthAppBridge
     private var persistentSessionBridge: GS3PersistentSessionLifecycle
+    private static let sensorStopDefaultsKey = "app.sugarman.sensorStopRequested"
     private var didBootstrapPersistentSensorConnection: Bool
     var hasSensorProvisioning: Bool
     var provisionedSensorID: UUID?
@@ -284,12 +285,20 @@ final class AppModel {
         return sessions.first { $0.id == activeSessionID }
     }
 
+#if !SUGARMAN_DEVICE_TEST
+    var selectedSensorActivity: SensorConnectionActivity? {
+        guard !isSyntheticDemo, isSensorConnectionEnabled,
+              let provisionedSessionID, activeSessionID == provisionedSessionID else { return nil }
+        return sensorConnectionActivity
+    }
+#endif
+
     var activeConnection: ConnectionState {
 #if !SUGARMAN_DEVICE_TEST
         if !isSyntheticDemo {
             // A persisted connection is historical state, not proof that this
             // process currently owns a live connection to the selected sensor.
-            guard isSensorConnectionEnabled, activeSessionID == provisionedSessionID else {
+            guard selectedSensorActivity != nil else {
                 return .disconnected
             }
             return connection
@@ -543,7 +552,8 @@ final class AppModel {
             hasSensorProvisioning = summary != nil
             provisionedSensorID = summary?.linkedSensorID
             provisionedSessionID = summary?.linkedSessionID
-            guard summary?.connectionIntentEnabled == true else {
+            guard summary?.connectionIntentEnabled == true,
+                  !userDefaults.bool(forKey: Self.sensorStopDefaultsKey) else {
                 isSensorConnectionEnabled = false
                 sensorConnectionActivity = summary == nil ? .notConfigured : .stopped
                 return
@@ -575,7 +585,7 @@ final class AppModel {
         }
     }
 
-    private func makeSensorCallbacks() -> GS3ForegroundSessionCallbacks {
+    func makeSensorCallbacks() -> GS3ForegroundSessionCallbacks {
         GS3ForegroundSessionCallbacks(
             onConnection: { [weak self] connection in
                 Task { @MainActor [weak self] in
@@ -616,6 +626,9 @@ final class AppModel {
                         ]
                     )
                     await self?.refresh()
+                    if let self, self.appleHealth.isEnabled {
+                        await self.appleHealth.drain()
+                    }
                 }
             },
             onFailure: { [weak self] failure in
@@ -797,6 +810,7 @@ final class AppModel {
         do {
             didBootstrapPersistentSensorConnection = true
             try await sensorProvisioning.setConnectionIntentEnabled(true)
+            userDefaults.removeObject(forKey: Self.sensorStopDefaultsKey)
             installPersistentSensorFactory()
             isSensorConnectionEnabled = true
             sensorConnectionActivity = .connecting
@@ -813,6 +827,8 @@ final class AppModel {
     }
 
     func stopSensorConnection() async {
+        // A failed Keychain update must not undo an explicit stop on relaunch.
+        userDefaults.set(true, forKey: Self.sensorStopDefaultsKey)
         isSensorConnectionEnabled = false
         sensorConnectionActivity = hasSensorProvisioning ? .stopped : .notConfigured
         sensorExternalOwnershipGate.revoke()
@@ -1283,7 +1299,7 @@ final class AppModel {
             emoji: trimmedEmoji.isEmpty ? FuelingEvent.defaultEmoji : trimmedEmoji
         )
         try await store.insertFueling(event)
-        try await refreshFromStore()
+        await refresh()
         recordDiagnostic(
             category: .fueling,
             event: .fuelingAdded,
@@ -1295,7 +1311,7 @@ final class AppModel {
 
     func deleteFueling(_ id: UUID) async throws {
         try await store.deleteFueling(id: id)
-        try await refreshFromStore()
+        await refresh()
         recordDiagnostic(
             category: .fueling,
             event: .fuelingDeleted
@@ -1469,10 +1485,12 @@ final class AppModel {
     }
 
     func chooseSession(_ id: UUID) async {
+        guard sessions.contains(where: { $0.id == id }) else { return }
         selectedSessionID = id
         if demoSessionID != id {
             demoSessionID = nil
         }
+        latestSample = activeSamples.last
         await refresh()
     }
 
@@ -1559,6 +1577,8 @@ final class AppModel {
         store = primaryStore
         clearLivePresentation()
         ownerAccountID = nil
+        selectedWorkoutPlanID = nil
+        selectedWorkoutPhaseID = nil
         try await refreshFromStore()
     }
 
@@ -1641,11 +1661,9 @@ final class AppModel {
                 demoSessionID: demoSessionID,
                 selectedSessionID: selectedSessionID
             )
-            let newLatest: GlucoseSample? = if let resolved {
-                try await store.latestSample(sessionID: resolved)
-            } else {
-                nil
-            }
+            let newLatest = newSamples.lazy
+                .filter { $0.sessionID == resolved }
+                .max { $0.sensorIndex < $1.sensorIndex }
 
             samples = newSamples
             sessions = newSessions
@@ -1671,8 +1689,6 @@ final class AppModel {
         demoScenario = nil
         demoSessionID = nil
         selectedSessionID = nil
-        selectedWorkoutPlanID = nil
-        selectedWorkoutPhaseID = nil
     }
 }
 

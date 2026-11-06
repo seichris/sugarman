@@ -687,6 +687,7 @@ public actor SwiftDataSugarmanStore: SugarmanStoring {
             guard !page.isEmpty else { break }
             offset += page.count
             for record in page {
+                if candidates.count == limit { return candidates }
                 let sample = try record.domainValue()
                 guard let delivery = try deliveryRecord(for: sample.id) else {
                     candidates.append(
@@ -714,7 +715,6 @@ public actor SwiftDataSugarmanStore: SugarmanStoring {
                 case .retryableFailure, .synced, .blocked:
                     break
                 }
-                if candidates.count == limit { break }
             }
         }
         return candidates
